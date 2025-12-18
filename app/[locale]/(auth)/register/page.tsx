@@ -1,10 +1,10 @@
 import Link from "next/link"
+import { Suspense } from "react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Icons } from "@/components/shared/icons"
-import { UserAuthForm } from "@/components/forms/user-auth-form"
-import { Suspense } from "react"
+import { UserRegisterForm } from "@/components/forms/user-register-form"
 
 export const metadata = {
   title: "Create an account",
@@ -32,11 +32,11 @@ export default function RegisterPage() {
               Create an account
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your email below to create your account
+              Enter your details below to create your account
             </p>
           </div>
           <Suspense>
-            <UserAuthForm type="register" />
+            <UserRegisterForm />
           </Suspense>
           <p className="px-8 text-center text-sm text-muted-foreground">
             By clicking continue, you agree to our{" "}
