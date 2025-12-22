@@ -108,6 +108,7 @@
         "agentPaused": "Агент на паузе",
         "openMenu": "Открыть меню",
         "online": "Онлайн",
+        "starting": "Запуск...",
         "training": "Обучение...",
         "paused": "Приостановлен",
         "totalDialogs": "Всего диалогов",

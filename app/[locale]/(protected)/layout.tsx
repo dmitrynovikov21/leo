@@ -8,7 +8,6 @@ import {
   MobileSheetSidebar,
 } from "@/components/layout/dashboard-sidebar";
 import { ModeToggle } from "@/components/layout/mode-toggle";
-import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { UserAccountNav } from "@/components/layout/user-account-nav";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { UserPreferencesProvider } from "@/components/providers/user-preferences-provider";
@@ -48,7 +47,6 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
                   <SearchCommand links={filteredLinks} />
                 </div>
 
-                <LanguageSwitcher variant="ghost" />
                 <ModeToggle />
                 <UserAccountNav />
               </div>

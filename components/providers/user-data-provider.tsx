@@ -1,53 +1,113 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { UserData } from '@/lib/data/types'
-import { userService } from '@/lib/data/user-service'
+import { useSession } from 'next-auth/react'
+
+// Types for agent data from API
+interface Agent {
+    id: string
+    name: string
+    role: string
+    description: string
+    systemPrompt: string
+    telegramToken?: string
+    isTelegramConnected?: boolean
+    status: 'STOPPED' | 'STARTING' | 'RUNNING' | 'ERROR'
+    containerId?: string
+    createdAt: string
+    updatedAt: string
+}
 
 interface UserContextType {
-    userData: UserData | null
+    agents: Agent[]
     isLoading: boolean
     error: Error | null
-    refreshUser: () => Promise<void>
-    switchUser: (userId: string) => void
+    refreshAgents: () => Promise<void>
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-    const [userData, setUserData] = useState<UserData | null>(null)
+    const { data: session, status } = useSession()
+    const [agents, setAgents] = useState<Agent[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<Error | null>(null)
 
-    const loadData = async () => {
+    const loadAgents = async () => {
+        if (status !== 'authenticated' || !session?.user?.id) {
+            setAgents([])
+            setIsLoading(false)
+            return
+        }
+
         setIsLoading(true)
         setError(null)
         try {
-            const userId = userService.getCurrentUserId()
-            const data = await userService.getUserData(userId)
-            setUserData(data)
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+
+            let response: Response
+
+            if (orchestratorUrl) {
+                // Используем agent-orchestrator API
+                response = await fetch(`${orchestratorUrl}/api/v1/agents?userId=${session.user.id}`)
+            } else {
+                // Fallback на локальный API
+                response = await fetch('/api/agents')
+            }
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch agents')
+            }
+            const data = await response.json()
+
+            // Нормализуем данные (snake_case -> camelCase)
+            const normalizedAgents = (Array.isArray(data) ? data : []).map((agent: any) => ({
+                id: agent.id,
+                name: agent.name,
+                role: agent.role,
+                description: agent.description,
+                systemPrompt: agent.system_prompt || agent.systemPrompt || '',
+                telegramToken: agent.telegram_token || agent.telegramToken,
+                isTelegramConnected: agent.is_telegram_connected || agent.isTelegramConnected || !!(agent.telegram_token || agent.telegramToken),
+                status: agent.status || 'STOPPED',
+                containerId: agent.container_id || agent.containerId,
+                createdAt: agent.created_at || agent.createdAt,
+                updatedAt: agent.updated_at || agent.updatedAt,
+            }))
+
+            setAgents(normalizedAgents)
         } catch (err) {
-            setError(err instanceof Error ? err : new Error('Failed to load user data'))
+            setError(err instanceof Error ? err : new Error('Failed to load agents'))
+            setAgents([])
         } finally {
             setIsLoading(false)
         }
     }
 
-    const switchUser = (userId: string) => {
-        if (userService.setCurrentUserId(userId)) {
-            loadData()
-        }
-    }
-
     useEffect(() => {
-        loadData()
-    }, [])
+        if (status !== 'loading') {
+            loadAgents()
+        }
+    }, [status])
 
     return (
-        <UserContext.Provider value={{ userData, isLoading, error, refreshUser: loadData, switchUser }}>
+        <UserContext.Provider value={{
+            agents,
+            isLoading: isLoading || status === 'loading',
+            error,
+            refreshAgents: loadAgents
+        }}>
             {children}
         </UserContext.Provider>
     )
+}
+
+export function useUserData() {
+    const context = useContext(UserContext)
+    if (context === undefined) {
+        throw new Error('useUserData must be used within a UserProvider')
+    }
+    return context
 }
 
 export function useUser() {

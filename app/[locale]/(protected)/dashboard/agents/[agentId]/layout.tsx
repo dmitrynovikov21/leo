@@ -5,6 +5,7 @@ import { usePathname, useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Bot, LineChart, MessageSquare, Settings, Sparkles, Wifi } from "lucide-react"
 import { EmojiAvatar } from "@/components/shared/emoji-avatar"
+import { useUserData } from "@/components/providers/user-data-provider"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -14,11 +15,17 @@ interface AgentLayoutProps {
 }
 
 export default function AgentLayout({ children }: AgentLayoutProps) {
+    const { agents } = useUserData()
     const t = useTranslations('Agents.detail');
+    const tCommon = useTranslations('Agents');
     const pathname = usePathname()
     const params = useParams()
     const agentId = params.agentId as string
     const locale = params.locale as string
+
+    // Find current agent
+    const agent = agents.find(a => a.id === agentId)
+    const isRunning = agent?.status === 'RUNNING'
 
     // Ensure we are in the correct dashboard path context
     const baseUrl = `/${locale}/dashboard/agents/${agentId}`
@@ -70,16 +77,20 @@ export default function AgentLayout({ children }: AgentLayoutProps) {
                     {/* Emoji Avatar */}
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl">
                         <EmojiAvatar
-                            value="🤖"
+                            value={agent?.role === 'system' ? "🤖" : "🧙‍♂️"}
                             size="lg"
                             className="text-3xl"
                         />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold tracking-tight">Oleg HR</h2>
+                        <h2 className="text-lg font-semibold tracking-tight">{agent?.name || 'Loading...'}</h2>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="flex h-1.5 w-1.5 rounded-full bg-green-500" />
-                            {t('active')}
+                            <span className={`flex h-1.5 w-1.5 rounded-full ${isRunning ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                            {agent ? (
+                                agent.status === 'STARTING' ? tCommon('starting') :
+                                    agent.status === 'RUNNING' ? tCommon('online') :
+                                        agent.status === 'STOPPED' ? tCommon('paused') : agent.status
+                            ) : '...'}
                             <span>•</span>
                             <span>v1.2.0</span>
                         </div>

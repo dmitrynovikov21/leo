@@ -1,35 +1,130 @@
 "use client"
 
-import { useState } from "react"
-import { Send, CheckCircle2, Shield, Bot as BotIcon, Key, Loader2, Copy } from "lucide-react"
+
+import { useState, useEffect } from "react"
+import { Send, CheckCircle2, Shield, Bot as BotIcon, Key, Loader2, RefreshCw, Power } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import { toast } from "sonner"
+import { useUserData } from "@/components/providers/user-data-provider"
 
 interface TelegramConnectionDialogProps {
     children: React.ReactNode
+    agentId: string
+    initialToken?: string
+    onSuccess?: () => void
 }
 
-export function TelegramConnectionDialog({ children }: TelegramConnectionDialogProps) {
+export function TelegramConnectionDialog({ children, agentId, initialToken, onSuccess }: TelegramConnectionDialogProps) {
+    const { agents, refreshAgents } = useUserData()
     const [loading, setLoading] = useState(false)
-    const [token, setToken] = useState("")
-    const [step, setStep] = useState<"input" | "success">("input")
+    const [token, setToken] = useState(initialToken || "")
+    const [step, setStep] = useState<"input" | "success" | "restart">("input")
+    const [open, setOpen] = useState(false)
+
+    // Find current agent to check status
+    const agent = agents.find(a => a.id === agentId)
+    const isRunning = agent?.status === 'RUNNING'
+
+    // Reset state when opening
+    useEffect(() => {
+        if (open) {
+            setStep('input')
+        }
+    }, [open])
 
     const handleConnect = async () => {
         setLoading(true)
-        // Simulate API call
-        setTimeout(() => {
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+
+            if (!orchestratorUrl) {
+                // Mock
+                await new Promise(r => setTimeout(r, 1000))
+                toast.success("Token updated (mock)")
+                if (isRunning) {
+                    setStep('restart')
+                } else {
+                    setStep("success")
+                }
+                await refreshAgents()
+                onSuccess?.()
+                setLoading(false)
+                return
+            }
+
+            const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegram_token: token })
+            })
+
+            if (!res.ok) throw new Error("Failed to update token")
+
+            await refreshAgents()
+            onSuccess?.()
+
+            if (isRunning) {
+                setStep('restart')
+            } else {
+                setStep("success")
+            }
+
+        } catch (error) {
+            console.error(error)
+            toast.error("Не удалось сохранить токен")
+        } finally {
             setLoading(false)
-            setStep("success")
-        }, 1500)
+        }
+    }
+
+    const handleRestart = async () => {
+        setLoading(true)
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) {
+                await new Promise(r => setTimeout(r, 1500))
+                toast.success("Agent restarted (mock)")
+                setStep('success')
+                setLoading(false)
+                return
+            }
+
+            // Stop
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stop`, { method: 'POST' })
+
+            // Start
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+
+            // Poll for running status
+            for (let i = 0; i < 5; i++) {
+                await new Promise(r => setTimeout(r, 1000))
+                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json()
+                    const newStatus = statusData.agent?.status || statusData.status
+                    if (newStatus === 'RUNNING') break
+                }
+            }
+
+            await refreshAgents()
+            toast.success("Агент успешно перезапущен с новым токеном")
+            setStep('success')
+
+        } catch (error) {
+            console.error(error)
+            toast.error("Ошибка при перезапуске агента")
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {children}
             </DialogTrigger>
@@ -79,13 +174,17 @@ export function TelegramConnectionDialog({ children }: TelegramConnectionDialogP
                     {/* Right Side: Form */}
                     <div className="md:col-span-3 p-6 flex flex-col">
                         <DialogHeader className="mb-6">
-                            <DialogTitle className="text-xl font-bold text-zinc-900">Настройка подключения</DialogTitle>
+                            <DialogTitle className="text-xl font-bold text-zinc-900">
+                                {step === 'restart' ? 'Требуется перезапуск' : 'Настройка подключения'}
+                            </DialogTitle>
                             <DialogDescription className="text-zinc-500">
-                                Введите токен вашего бота для активации.
+                                {step === 'restart'
+                                    ? 'Агент активен. Для применения нового токена необходим перезапуск.'
+                                    : 'Введите токен вашего бота для активации.'}
                             </DialogDescription>
                         </DialogHeader>
 
-                        {step === "input" ? (
+                        {step === "input" && (
                             <div className="space-y-6 flex-1">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -116,18 +215,48 @@ export function TelegramConnectionDialog({ children }: TelegramConnectionDialogP
                                 </div>
 
                                 <div className="mt-auto pt-4 flex justify-end gap-2">
-                                    <Button variant="ghost" className="rounded-xl hover:bg-zinc-100 text-zinc-600">Отмена</Button>
+                                    <Button variant="ghost" className="rounded-xl hover:bg-zinc-100 text-zinc-600" onClick={() => setOpen(false)}>Отмена</Button>
                                     <Button
                                         className="rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm shadow-blue-200"
                                         onClick={handleConnect}
                                         disabled={!token || loading}
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        {loading ? "Подключение..." : "Подключить Telegram"}
+                                        {loading ? "Сохранение..." : (initialToken ? "Обновить токен" : "Подключить Telegram")}
                                     </Button>
                                 </div>
                             </div>
-                        ) : (
+                        )}
+
+                        {step === "restart" && (
+                            <div className="flex flex-col items-center justify-center flex-1 py-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="h-16 w-16 rounded-full bg-yellow-100 flex items-center justify-center mb-2">
+                                    <RefreshCw className="h-8 w-8 text-yellow-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-zinc-900">Токен обновлен</h3>
+                                    <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
+                                        Чтобы изменения вступили в силу, агент должен быть перезапущен.
+                                    </p>
+                                </div>
+
+                                <div className="flex w-full gap-2 mt-4">
+                                    <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setOpen(false)}>
+                                        Позже
+                                    </Button>
+                                    <Button
+                                        className="flex-1 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white"
+                                        onClick={handleRestart}
+                                        disabled={loading}
+                                    >
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {loading ? "Перезапуск..." : "Перезапустить сейчас"}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === "success" && (
                             <div className="flex flex-col items-center justify-center flex-1 py-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
                                 <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mb-2">
                                     <CheckCircle2 className="h-8 w-8 text-green-600" />
@@ -135,21 +264,21 @@ export function TelegramConnectionDialog({ children }: TelegramConnectionDialogP
                                 <div>
                                     <h3 className="text-lg font-bold text-zinc-900">Успешно подключено!</h3>
                                     <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
-                                        Ваш агент теперь отвечает в Telegram. Вы можете настроить поведение в соседней вкладке.
+                                        Ваш агент теперь отвечает в Telegram.
                                     </p>
                                 </div>
                                 <div className="w-full bg-zinc-50 p-4 rounded-xl border border-zinc-100 flex items-center justify-between mt-4">
                                     <div className="flex items-center gap-3">
                                         <div className="h-8 w-8 rounded-full bg-zinc-200" />
                                         <div className="text-left">
-                                            <div className="text-sm font-semibold text-zinc-900">MySupportBot</div>
-                                            <div className="text-[10px] text-zinc-500">@mysupport_bot</div>
+                                            <div className="text-sm font-semibold text-zinc-900">Telegram Bot</div>
+                                            <div className="text-[10px] text-zinc-500">{token.substring(0, 12)}...</div>
                                         </div>
                                     </div>
                                     <Badge variant="secondary" className="bg-green-100 text-green-700 h-6 px-2 text-[10px] font-bold tracking-wide rounded-lg">ACTIVE</Badge>
                                 </div>
 
-                                <Button className="w-full rounded-xl mt-4" onClick={() => setStep("input")}>
+                                <Button className="w-full rounded-xl mt-4" onClick={() => setOpen(false)}>
                                     Закрыть
                                 </Button>
                             </div>

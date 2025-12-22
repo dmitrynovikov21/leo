@@ -10,9 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AgentsPage() {
     const t = useTranslations('Agents');
-    const { userData, isLoading } = useUser()
+    const { agents, isLoading } = useUser()
 
-    const agents = userData?.agents || []
     const hasAgents = agents.length > 0
 
     if (isLoading) {

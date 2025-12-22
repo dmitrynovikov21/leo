@@ -22,6 +22,7 @@
         "manage": "Manage",
         "chats": "Chats",
         "on": "On",
-        "off": "Off"
+        "off": "Off",
+        "starting": "Starting..."
     }
 }

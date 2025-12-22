@@ -60,8 +60,10 @@ model User {
   updatedAt     DateTime  @default(now()) @map(name: "updated_at")
   role          UserRole  @default(USER)
 
-  accounts Account[]
-  sessions Session[]
+  accounts   Account[]
+  sessions   Session[]
+  agents     Agent[]
+  tokenUsage TokenUsage[]
 
   stripeCustomerId       String?   @unique @map(name: "stripe_customer_id")
   stripeSubscriptionId   String?   @unique @map(name: "stripe_subscription_id")
@@ -79,3 +81,138 @@ model VerificationToken {
   @@unique([identifier, token])
   @@map(name: "verification_tokens")
 }
+
+// ============================================
+// Agent Models
+// ============================================
+
+enum AgentStatus {
+  STOPPED
+  STARTING
+  RUNNING
+  ERROR
+}
+
+model Agent {
+  id              String      @id @default(cuid())
+  userId          String
+  name            String
+  role            String
+  description     String
+  systemPrompt    String      @db.Text
+  telegramToken   String?     // Encrypted bot token
+  status          AgentStatus @default(STOPPED)
+  containerId     String?
+  containerName   String?
+  createdAt       DateTime    @default(now()) @map(name: "created_at")
+  updatedAt       DateTime    @updatedAt @map(name: "updated_at")
+  
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeBases  KnowledgeBase[]
+  messages        AgentMessage[]
+  summaries       AgentSummary[]
+  
+  @@index([userId])
+  @@map("agents")
+}
+
+model KnowledgeBase {
+  id                  String           @id @default(cuid())
+  agentId             String
+  filename            String
+  fileUrl             String?
+  fileSize            Int
+  mimeType            String
+  status              KnowledgeStatus  @default(PENDING)
+  chromaCollectionId  String?          @map(name: "chroma_collection_id")
+  createdAt           DateTime         @default(now()) @map(name: "created_at")
+  updatedAt           DateTime         @updatedAt @map(name: "updated_at")
+  
+  agent               Agent            @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  chunks              DocumentChunk[]
+  
+  @@index([agentId])
+  @@map("knowledge_bases")
+}
+
+enum KnowledgeStatus {
+  PENDING      // Файл загружен, ждёт парсинга
+  PARSED       // Чанки созданы, ждёт редактирования
+  VECTORIZED   // Загружено в ChromaDB
+  ERROR
+}
+
+model DocumentChunk {
+  id              String        @id @default(cuid())
+  knowledgeBaseId String
+  content         String        @db.Text
+  chunkIndex      Int           @map(name: "chunk_index")
+  metadata        Json?         // Дополнительные данные (page, source, etc)
+  createdAt       DateTime      @default(now()) @map(name: "created_at")
+  updatedAt       DateTime      @updatedAt @map(name: "updated_at")
+  
+  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+  
+  @@index([knowledgeBaseId])
+  @@map("document_chunks")
+}
+
+// ============================================
+// Token Usage Tracking
+// ============================================
+
+model TokenUsage {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String
+  promptTokens     Int      @default(0) @map(name: "prompt_tokens")
+  completionTokens Int      @default(0) @map(name: "completion_tokens")
+  totalTokens      Int      @default(0) @map(name: "total_tokens")
+  model            String   @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map(name: "created_at")
+  
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("token_usage")
+}
+
+// ============================================
+// Agent Conversation Context
+// ============================================
+
+enum MessageType {
+  HUMAN
+  AI
+  TOOL
+  SYSTEM
+}
+
+model AgentMessage {
+  id             String      @id @default(cuid())
+  agentId        String
+  telegramUserId BigInt      @map(name: "telegram_user_id")
+  messageType    MessageType @map(name: "message_type")
+  content        String      @db.Text
+  createdAt      DateTime    @default(now()) @map(name: "created_at")
+  
+  agent          Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId, telegramUserId])
+  @@index([createdAt])
+  @@map("agent_messages")
+}
+
+model AgentSummary {
+  id             String   @id @default(cuid())
+  agentId        String
+  telegramUserId BigInt   @map(name: "telegram_user_id")
+  summary        String   @db.Text
+  createdAt      DateTime @default(now()) @map(name: "created_at")
+  
+  agent          Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId, telegramUserId])
+  @@map("agent_summaries")
+}
+
