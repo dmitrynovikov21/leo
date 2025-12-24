@@ -735,11 +735,11 @@ ${desc}
                                     {isStarting ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            {t('starting', 'Запуск...')}
+                                            {t('starting')}
                                         </>
                                     ) : (
                                         <>
-                                            {t('startAgent', 'Запустить агента')}
+                                            {t('startAgent')}
                                             <Power className="ml-2 h-4 w-4" />
                                         </>
                                     )}

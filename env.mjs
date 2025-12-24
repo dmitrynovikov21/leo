@@ -2,6 +2,11 @@ import { createEnv } from "@t3-oss/env-nextjs";
 import { z } from "zod";
 
 export const env = createEnv({
+  /**
+   * Skip validation during Docker builds
+   * Set SKIP_ENV_VALIDATION=1 during build
+   */
+  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   server: {
     // This is optional because it's only used in development.
     // See https://next-auth.js.org/deployment.

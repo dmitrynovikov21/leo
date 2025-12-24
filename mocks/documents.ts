@@ -1,4 +1,4 @@
-export type DocumentStatus = 'ready' | 'processing' | 'error';
+export type DocumentStatus = 'ready' | 'processing' | 'error' | 'vectorized';
 
 export interface Document {
     id: string;

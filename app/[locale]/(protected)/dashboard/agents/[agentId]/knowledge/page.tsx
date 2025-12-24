@@ -1,274 +1,394 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { Settings2, UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, Check } from "lucide-react"
+import { UploadCloud, FileText, Zap, X, Save, Loader2, Trash2, Wand2 } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { toast } from "sonner"
+import { AnimatePresence, motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { SpaceSelector } from "@/components/knowledge/space-selector"
 import { DocumentsTable } from "@/components/knowledge/documents-table"
-import { UploadDialog } from "@/components/knowledge/upload-dialog"
-import { NoteEditorDialog } from "@/components/knowledge/note-editor-dialog"
-import { FileEditorDialog } from "@/components/knowledge/file-editor-dialog"
-import { TableEditorDialog } from "@/components/knowledge/table-editor-dialog"
-import { toast } from "sonner"
-import { mockDocuments } from "@/mocks/documents"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+
 
 export default function KnowledgePage({ params }: { params: { agentId: string } }) {
     const t = useTranslations('Knowledge')
+    const tCommon = useTranslations('Common')
+    const { data: session } = useSession()
 
-    // State for Notes
-    const [notes, setNotes] = React.useState([
-        {
-            id: 1,
-            title: "WiFi и Безопасность",
-            content: "Пароль от офисной сети 'SecurePass2025'. VPN требуется для внешнего доступа.",
-        },
-        {
-            id: 2,
-            title: "Миссия Компании",
-            content: "Ускорить переход мира к устойчивой энергетике через широкое внедрение.",
-        },
-        {
-            id: 3,
-            title: "Экстренные Контакты",
-            content: "IT Поддержка: +1-555-0123. HR Горячая линия: +1-555-0199. Офис-менеджер: Сара Дж.",
-        },
-    ])
+    // --- State ---
+    const [documents, setDocuments] = React.useState<any[]>([])
 
-    const [editingNote, setEditingNote] = React.useState<any>(null)
-    const [editingFile, setEditingFile] = React.useState<any>(null)
-    const [editingTable, setEditingTable] = React.useState<any>(null)
-    const [isCreateOpen, setIsCreateOpen] = React.useState(false)
-    const [searchQuery, setSearchQuery] = React.useState("")
-    const [filterType, setFilterType] = React.useState<'all' | 'folder' | 'document' | 'spreadsheet' | 'note'>('all')
+    // Editor State
+    const [uploadedFile, setUploadedFile] = React.useState<{ name: string, file: File } | null>(null)
+    const [docMeta, setDocMeta] = React.useState<{ size: number, type: string } | null>(null)
+    const [chunks, setChunks] = React.useState<{ id: string, content: string }[]>([])
+    const [isParsing, setIsParsing] = React.useState(false)
+    const [isSaving, setIsSaving] = React.useState(false)
+    const [editorMode, setEditorMode] = React.useState<'idle' | 'parsing' | 'editing'>('idle')
 
-    const filteredDocs = React.useMemo(() => {
-        let docs = mockDocuments
+    // --- Handlers ---
 
-        // Search filter
-        if (searchQuery) {
-            docs = docs.filter(doc =>
-                doc.name.toLowerCase().includes(searchQuery.toLowerCase())
-            )
+    const fetchDocuments = React.useCallback(async () => {
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+            if (!gatewayUrl) return
+
+            const response = await fetch(`${gatewayUrl}/api/v1/agents/${params.agentId}/documents`)
+
+            if (response.ok) {
+                const data = await response.json()
+                // Normalizing data to match Document interface
+                const normalizedDocs = data.map((d: any) => ({
+                    id: d.id,
+                    name: d.filename || d.name,
+                    type: d.type || (d.filename || '').split('.').pop() || 'file',
+                    size: d.size || 'Unknown',
+                    updatedAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Just now',
+                    status: d.status || 'ready'
+                }))
+                setDocuments(normalizedDocs)
+            }
+        } catch (error) {
+            console.error('Error fetching documents:', error)
         }
+    }, [params.agentId])
 
-        // Type filter
-        if (filterType !== 'all') {
-            docs = docs.filter(doc => {
-                if (filterType === 'document') return ['pdf', 'docx', 'txt'].includes(doc.type)
-                if (filterType === 'note') return ['md'].includes(doc.type)
-                return doc.type === filterType
+    React.useEffect(() => {
+        fetchDocuments()
+    }, [fetchDocuments])
+
+    // 1. File Upload & Parsing
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setUploadedFile({ name: file.name, file })
+        setDocMeta({ size: file.size, type: file.type })
+        setEditorMode('parsing')
+        setIsParsing(true)
+
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+
+            if (!gatewayUrl) {
+                toast.error('AI Gateway URL is not configured')
+                setEditorMode('idle')
+                return
+            }
+
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const response = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+                method: 'POST',
+                body: formData,
             })
+
+            if (!response.ok) throw new Error('Failed to parse document')
+
+            const data = await response.json()
+            const parsedChunks = (data.chunks || []).map((chunk: any, index: number) => ({
+                id: `${file.name}-${index}`,
+                content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
+            }))
+
+            setChunks(parsedChunks)
+            setEditorMode('editing')
+            toast.success('Document parsed successfully')
+        } catch (error) {
+            console.error('Error parsing:', error)
+            toast.error(tCommon('error'), { description: 'Failed to process file' })
+            setUploadedFile(null)
+            setEditorMode('idle')
+        } finally {
+            setIsParsing(false)
         }
+    }
 
-        return docs
-    }, [searchQuery, filterType])
+    // 2. Save / Vectorize
+    const handleSaveChunks = async () => {
+        if (chunks.length === 0) return
 
-    const handleFileOpen = (doc: any) => {
-        if (doc.type === 'spreadsheet') {
-            setEditingTable(doc)
-        } else {
-            setEditingFile(doc)
+        setIsSaving(true)
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+
+            if (!gatewayUrl) {
+                toast.error('AI Gateway URL is not configured')
+                setIsSaving(false)
+                return
+            }
+
+            // Preparing payload
+            // Use docMeta if available, fallback to file
+            const finalSize = docMeta?.size ?? uploadedFile?.file?.size ?? 0
+            const finalType = docMeta?.type || uploadedFile?.file?.type || 'application/octet-stream'
+
+            const payload = {
+                agentId: params.agentId,
+                userId: session?.user?.id,
+                filename: uploadedFile?.name || 'document',
+                fileSize: finalSize,
+                mimeType: finalType,
+                chunks: chunks.map((c, index) => ({
+                    index,
+                    text: c.content
+                })),
+            }
+
+            const response = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            if (!response.ok) throw new Error('Failed to vectorize')
+
+            toast.success('Document vectorized and saved!')
+            fetchDocuments()
+
+            // Reset Editor
+            setEditorMode('idle')
+            setUploadedFile(null)
+            setChunks([])
+        } catch (error) {
+            console.error('Error vectorizing:', error)
+            toast.error(tCommon('error'), { description: 'Failed to save knowledge' })
+        } finally {
+            setIsSaving(false)
         }
     }
 
-    const handleCreate = (newNote: any) => {
-        setNotes([...notes, { ...newNote, id: Date.now() }])
+    // 3. Chunk Editing
+    const handleChunkEdit = (id: string, newContent: string) => {
+        setChunks(prev => prev.map(c => c.id === id ? { ...c, content: newContent } : c))
     }
 
-    const handleUpdate = (updatedNote: any) => {
-        setNotes(notes.map(n => n.id === updatedNote.id ? updatedNote : n))
+    const handleRemoveChunk = (id: string) => {
+        setChunks(prev => prev.filter(c => c.id !== id))
     }
 
-    const handleDelete = (id: any) => {
-        setNotes(notes.filter(n => n.id !== id))
+    // 4. Document Actions
+    const handleDeleteDocument = async (doc: any) => {
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+            if (!gatewayUrl) return
+
+            const response = await fetch(`${gatewayUrl}/api/v1/agents/${params.agentId}/documents/${doc.id}`, {
+                method: 'DELETE'
+            })
+
+            if (response.ok) {
+                toast.success("Document deleted")
+                fetchDocuments()
+            } else {
+                throw new Error('Failed to delete')
+            }
+        } catch (error) {
+            console.error('Error deleting document:', error)
+            toast.error("Failed to delete document")
+        }
+    }
+
+    const handleInspectDocument = async (doc: any) => {
+        setEditorMode('parsing')
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+
+            // Fetch chunks
+            const response = await fetch(`${gatewayUrl}/api/v1/agents/${params.agentId}/documents/${doc.id}`)
+            if (response.ok) {
+                const data = await response.json()
+                // Assuming data contains 'chunks' array
+                const loadedChunks = (data.chunks || []).map((c: any, i: number) => ({
+                    id: c.id || `${doc.id}-${i}`,
+                    content: c.text || c.content
+                }))
+
+                // Set metadata from API response used for subsequent updates
+                setDocMeta({
+                    size: data.fileSize || data.file_size || data.size || 0,
+                    type: data.mimeType || data.mime_type || data.type || 'application/octet-stream'
+                })
+
+                setUploadedFile({ name: doc.name, file: new File([], doc.name) })
+                setChunks(loadedChunks)
+                setEditorMode('editing')
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+            } else {
+                toast.error("Failed to load document details")
+                setEditorMode('idle')
+            }
+        } catch (error) {
+            console.error('Error inspecting:', error)
+            toast.error("Failed to load document")
+            setEditorMode('idle')
+        }
     }
 
     return (
         <div className="h-full flex flex-col space-y-6">
-            {/* 1. Header: Space Context */}
+            {/* Header / Space Selector - HIDDEN per user request */}
+            {/* 
             <div className="flex flex-col gap-2 border-b pb-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <SpaceSelector />
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-muted-foreground"
-                            onClick={() => toast("Скоро будет доступно", { description: "Функция создания пространств в разработке" })}
-                        >
-                            <UploadCloud className="mr-2 h-4 w-4" /> Новое пространство
-                        </Button>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 mt-3">
-                    <span>15 Файлов</span>
-                    <span>•</span>
-                    <span>3 Важные заметки</span>
-                    <span>•</span>
-                    <span>Синхронизировано 2м назад</span>
-                </div>
-            </div>
+            </div> 
+            */}
 
-            {/* 2. Actions */}
-            <div className="flex items-center gap-2">
-                <UploadDialog
-                    trigger={
-                        <Button className="shadow-sm">
-                            <UploadCloud className="mr-2 h-4 w-4" />
-                            Загрузить файлы
-                        </Button>
-                    }
-                />
-
-                <NoteEditorDialog
-                    mode="create"
-                    open={isCreateOpen}
-                    onOpenChange={setIsCreateOpen}
-                    onSave={handleCreate}
-                    trigger={
-                        <Button variant="secondary" className="bg-yellow-500/10 text-yellow-700 hover:bg-yellow-500/20 border border-yellow-500/20 shadow-sm">
-                            <Zap className="mr-2 h-4 w-4" />
-                            Создать заметку
-                        </Button>
-                    }
-                />
-
-                <Button variant="outline" className="text-muted-foreground opacity-90" disabled>
-                    <TableIcon className="mr-2 h-4 w-4" />
-                    Подключить таблицу (Скоро)
-                </Button>
-            </div>
-
-            {/* 3. High Priority Zone - Core Notes */}
-            <div className="space-y-3">
+            {/* --- TOP: UPLOAD & EDITOR AREA --- */}
+            <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <Zap size={14} className="text-yellow-600" />
-                    ВАЖНЫЕ ЗАМЕТКИ (Высокий приоритет)
+                    <Zap size={14} className="text-primary" />
+                    ADD / EDIT KNOWLEDGE
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {notes.map((note) => (
-                        <div key={note.id} onClick={() => setEditingNote(note)} className="block group cursor-pointer">
-                            <Card className="h-full border-l-4 border-l-yellow-400 bg-white hover:bg-zinc-50 transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl border-zinc-200/50">
-                                <CardHeader className="py-4 space-y-1">
-                                    <div className="flex justify-between items-start">
-                                        <CardTitle className="text-sm font-semibold text-zinc-900">
-                                            {note.title}
-                                        </CardTitle>
+
+                <AnimatePresence mode="wait">
+                    {editorMode === 'idle' && (
+                        <motion.div
+                            key="upload-zone"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-8 hover:bg-zinc-50 hover:border-primary/50 transition-colors"
+                        >
+                            <label className="flex flex-col items-center justify-center cursor-pointer gap-3">
+                                <div className="p-4 rounded-full bg-white shadow-sm border">
+                                    <UploadCloud className="h-6 w-6 text-primary" />
+                                </div>
+                                <div className="text-center space-y-1">
+                                    <p className="font-semibold text-zinc-900">Upload Knowledge File</p>
+                                    <p className="text-xs text-muted-foreground">PDF, DOCX, TXT supported. Drag & drop or click.</p>
+                                </div>
+                                <Input
+                                    type="file"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.txt,.md"
+                                    onChange={handleFileUpload}
+                                />
+                            </label>
+                        </motion.div>
+                    )}
+
+                    {editorMode === 'parsing' && (
+                        <motion.div
+                            key="parsing-zone"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="rounded-xl border bg-white p-8 flex flex-col items-center justify-center gap-4 min-h-[200px]"
+                        >
+                            <div className="relative">
+                                <div className="h-12 w-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+                                <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+                            </div>
+                            <div className="text-center">
+                                <p className="font-medium">Analyzing {uploadedFile?.name}...</p>
+                                <p className="text-xs text-muted-foreground">Extracting semantic chunks</p>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {editorMode === 'editing' && (
+                        <motion.div
+                            key="editor-zone"
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            className="rounded-xl border bg-white shadow-sm overflow-hidden"
+                        >
+                            <div className="border-b px-4 py-3 bg-zinc-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-primary" />
+                                    <span className="font-medium text-sm">{uploadedFile?.name}</span>
+                                    <span className="text-xs text-muted-foreground">({chunks.length} chunks)</span>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-muted-foreground hover:text-destructive"
+                                    onClick={() => {
+                                        setEditorMode('idle')
+                                        setUploadedFile(null)
+                                        setChunks([])
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+
+                            <div className="p-4 space-y-4 max-h-[500px] overflow-y-auto bg-zinc-50/30">
+                                {chunks.map((chunk, i) => (
+                                    <div key={chunk.id} className="relative group bg-white rounded-lg border shadow-sm p-4 transition-all hover:shadow-md">
+                                        <div className="flex items-start justify-between gap-4 mb-2">
+                                            <Label className="text-xs font-mono text-muted-foreground uppercase">Segment {i + 1}</Label>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6 -mr-2 -mt-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                                onClick={() => handleRemoveChunk(chunk.id)}
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                        <Textarea
+                                            value={chunk.content}
+                                            onChange={(e) => handleChunkEdit(chunk.id, e.target.value)}
+                                            className="min-h-[100px] text-sm resize-none border-0 bg-transparent focus-visible:ring-0 p-0 shadow-none"
+                                        />
                                     </div>
-                                    <CardDescription className="text-xs line-clamp-3 text-zinc-500 leading-relaxed">
-                                        {note.content}
-                                    </CardDescription>
-                                </CardHeader>
-                            </Card>
-                        </div>
-                    ))}
-                </div>
+                                ))}
+                            </div>
+
+                            <div className="border-t p-4 bg-zinc-50/50 flex justify-end">
+                                <Button
+                                    onClick={handleSaveChunks}
+                                    disabled={isSaving || chunks.length === 0}
+                                    className="w-full sm:w-auto min-w-[150px]"
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="mr-2 h-4 w-4" />
+                                            Save to Knowledge Base
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
-            {/* Note Editor Dialog (Controlled by State) */}
-            <NoteEditorDialog
-                mode="edit"
-                open={!!editingNote}
-                onOpenChange={(open) => !open && setEditingNote(null)}
-                note={editingNote}
-                onSave={handleUpdate}
-                onDelete={handleDelete}
-            />
 
-            {/* 4. Main Index - Knowledge Assets */}
-            <div className="space-y-4 pt-2 flex-1 flex flex-col min-h-0">
+            {/* --- BOTTOM: LIST AREA --- */}
+            <div className="flex-1 space-y-4 pt-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Все ресурсы</h3>
-                    <div className="flex gap-2">
-                        <div className="relative">
-                            <Input
-                                placeholder="Поиск файлов..."
-                                className="h-9 w-[240px] border-0 shadow-sm bg-muted/20 focus-visible:bg-muted/30 pl-3"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-9 border-0 shadow-sm bg-muted/20 hover:bg-muted/30 text-muted-foreground">
-                                    <Filter size={14} className="mr-2" /> Фильтр
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[180px]">
-                                <DropdownMenuLabel>Тип содержимого</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setFilterType('all')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'all' ? "opacity-100" : "opacity-0")} />
-                                    Все
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('folder')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'folder' ? "opacity-100" : "opacity-0")} />
-                                    Папки
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('document')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'document' ? "opacity-100" : "opacity-0")} />
-                                    Документы
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('spreadsheet')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'spreadsheet' ? "opacity-100" : "opacity-0")} />
-                                    Таблицы
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('note')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'note' ? "opacity-100" : "opacity-0")} />
-                                    Заметки
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">ALL RESOURCES</h3>
                 </div>
 
-                {/* Scrollable Table Area */}
                 <div className="rounded-md border-0 bg-background/50 flex-1 overflow-hidden">
                     <DocumentsTable
-                        docs={filteredDocs}
-                        onRowClick={handleFileOpen}
-                        onInspect={handleFileOpen}
+                        docs={documents}
+                        onRowClick={handleInspectDocument}
+                        onInspect={handleInspectDocument}
+                        onDelete={handleDeleteDocument}
                     />
                 </div>
             </div>
-
-            {/* File Editor Dialog */}
-            <FileEditorDialog
-                open={!!editingFile}
-                onOpenChange={(open) => !open && setEditingFile(null)}
-                file={editingFile}
-                onSave={(id, content) => {
-                    console.log(`Saving content for file ${id}:`, content)
-                    setEditingFile(null)
-                    // In real app, update file content via API
-                }}
-            />
-
-            {/* Table Editor Dialog */}
-            <TableEditorDialog
-                open={!!editingTable}
-                onOpenChange={(open) => !open && setEditingTable(null)}
-                file={editingTable}
-                onSave={(id, data) => {
-                    console.log(`Saving table ${id}:`, data)
-                    setEditingTable(null)
-                }}
-            />
         </div>
     )
 }
-

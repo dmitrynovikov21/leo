@@ -7,8 +7,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-import { useUser } from "@/components/providers/user-data-provider"
-
 interface BalanceWidgetProps {
     balance?: number
     currency?: string
@@ -17,16 +15,15 @@ interface BalanceWidgetProps {
 }
 
 export function BalanceWidget({
-    balance,
+    balance = 0,
     currency = "₽",
     lowBalanceThreshold = 500,
     compactMode = false,
 }: BalanceWidgetProps) {
     const t = useTranslations('Billing');
-    const { userData } = useUser()
 
-    // Use prop if provided, otherwise fall back to user data
-    const currentBalance = balance ?? userData?.profile.balance ?? 0
+    // Use balance prop directly
+    const currentBalance = balance
 
     const isLowBalance = currentBalance < lowBalanceThreshold
     const runwayDays = Math.floor(currentBalance / 50) // Mock calculation

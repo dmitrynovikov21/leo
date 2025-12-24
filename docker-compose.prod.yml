@@ -20,29 +20,21 @@ services:
     networks:
       - leo_default
 
-  # Next.js app (development mode)
+  # Next.js app (production mode)
   app:
     build:
       context: .
       dockerfile: Dockerfile
-      target: development
+      target: runner
     container_name: leo-app
     restart: unless-stopped
     ports:
       - "3000:3000"
     env_file:
       - .env
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
     depends_on:
       db:
         condition: service_healthy
-    command: >
-      sh -c "npx prisma generate && 
-             npx prisma db push --accept-data-loss && 
-             npm run dev"
     networks:
       - leo_default
 

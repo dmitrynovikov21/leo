@@ -1,39 +1,44 @@
 "use client"
 
 import * as React from "react"
-import { Send, RotateCcw, MessageSquare, ThumbsUp, ThumbsDown, Bot, User } from "lucide-react"
+import { Send, RotateCcw, MessageSquare, ThumbsUp, ThumbsDown, Bot, User, Loader2 } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-// Import EmojiAvatar for better visuals
 import { EmojiAvatar } from "@/components/shared/emoji-avatar"
 import { useUserPreferences } from "@/components/providers/user-preferences-provider"
-import { toast } from "sonner" // For Like feedback
+import { toast } from "sonner"
+
+interface Message {
+    id: number
+    role: 'user' | 'assistant'
+    text: string
+    feedback: 'like' | 'dislike' | null
+}
 
 interface ManualTestInterfaceProps {
     onFeedbackSubmit: (text: string) => void
 }
 
 export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfaceProps) {
-    const t = useTranslations('Testing');
-    const { avatar: userEmoji } = useUserPreferences(); // Get user's preferred emoji (mapped from avatar)
+    const t = useTranslations('Testing')
+    const params = useParams()
+    const agentId = params.agentId as string
+    const { avatar: userEmoji } = useUserPreferences()
 
-    const [messages, setMessages] = React.useState([
-        {
-            id: 1,
-            role: 'assistant',
-            text: "Привет! Я Олег. Чем я могу помочь вам сегодня?",
-            feedback: null as 'like' | 'dislike' | null
-        }
-    ])
+    const [messages, setMessages] = React.useState<Message[]>([])
+    const [sessionId, setSessionId] = React.useState<string | null>(null)
     const [input, setInput] = React.useState("")
-    const [isTyping, setIsTyping] = React.useState(false)
+    const [isLoading, setIsLoading] = React.useState(false)
+    const [isResetting, setIsResetting] = React.useState(false)
+
+    const scrollRef = React.useRef<HTMLDivElement>(null)
 
     // Feedback Dialog State
     const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
@@ -41,45 +46,145 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     const [feedbackText, setFeedbackText] = React.useState("")
     const [activeMessageId, setActiveMessageId] = React.useState<number | null>(null)
 
+    const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL || ''
+
+    // Scroll to bottom when new messages arrive
+    React.useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+        }
+    }, [messages])
+
+    // Load chat history on mount if we have a session
+    React.useEffect(() => {
+        const loadHistory = async () => {
+            if (!sessionId || !gatewayUrl) return
+
+            try {
+                const response = await fetch(
+                    `${gatewayUrl}/api/v1/agents/${agentId}/chat/history?session_id=${sessionId}`
+                )
+                if (response.ok) {
+                    const data = await response.json()
+                    if (data.messages && Array.isArray(data.messages)) {
+                        const formattedMessages: Message[] = data.messages.map((msg: any, idx: number) => ({
+                            id: idx,
+                            role: msg.role === 'user' ? 'user' : 'assistant',
+                            text: msg.content || msg.message,
+                            feedback: null
+                        }))
+                        setMessages(formattedMessages)
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load chat history:', error)
+            }
+        }
+
+        loadHistory()
+    }, [sessionId, agentId, gatewayUrl])
+
     const handleSend = async () => {
-        if (!input.trim()) return
+        if (!input.trim() || isLoading) return
 
-        const userMsg = { id: Date.now(), role: 'user', text: input, feedback: null }
-        setMessages(prev => [...prev, userMsg])
+        const userMessage: Message = {
+            id: Date.now(),
+            role: 'user',
+            text: input.trim(),
+            feedback: null
+        }
+
+        setMessages(prev => [...prev, userMessage])
         setInput("")
-        setIsTyping(true)
+        setIsLoading(true)
 
-        // Simulate response delay
-        setTimeout(() => {
-            setIsTyping(false)
-            setMessages(prev => [...prev, {
+        try {
+            const requestBody: { message: string; is_test: boolean; session_id?: string } = {
+                message: userMessage.text,
+                is_test: true
+            }
+            if (sessionId) {
+                requestBody.session_id = sessionId
+            }
+
+            const response = await fetch(`${gatewayUrl}/api/v1/agents/${agentId}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to send message')
+            }
+
+            const data = await response.json()
+
+            // Update session ID if new (API returns sessionId in camelCase)
+            if (data.sessionId && data.sessionId !== sessionId) {
+                setSessionId(data.sessionId)
+            }
+
+            const assistantMessage: Message = {
                 id: Date.now() + 1,
                 role: 'assistant',
-                text: "Это симулированный ответ для тестирования. Попробуйте оценить его, чтобы проверить механизм обратной связи.",
+                text: data.response || data.message || 'No response',
                 feedback: null
-            }])
-        }, 1000)
+            }
+
+            setMessages(prev => [...prev, assistantMessage])
+        } catch (error) {
+            console.error('Chat error:', error)
+            toast.error('Ошибка отправки', { description: 'Не удалось отправить сообщение' })
+            // Remove the user message on error
+            setMessages(prev => prev.filter(m => m.id !== userMessage.id))
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const handleResetSession = async () => {
+        setIsResetting(true)
+
+        try {
+            const body = sessionId ? { session_id: sessionId } : {}
+            const response = await fetch(`${gatewayUrl}/api/v1/agents/${agentId}/chat/reset`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setSessionId(data.sessionId || null)
+                setMessages([])
+                toast.success('Сессия сброшена', { description: 'Начните новый диалог' })
+            }
+        } catch (error) {
+            console.error('Reset error:', error)
+            // Even on error, clear local state
+            setSessionId(null)
+            setMessages([])
+        } finally {
+            setIsResetting(false)
+        }
     }
 
     const openFeedbackDialog = (msgId: number, type: 'like' | 'dislike') => {
         setActiveMessageId(msgId)
         setFeedbackType(type)
-        setFeedbackText("") // Clear text
+        setFeedbackText("")
         setIsFeedbackOpen(true)
     }
 
     const submitFeedback = () => {
         if (feedbackType === 'dislike' && feedbackText.trim()) {
-            // Send to Queue
             onFeedbackSubmit(feedbackText)
         } else if (feedbackType === 'like') {
-            // Just local visual feedback or toast
             if (feedbackText.trim()) {
-                toast.success("Positive feedback recorded", { description: "Thank you for helping us improve!" })
+                toast.success("Положительный отзыв сохранён", { description: "Спасибо за обратную связь!" })
             }
         }
 
-        // Mark message status visually
         setMessages(prev => prev.map(msg =>
             msg.id === activeMessageId ? { ...msg, feedback: feedbackType } : msg
         ))
@@ -89,24 +194,45 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
 
     return (
         <div className="flex flex-col h-full bg-white">
-            {/* Header - Minimalist */}
+            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
                 <div className="flex items-center gap-2 text-sm font-medium text-zinc-900">
                     <MessageSquare className="h-4 w-4 text-zinc-400" />
                     {t('manualSession')}
+                    {sessionId && (
+                        <span className="text-xs text-zinc-400 font-mono">
+                            ({sessionId.slice(0, 12)}...)
+                        </span>
+                    )}
                 </div>
-                <Button variant="ghost" size="sm" className="h-7 text-xs text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" onClick={() => setMessages([])}>
-                    <RotateCcw className="mr-2 h-3 w-3" />
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                    onClick={handleResetSession}
+                    disabled={isResetting}
+                >
+                    {isResetting ? (
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    ) : (
+                        <RotateCcw className="mr-2 h-3 w-3" />
+                    )}
                     {t('newSession')}
                 </Button>
             </div>
 
-            {/* Chat Area - Clean */}
-            <ScrollArea className="flex-1 p-6 bg-white">
+            {/* Chat Area */}
+            <ScrollArea className="flex-1 p-6 bg-white" ref={scrollRef}>
                 <div className="flex flex-col gap-6">
-                    {messages.map((msg, i) => (
+                    {messages.length === 0 && (
+                        <div className="flex flex-col items-center justify-center h-48 text-center">
+                            <Bot className="h-12 w-12 text-zinc-200 mb-4" />
+                            <p className="text-zinc-400 text-sm">Напишите сообщение, чтобы начать тестирование</p>
+                        </div>
+                    )}
+
+                    {messages.map((msg) => (
                         <div key={msg.id} className={`group flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                            {/* Avatar Logic */}
                             {msg.role === 'assistant' ? (
                                 <div className="mt-1">
                                     <EmojiAvatar
@@ -159,7 +285,8 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                             </div>
                         </div>
                     ))}
-                    {isTyping && (
+
+                    {isLoading && (
                         <div className="flex gap-4">
                             <EmojiAvatar
                                 value="🤖"
@@ -177,7 +304,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                 </div>
             </ScrollArea>
 
-            {/* Input Area - Carved Style */}
+            {/* Input Area */}
             <div className="p-4 bg-white">
                 <div className="relative group">
                     <Textarea
@@ -191,40 +318,45 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                                 handleSend()
                             }
                         }}
+                        disabled={isLoading}
                     />
                     <Button
                         size="icon"
                         variant="ghost"
                         className="absolute bottom-2.5 right-2.5 h-9 w-9 rounded-xl hover:bg-white hover:shadow-sm text-zinc-400 hover:text-zinc-900 transition-all"
                         onClick={handleSend}
-                        disabled={!input.trim() || isTyping}
+                        disabled={!input.trim() || isLoading}
                     >
-                        <Send className="h-4 w-4" />
+                        {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <Send className="h-4 w-4" />
+                        )}
                     </Button>
                 </div>
             </div>
 
-            {/* Combined Feedback Dialog */}
+            {/* Feedback Dialog */}
             <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
                 <DialogContent className="sm:max-w-[425px] rounded-2xl p-6 border-zinc-100 shadow-xl">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-semibold text-zinc-900">
-                            {feedbackType === 'like' ? 'What did you like?' : 'What went wrong?'}
+                            {feedbackType === 'like' ? 'Что понравилось?' : 'Что пошло не так?'}
                         </DialogTitle>
                         <DialogDescription className="text-zinc-500">
                             {feedbackType === 'like'
-                                ? 'Let us know what the agent did well so we can reinforce this behavior.'
-                                : 'Describe the issue (e.g., incorrect facts, tone, hallucination) to add it to the improvement queue.'}
+                                ? 'Расскажите, что агент сделал хорошо, чтобы мы могли закрепить это поведение.'
+                                : 'Опишите проблему (неверные факты, тон, галлюцинации), чтобы добавить её в очередь улучшений.'}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-2">
                         <div className="grid gap-2">
                             <Label htmlFor="feedback-text" className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
-                                {feedbackType === 'like' ? 'Feedback (Optional)' : 'Issue Description'}
+                                {feedbackType === 'like' ? 'Отзыв (опционально)' : 'Описание проблемы'}
                             </Label>
                             <Textarea
                                 id="feedback-text"
-                                placeholder={feedbackType === 'like' ? "Great tone, accurate answer..." : "Incorrect pricing, rude tone..."}
+                                placeholder={feedbackType === 'like' ? "Отличный тон, точный ответ..." : "Неверная цена, грубый тон..."}
                                 className="h-32 resize-none rounded-xl bg-zinc-50 border-zinc-200 focus:border-zinc-300 focus:ring-0"
                                 value={feedbackText}
                                 onChange={(e) => setFeedbackText(e.target.value)}
@@ -232,9 +364,9 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsFeedbackOpen(false)} className="rounded-xl border-zinc-200 h-10 font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900">Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsFeedbackOpen(false)} className="rounded-xl border-zinc-200 h-10 font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900">Отмена</Button>
                         <Button onClick={submitFeedback} className="rounded-xl h-10 bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm font-medium">
-                            {feedbackType === 'like' ? 'Send Praise' : 'Report Issue'}
+                            {feedbackType === 'like' ? 'Отправить' : 'Сообщить о проблеме'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

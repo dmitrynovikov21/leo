@@ -10,11 +10,63 @@ import { TrafficSourceChart } from "./traffic-source-chart"
 import { ActiveChannels } from "./active-channels"
 import { SystemEventsLog } from "./system-events-log"
 
+// Mock data for dashboard (until real API is integrated)
+const mockDashboardData = {
+    kpis: [
+        { id: 'total-dialogs', value: '1,234', change: 12, trend: 'up', icon: 'message-square' },
+        { id: 'total-messages', value: '45.2k', change: 8, trend: 'up', icon: 'trending-up' },
+        { id: 'automation-rate', value: '87%', change: 5, trend: 'up', icon: 'zap' },
+        { id: 'cost-efficiency', value: '₽2.4', change: -3, trend: 'down', icon: 'wallet' },
+    ],
+    charts: {
+        volume: {
+            '24h': [
+                { time: '00:00', count: 45 },
+                { time: '04:00', count: 32 },
+                { time: '08:00', count: 78 },
+                { time: '12:00', count: 120 },
+                { time: '16:00', count: 95 },
+                { time: '20:00', count: 68 },
+            ],
+            '7d': [
+                { day: 'Пн', count: 120 },
+                { day: 'Вт', count: 150 },
+                { day: 'Ср', count: 180 },
+                { day: 'Чт', count: 140 },
+                { day: 'Пт', count: 200 },
+                { day: 'Сб', count: 90 },
+                { day: 'Вс', count: 70 },
+            ],
+            '30d': [
+                { week: 'Неделя 1', count: 850 },
+                { week: 'Неделя 2', count: 920 },
+                { week: 'Неделя 3', count: 780 },
+                { week: 'Неделя 4', count: 1100 },
+            ]
+        },
+        trafficSources: [
+            { name: 'Telegram', value: 65 },
+            { name: 'WhatsApp', value: 20 },
+            { name: 'Web', value: 15 },
+        ]
+    },
+    activeChannels: [
+        { id: '1', name: 'Telegram Bot', type: 'telegram' as const, status: 'connected' as const, lastActivity: '5 мин назад' },
+        { id: '2', name: 'WhatsApp', type: 'whatsapp' as const, status: 'connected' as const, lastActivity: '10 мин назад' },
+    ],
+    systemEvents: [
+        { id: '1', type: 'success' as const, text: 'Система работает стабильно', time: 'Только что' },
+    ]
+}
+
 export function OverviewDashboard() {
     const t = useTranslations('Dashboard')
-    const { userData, isLoading } = useUser()
+    const { isLoading } = useUser()
 
-    const getKpi = (id: string) => userData?.dashboard.kpis.find(k => k.id === id)
+    // Use mock data for now
+    const dashboardData = mockDashboardData
+
+    const getKpi = (id: string) => dashboardData.kpis.find(k => k.id === id)
 
     // Icon map
     const iconMap: Record<string, any> = {
@@ -24,7 +76,7 @@ export function OverviewDashboard() {
         'wallet': Wallet
     }
 
-    if (isLoading || !userData) {
+    if (isLoading) {
         return <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-zinc-100 animate-pulse rounded-2xl" />)}
         </div>
@@ -70,7 +122,7 @@ export function OverviewDashboard() {
                     {kpi4 && <KPICard
                         title={t('costEfficiency')}
                         value={kpi4.value}
-                        secondaryInfo={`${t('saved')}: ~₽4.2k`} // Could be dynamic too
+                        secondaryInfo={`${t('saved')}: ~₽4.2k`}
                         icon={iconMap[kpi4.icon] || Wallet}
                     />}
                 </div>
@@ -79,23 +131,23 @@ export function OverviewDashboard() {
             {/* Middle Row: Analytics Charts */}
             {/* Left: Traffic Dynamics (8 cols) */}
             <div className="md:col-span-8">
-                <DialogVolumeChart data={userData.dashboard.charts.volume} />
+                <DialogVolumeChart data={dashboardData.charts.volume} />
             </div>
 
             {/* Right: Traffic Source (4 cols) */}
             <div className="md:col-span-4">
-                <TrafficSourceChart data={userData.dashboard.charts.trafficSources} />
+                <TrafficSourceChart data={dashboardData.charts.trafficSources} />
             </div>
 
             {/* Bottom Row: Channels & Events */}
             {/* Left: Active Channels (8 cols) */}
             <div className="md:col-span-8">
-                <ActiveChannels channels={userData.dashboard.activeChannels} />
+                <ActiveChannels channels={dashboardData.activeChannels} />
             </div>
 
             {/* Right: System Events Log (4 cols) */}
             <div className="md:col-span-4">
-                <SystemEventsLog events={userData.dashboard.systemEvents} />
+                <SystemEventsLog events={dashboardData.systemEvents} />
             </div>
         </div>
     )

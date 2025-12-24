@@ -43,6 +43,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_ENV_VALIDATION=1
+
+# Copy .env.prod as .env for build (NEXT_PUBLIC_ vars are needed at build time)
+RUN cp .env.prod .env || true
+
+# Generate Prisma Client
+RUN npx prisma generate
 
 # Build the application
 RUN npm run build
@@ -65,7 +72,7 @@ COPY --from=builder /app/prisma ./prisma
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
-# Automatically leverage output traces to reduce image size
+# Standalone output includes all needed node_modules (including Prisma)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
