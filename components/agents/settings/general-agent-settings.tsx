@@ -11,13 +11,21 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { TelegramConnectionDialog } from "@/components/agents/telegram-connection-dialog"
 
 
 import { useParams } from "next/navigation"
 import { useUserData } from "@/components/providers/user-data-provider"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Power, Play, Square } from "lucide-react"
+import { Loader2, Power, Play, Square, Send, Save } from "lucide-react"
 import { toast } from "sonner"
 
 import { useTranslations } from "next-intl"
@@ -29,10 +37,24 @@ export function GeneralAgentSettings() {
     const [emoji, setEmoji] = React.useState("🤖")
     const [pickerOpen, setPickerOpen] = React.useState(false)
     const [isLoading, setIsLoading] = React.useState(false)
+    const [showTelegramModal, setShowTelegramModal] = React.useState(false)
+
+    // Metadata state
+    const [name, setName] = React.useState("")
+    const [description, setDescription] = React.useState("")
+    const [isSavingMetadata, setIsSavingMetadata] = React.useState(false)
 
     // Find current agent
     const agentId = params?.agentId as string
     const agent = agents.find(a => a.id === agentId)
+
+    React.useEffect(() => {
+        if (agent) {
+            setName(agent.name)
+            setDescription(agent.description || "")
+            // setEmoji(agent.avatarEmoji) // If we had emoji field in backend
+        }
+    }, [agent])
 
     const handleEmojiClick = (emojiData: EmojiClickData) => {
         setEmoji(emojiData.emoji)
@@ -43,6 +65,13 @@ export function GeneralAgentSettings() {
         if (!agent) return
 
         const isRunning = agent.status === 'RUNNING'
+
+        // If trying to start and no Telegram connected, show modal
+        if (!isRunning && !agent.isTelegramConnected) {
+            setShowTelegramModal(true)
+            return
+        }
+
         const action = isRunning ? 'stop' : 'start'
         const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
 
@@ -92,6 +121,43 @@ export function GeneralAgentSettings() {
         }
     }
 
+    const handleSaveMetadata = async () => {
+        if (!agent) return
+
+        setIsSavingMetadata(true)
+        const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+
+        try {
+            if (!orchestratorUrl) {
+                // Mock
+                await new Promise(r => setTimeout(r, 800))
+                toast.success("Данные успешно сохранены")
+                return
+            }
+
+            const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agent.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, description, avatarEmoji: emoji })
+            })
+
+            if (!res.ok) {
+                throw new Error("Failed to update agent")
+            }
+
+            toast.success("Данные успешно сохранены")
+            await refreshAgents()
+
+        } catch (error) {
+            console.error("Failed to save metadata:", error)
+            toast.error("Ошибка сохранения")
+        } finally {
+            setIsSavingMetadata(false)
+        }
+    }
+
     if (!agent) {
         return <div>Agent not found</div>
     }
@@ -100,11 +166,20 @@ export function GeneralAgentSettings() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h3 className="text-lg font-bold text-zinc-900">Основная информация</h3>
-                <p className="text-sm text-zinc-500 mt-1">
-                    Настройте имя агента, его аватар и описание.
-                </p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="text-lg font-bold text-zinc-900">Основная информация</h3>
+                    <p className="text-sm text-zinc-500 mt-1">
+                        Настройте имя агента, его аватар и описание.
+                    </p>
+                </div>
+                <Button onClick={handleSaveMetadata} disabled={isSavingMetadata} className="rounded-xl">
+                    {isSavingMetadata ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Сохранение...</>
+                    ) : (
+                        <><Save className="mr-2 h-4 w-4" /> Сохранить</>
+                    )}
+                </Button>
             </div>
 
             {/* Status Control Card */}
@@ -180,24 +255,56 @@ export function GeneralAgentSettings() {
                             <Label htmlFor="agent-name" className="sr-only">Имя агента</Label>
                             <Input
                                 id="agent-name"
-                                defaultValue={agent.name}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 placeholder="Имя агента"
                                 className="h-10 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 placeholder:text-zinc-400"
                             />
                         </div>
                     </div>
+
                     {/* Description */}
                     <div>
                         <Label htmlFor="agent-desc" className="sr-only">Описание</Label>
                         <Textarea
                             id="agent-desc"
-                            defaultValue={agent.description}
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
                             placeholder="Описание агента"
                             className="min-h-[80px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 resize-none"
                         />
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Telegram Required Modal */}
+            <Dialog open={showTelegramModal} onOpenChange={setShowTelegramModal}>
+                <DialogContent className="sm:max-w-[450px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                    <DialogHeader className="text-center">
+                        <div className="mx-auto h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+                            <Send className="h-8 w-8 text-blue-600" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold text-zinc-900">
+                            Подключите Telegram
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-500 mt-2">
+                            Для запуска агента необходимо подключить Telegram бота.
+                            Это позволит агенту общаться с пользователями.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4">
+                        <TelegramConnectionDialog
+                            agentId={agentId}
+                            initialToken={agent?.telegramToken}
+                            embedded
+                            onSuccess={() => {
+                                setShowTelegramModal(false)
+                                refreshAgents()
+                            }}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

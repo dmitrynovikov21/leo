@@ -148,6 +148,25 @@ export function AgentWizardDialog() {
 
             const data = await response.json()
             setCreatedAgentId(data.id)
+
+            // Create initial prompt version (v1.0)
+            const systemPrompt = form.getValues('systemPrompt')
+            if (systemPrompt) {
+                try {
+                    await fetch(`${orchestratorUrl}/api/v1/agents/${data.id}/prompts`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            version: 'v1.0',
+                            content: systemPrompt,
+                            isActive: true,
+                        }),
+                    })
+                } catch (promptErr) {
+                    console.error('Failed to create initial prompt version:', promptErr)
+                }
+            }
+
             await refreshAgents() // Refresh list
             toast.success('Агент успешно создан!')
             return true

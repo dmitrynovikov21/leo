@@ -13,13 +13,14 @@ import { toast } from "sonner"
 import { useUserData } from "@/components/providers/user-data-provider"
 
 interface TelegramConnectionDialogProps {
-    children: React.ReactNode
+    children?: React.ReactNode
     agentId: string
     initialToken?: string
     onSuccess?: () => void
+    embedded?: boolean
 }
 
-export function TelegramConnectionDialog({ children, agentId, initialToken, onSuccess }: TelegramConnectionDialogProps) {
+export function TelegramConnectionDialog({ children, agentId, initialToken, onSuccess, embedded = false }: TelegramConnectionDialogProps) {
     const { agents, refreshAgents } = useUserData()
     const [loading, setLoading] = useState(false)
     const [token, setToken] = useState(initialToken || "")
@@ -121,6 +122,49 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
         } finally {
             setLoading(false)
         }
+    }
+
+    // Embedded mode: return just the form without Dialog wrapper
+    if (embedded) {
+        return (
+            <div className="space-y-4">
+                {step === "input" && (
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="token" className="text-sm font-semibold text-zinc-900">Bot Token</Label>
+                            <div className="relative">
+                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                                <Input
+                                    id="token"
+                                    placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+                                    className="pl-9 font-mono text-sm h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:ring-zinc-200 rounded-xl transition-all"
+                                    value={token}
+                                    onChange={(e) => setToken(e.target.value)}
+                                />
+                            </div>
+                            <p className="text-[11px] text-zinc-400 px-1">
+                                Получите токен у <a href="https://t.me/BotFather" target="_blank" className="underline decoration-zinc-300 hover:text-zinc-600">@BotFather</a> в Telegram.
+                            </p>
+                        </div>
+                        <Button
+                            className="w-full rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm"
+                            onClick={handleConnect}
+                            disabled={!token || loading}
+                        >
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {loading ? "Сохранение..." : "Подключить Telegram"}
+                        </Button>
+                    </div>
+                )}
+                {step === "success" && (
+                    <div className="text-center py-4">
+                        <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                        <p className="font-semibold text-zinc-900">Telegram подключён!</p>
+                        <p className="text-sm text-zinc-500">Теперь вы можете запустить агента.</p>
+                    </div>
+                )}
+            </div>
+        )
     }
 
     return (

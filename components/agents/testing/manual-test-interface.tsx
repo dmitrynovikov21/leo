@@ -20,6 +20,7 @@ interface ManualTestInterfaceProps {
     agentId: string
     agentName?: string
     agentAvatar?: string
+    welcomeMessage?: string
 }
 
 const suggestionChips = [
@@ -33,11 +34,27 @@ export function ManualTestInterface({
     agentId,
     agentName = "Test Agent",
     agentAvatar,
+    welcomeMessage,
 }: ManualTestInterfaceProps) {
     const [messages, setMessages] = React.useState<Message[]>([])
     const [input, setInput] = React.useState("")
     const [isLoading, setIsLoading] = React.useState(false)
     const scrollRef = React.useRef<HTMLDivElement>(null)
+    const [sessionStarted, setSessionStarted] = React.useState(false)
+
+    // Show welcome message on session start
+    React.useEffect(() => {
+        if (!sessionStarted && welcomeMessage) {
+            setSessionStarted(true)
+            const welcomeMsg: Message = {
+                id: "welcome",
+                role: "assistant",
+                content: welcomeMessage,
+                timestamp: new Date(),
+            }
+            setMessages([welcomeMsg])
+        }
+    }, [welcomeMessage, sessionStarted])
 
     const handleSend = async (message: string = input) => {
         if (!message.trim() || isLoading) return
@@ -70,6 +87,20 @@ export function ManualTestInterface({
     const handleReset = () => {
         setMessages([])
         setInput("")
+        setSessionStarted(false)
+        // Re-trigger welcome message after reset
+        if (welcomeMessage) {
+            setTimeout(() => {
+                setSessionStarted(true)
+                const welcomeMsg: Message = {
+                    id: "welcome-" + Date.now(),
+                    role: "assistant",
+                    content: welcomeMessage,
+                    timestamp: new Date(),
+                }
+                setMessages([welcomeMsg])
+            }, 100)
+        }
     }
 
     React.useEffect(() => {

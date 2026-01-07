@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { EmojiAvatar } from "@/components/shared/emoji-avatar"
+import { MarkdownText } from "@/components/shared/markdown-text"
 import { useUserPreferences } from "@/components/providers/user-preferences-provider"
 import { toast } from "sonner"
 
@@ -40,13 +41,15 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
 
     const scrollRef = React.useRef<HTMLDivElement>(null)
 
-    // Feedback Dialog State
     const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false)
     const [feedbackType, setFeedbackType] = React.useState<'like' | 'dislike'>('dislike')
     const [feedbackText, setFeedbackText] = React.useState("")
     const [activeMessageId, setActiveMessageId] = React.useState<number | null>(null)
+    const [welcomeMessage, setWelcomeMessage] = React.useState<string | null>(null)
+    const [hasShownWelcome, setHasShownWelcome] = React.useState(false)
 
     const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL || ''
+    const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL || ''
 
     // Scroll to bottom when new messages arrive
     React.useEffect(() => {
@@ -54,6 +57,41 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight
         }
     }, [messages])
+
+    // Fetch welcome message on mount
+    React.useEffect(() => {
+        const fetchWelcomeMessage = async () => {
+            if (!orchestratorUrl || !agentId) return
+
+            try {
+                const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.welcomeMessage) {
+                        setWelcomeMessage(data.welcomeMessage)
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch welcome message:', error)
+            }
+        }
+
+        fetchWelcomeMessage()
+    }, [agentId, orchestratorUrl])
+
+    // Show welcome message when session starts
+    React.useEffect(() => {
+        if (welcomeMessage && !hasShownWelcome && messages.length === 0) {
+            setHasShownWelcome(true)
+            const welcomeMsg: Message = {
+                id: Date.now(),
+                role: 'assistant',
+                text: welcomeMessage,
+                feedback: null
+            }
+            setMessages([welcomeMsg])
+        }
+    }, [welcomeMessage, hasShownWelcome, messages.length])
 
     // Load chat history on mount if we have a session
     React.useEffect(() => {
@@ -157,6 +195,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                 const data = await response.json()
                 setSessionId(data.sessionId || null)
                 setMessages([])
+                setHasShownWelcome(false) // Reset welcome message flag
                 toast.success('Сессия сброшена', { description: 'Начните новый диалог' })
             }
         } catch (error) {
@@ -164,6 +203,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
             // Even on error, clear local state
             setSessionId(null)
             setMessages([])
+            setHasShownWelcome(false)
         } finally {
             setIsResetting(false)
         }
@@ -258,7 +298,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                                         ? "bg-zinc-900 text-white rounded-[20px] rounded-tr-sm"
                                         : "bg-white border border-zinc-100 text-zinc-800 rounded-[20px] rounded-tl-sm"
                                 )}>
-                                    {msg.text}
+                                    <MarkdownText>{msg.text}</MarkdownText>
                                 </div>
 
                                 {/* Feedback Actions (Only for Assistant) */}

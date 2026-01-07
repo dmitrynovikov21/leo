@@ -43,6 +43,13 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
+  
+  // Session metadata
+  userAgent    String?  @map("user_agent")
+  ipAddress    String?  @map("ip_address")
+  lastActivity DateTime @default(now()) @map("last_activity")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -107,13 +114,37 @@ model Agent {
   createdAt       DateTime    @default(now()) @map(name: "created_at")
   updatedAt       DateTime    @updatedAt @map(name: "updated_at")
   
+  // Behavior settings
+  avatarEmoji     String?     @default("😊") @map(name: "avatar_emoji")
+  displayName     String?     @map(name: "display_name")
+  temperature     Float       @default(0.5)
+  debounceMs      Int         @default(5000) @map("debounce_ms")
+  tone            String[]    @default([])
+  guardrails      Json?       @default("[]")
+  welcomeMessage  String?     @map("welcome_message") // Message shown at session start
+  
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   knowledgeBases  KnowledgeBase[]
   messages        AgentMessage[]
   summaries       AgentSummary[]
+  promptVersions  SystemPromptVersion[]
   
   @@index([userId])
   @@map("agents")
+}
+
+model SystemPromptVersion {
+  id           String   @id @default(cuid())
+  agentId      String   @map(name: "agent_id")
+  version      String   // e.g. "v1.0", "v1.1"
+  content      String   @db.Text
+  isActive     Boolean  @default(false) @map(name: "is_active")
+  createdAt    DateTime @default(now()) @map(name: "created_at")
+  
+  agent        Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId])
+  @@map("system_prompt_versions")
 }
 
 model KnowledgeBase {
