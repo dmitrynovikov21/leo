@@ -165,7 +165,7 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-lg font-bold text-zinc-900">Обзор активности</CardTitle>
                             <CardDescription className="text-zinc-500 font-medium">
-                                Объем диалогов и потраченных токенов за последние 7 дней
+                                Объем потраченных токенов за последние 7 дней
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="pl-0 pr-2 pt-6">
@@ -173,10 +173,6 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="colorDialogs" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#18181b" stopOpacity={0.1} />
-                                                <stop offset="95%" stopColor="#18181b" stopOpacity={0} />
-                                            </linearGradient>
                                             <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
                                                 <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
@@ -204,7 +200,6 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                                             cursor={{ stroke: '#e4e4e7', strokeWidth: 1 }}
                                         />
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                                        <Area type="monotone" dataKey="dialogs" stroke="#18181b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorDialogs)" />
                                         <Area type="monotone" dataKey="tokens" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTokens)" />
                                     </AreaChart>
                                 </ResponsiveContainer>

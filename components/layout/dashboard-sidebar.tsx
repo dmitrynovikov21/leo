@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { NavItem, SidebarNavItem } from "@/types";
 import { Menu, PanelLeftClose, PanelRightClose, LogOut } from "lucide-react";
@@ -31,6 +31,7 @@ interface DashboardSidebarProps {
 }
 
 export function DashboardSidebar({ links }: DashboardSidebarProps) {
+  const router = useRouter();
   const path = usePathname();
   const t = useTranslations(); // Move hook to component level
 
@@ -189,7 +190,7 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                       variant="ghost"
                       size="sm"
                       className="mt-2 w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-                      onClick={() => signOut({ callbackUrl: "/" })}
+                      onClick={() => signOut({ redirect: false }).then(() => router.push("/"))}
                     >
                       <LogOut className="size-4" />
                       Выйти
@@ -202,7 +203,7 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                         variant="ghost"
                         size="icon"
                         className="w-full"
-                        onClick={() => signOut({ callbackUrl: "/" })}
+                        onClick={() => signOut({ redirect: false }).then(() => router.push("/"))}
                       >
                         <LogOut className="size-5" />
                       </Button>

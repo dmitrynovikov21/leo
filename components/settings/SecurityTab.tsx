@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,6 +42,7 @@ interface Session {
 }
 
 export function SecurityTab() {
+    const router = useRouter()
     const [sessions, setSessions] = React.useState<Session[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [isTerminating, setIsTerminating] = React.useState<string | null>(null)
@@ -76,7 +78,8 @@ export function SecurityTab() {
 
             if (res.ok) {
                 toast.success('Выход из системы...')
-                await signOut({ callbackUrl: '/login', redirect: true })
+                await signOut({ redirect: false })
+                router.push('/login')
             } else {
                 toast.error('Не удалось завершить сессию')
             }
@@ -97,7 +100,8 @@ export function SecurityTab() {
 
             if (res.ok) {
                 toast.success('Выход со всех устройств')
-                await signOut({ callbackUrl: '/login', redirect: true })
+                await signOut({ redirect: false })
+                router.push('/login')
             } else {
                 toast.error('Не удалось выполнить выход')
             }

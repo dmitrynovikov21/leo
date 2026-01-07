@@ -42,6 +42,9 @@ remote "cd '${REMOTE_DIR}' && docker compose -f '${COMPOSE_FILE}' build"
 echo "[4/4] Starting containers"
 remote "cd '${REMOTE_DIR}' && docker compose -f '${COMPOSE_FILE}' up -d"
 
+echo "[5/5] Running database migrations"
+remote "cd '${REMOTE_DIR}' && docker compose -f '${COMPOSE_FILE}' exec -T app ./node_modules/.bin/prisma migrate deploy"
+
 echo ""
 echo "✅ Deploy complete!"
 echo "🌐 Server: ${SSH_HOST}"

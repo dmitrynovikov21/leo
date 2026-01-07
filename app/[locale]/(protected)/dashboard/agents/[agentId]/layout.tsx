@@ -92,7 +92,7 @@ export default function AgentLayout({ children }: AgentLayoutProps) {
                                         agent.status === 'STOPPED' ? tCommon('paused') : agent.status
                             ) : '...'}
                             <span>•</span>
-                            <span>v1.2.0</span>
+                            <span>v1.0</span>
                         </div>
                     </div>
                 </div>

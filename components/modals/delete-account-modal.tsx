@@ -5,6 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ function DeleteAccountModal({
   showDeleteAccountModal: boolean;
   setShowDeleteAccountModal: Dispatch<SetStateAction<boolean>>;
 }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const [deleting, setDeleting] = useState(false);
 
@@ -36,8 +38,8 @@ function DeleteAccountModal({
         await new Promise((resolve) =>
           setTimeout(() => {
             signOut({
-              callbackUrl: `${window.location.origin}/`,
-            });
+              redirect: false,
+            }).then(() => router.push("/"));
             resolve(null);
           }, 500),
         );

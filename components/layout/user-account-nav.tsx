@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LayoutDashboard, Lock, LogOut, Settings, User } from "lucide-react";
 import { EmojiAvatar } from "@/components/shared/emoji-avatar";
 import { signOut, useSession } from "next-auth/react";
@@ -20,6 +21,7 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { useUserPreferences } from "@/components/providers/user-preferences-provider";
 
 export function UserAccountNav() {
+  const router = useRouter();
   const { data: session } = useSession();
   const user = session?.user ? {
     name: session.user.name,
@@ -110,8 +112,8 @@ export function UserAccountNav() {
                 onClick={(event) => {
                   event.preventDefault();
                   signOut({
-                    callbackUrl: `${window.location.origin}/`,
-                  });
+                    redirect: false,
+                  }).then(() => router.push("/"));
                 }}
               >
                 <div className="flex w-full items-center gap-3 px-2.5 py-2">
@@ -123,7 +125,7 @@ export function UserAccountNav() {
           </Drawer.Content>
           <Drawer.Overlay />
         </Drawer.Portal>
-      </Drawer.Root>
+      </Drawer.Root >
     );
   }
 
@@ -182,8 +184,8 @@ export function UserAccountNav() {
           onSelect={(event) => {
             event.preventDefault();
             signOut({
-              callbackUrl: `${window.location.origin}/`,
-            });
+              redirect: false,
+            }).then(() => router.push("/"));
           }}
         >
           <div className="flex items-center space-x-2.5">
@@ -192,6 +194,6 @@ export function UserAccountNav() {
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+    </DropdownMenu >
   );
 }
