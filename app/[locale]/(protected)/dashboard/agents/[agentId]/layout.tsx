@@ -70,7 +70,7 @@ export default function AgentLayout({ children }: AgentLayoutProps) {
     ]
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] flex-col">
+        <div className="flex h-full flex-col">
             {/* Agent Context Header */}
             <div className="flex items-center justify-between border-b border-zinc-200/50 px-6 py-3">
                 <div className="flex items-center gap-4">

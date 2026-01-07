@@ -35,6 +35,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { ru } from "date-fns/locale"
+import { Calendar } from "@/components/ui/calendar"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 const hours = Array.from({ length: 24 }, (_, i) => i)
@@ -58,6 +66,77 @@ export function AgentSchedule() {
 
     const params = useParams()
     const agentId = params?.agentId as string
+
+    // Schedule state
+    const [offlineMessage, setOfflineMessage] = React.useState("Здравствуйте! Сейчас я не на связи. Я отвечу вам в рабочее время.")
+    const [holidays, setHolidays] = React.useState<string[]>([])
+    const [isSavingSchedule, setIsSavingSchedule] = React.useState(false)
+    const [isLoadingSchedule, setIsLoadingSchedule] = React.useState(true)
+
+    // Fetch schedule settings on mount
+    React.useEffect(() => {
+        const fetchScheduleSettings = async () => {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl || !agentId) return
+
+            try {
+                const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/schedule`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.schedule) {
+                        setSchedule(data.schedule)
+                    }
+                    if (data.holidays) {
+                        setHolidays(data.holidays)
+                    }
+                    if (data.message) {
+                        setOfflineMessage(data.message)
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch schedule settings:", error)
+            } finally {
+                setIsLoadingSchedule(false)
+            }
+        }
+
+        fetchScheduleSettings()
+    }, [agentId])
+
+    const handleSaveSchedule = async () => {
+        const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+        if (!orchestratorUrl) {
+            toast.error("Orchestrator URL not configured")
+            return
+        }
+
+        setIsSavingSchedule(true)
+        try {
+            const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/schedule`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    schedule,
+                    message: offlineMessage,
+                    holidays
+                })
+            })
+
+            if (!res.ok) {
+                throw new Error("Failed to save schedule")
+            }
+
+            console.log("Schedule saved:", { schedule, message: offlineMessage, holidays })
+            toast.success("График сохранен")
+        } catch (e) {
+            console.error("Failed to save schedule:", e)
+            toast.error("Ошибка сохранения графика")
+        } finally {
+            setIsSavingSchedule(false)
+        }
+    }
 
     // Get agent data for checking Telegram connection
     const { agents, refreshAgents } = useUserData()
@@ -187,8 +266,8 @@ export function AgentSchedule() {
     return (
         <div className="space-y-6" onMouseUp={() => setIsMouseDown(false)} onMouseLeave={() => setIsMouseDown(false)}>
 
-            {/* Disabled Section: Schedule, Offline, Holidays */}
-            <div className="space-y-6 opacity-50 pointer-events-none grayscale filter">
+            {/* Active Section: Schedule, Offline, Holidays */}
+            <div className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="text-lg font-bold text-zinc-900">График доступности</h3>
@@ -197,18 +276,17 @@ export function AgentSchedule() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Select defaultValue="utc+3">
-                            <SelectTrigger className="w-[180px] h-10 rounded-xl border-transparent bg-zinc-100/50 hover:bg-zinc-100 focus:bg-white focus:ring-2 focus:ring-zinc-200 text-zinc-900 font-medium">
-                                <Globe className="mr-2 h-4 w-4 text-zinc-500" />
-                                <SelectValue placeholder="Часовой пояс" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-zinc-200 shadow-lg">
-                                <SelectItem value="utc">UTC (GMT+0)</SelectItem>
-                                <SelectItem value="utc+1">London (GMT+1)</SelectItem>
-                                <SelectItem value="utc+3">Moscow (GMT+3)</SelectItem>
-                                <SelectItem value="utc-5">New York (GMT-5)</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="flex items-center h-10 px-3 rounded-xl bg-zinc-100/50 text-zinc-900 font-medium text-sm">
+                            <Globe className="mr-2 h-4 w-4 text-zinc-500" />
+                            Москва (GMT+3)
+                        </div>
+                        <Button onClick={handleSaveSchedule} disabled={isSavingSchedule} className="rounded-xl ml-2">
+                            {isSavingSchedule ? (
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Сохранение...</>
+                            ) : (
+                                <><Save className="mr-2 h-4 w-4" /> Сохранить</>
+                            )}
+                        </Button>
                     </div>
                 </div>
 
@@ -272,18 +350,15 @@ export function AgentSchedule() {
                     <div className="space-y-4">
                         <div>
                             <h3 className="text-base font-bold text-zinc-900">Поведение оффлайн</h3>
-                            <p className="text-sm text-zinc-500 mt-1">Что делать в нерабочее время?</p>
+                            <p className="text-sm text-zinc-500 mt-1">Что отвечать в нерабочее время?</p>
                         </div>
                         <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
                             <CardContent className="p-4 space-y-4">
-                                <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-zinc-100">
-                                    <Label htmlFor="auto-reply" className="font-medium text-zinc-900">Авто-ответ</Label>
-                                    <Switch id="auto-reply" defaultChecked className="data-[state=checked]:bg-zinc-900" />
-                                </div>
                                 <Textarea
                                     placeholder="Напишите сообщение..."
                                     className="min-h-[100px] text-sm rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 placeholder:text-zinc-400 p-4 resize-none"
-                                    defaultValue="Здравствуйте! Сейчас я не на связи. Я отвечу вам в рабочее время."
+                                    value={offlineMessage}
+                                    onChange={(e) => setOfflineMessage(e.target.value)}
                                 />
                             </CardContent>
                         </Card>
@@ -296,11 +371,70 @@ export function AgentSchedule() {
                             <p className="text-sm text-zinc-500 mt-1">Исключения из графика работы.</p>
                         </div>
                         <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl h-[calc(100%-76px)]">
-                            <CardContent className="p-4 h-full">
-                                <div className="p-8 border-2 border-dashed border-zinc-200 rounded-xl text-center h-full flex flex-col items-center justify-center bg-white">
-                                    <p className="text-sm text-zinc-500 font-medium mb-4">Нет добавленных праздников.</p>
-                                    <Button variant="outline" size="sm" className="rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 font-medium shadow-sm">Добавить дату</Button>
-                                </div>
+                            <CardContent className="p-4 h-full relative">
+                                {holidays.length === 0 ? (
+                                    <div className="p-8 border-2 border-dashed border-zinc-200 rounded-xl text-center h-full flex flex-col items-center justify-center bg-white">
+                                        <p className="text-sm text-zinc-500 font-medium mb-4">Нет добавленных праздников.</p>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" size="sm" className="rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 font-medium shadow-sm">Добавить дату</Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="center">
+                                                <Calendar
+                                                    mode="single"
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            const formatted = format(date, "dd.MM.yyyy")
+                                                            if (!holidays.includes(formatted)) {
+                                                                setHolidays([...holidays, formatted])
+                                                            }
+                                                        }
+                                                    }}
+                                                    locale={ru}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                ) : (
+                                    <div className="h-full flex flex-col">
+                                        <div className="flex-1 overflow-auto space-y-2 mb-4">
+                                            {holidays.map((date) => (
+                                                <div key={date} className="flex items-center justify-between p-2 bg-zinc-50 rounded-lg border border-zinc-100">
+                                                    <span className="text-sm font-medium text-zinc-700">{date}</span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 w-6 p-0 text-zinc-400 hover:text-red-500"
+                                                        onClick={() => setHolidays(holidays.filter(h => h !== date))}
+                                                    >
+                                                        &times;
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" size="sm" className="w-full rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 font-medium shadow-sm">Добавить дату</Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            const formatted = format(date, "dd.MM.yyyy")
+                                                            if (!holidays.includes(formatted)) {
+                                                                setHolidays([...holidays, formatted])
+                                                            }
+                                                        }
+                                                    }}
+                                                    locale={ru}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

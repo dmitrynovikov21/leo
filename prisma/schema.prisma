@@ -149,6 +149,11 @@ model Agent {
   guardrails      Json?       @default("[]")
   welcomeMessage  String?     @map("welcome_message") // Message shown at session start
   
+  // Schedule settings
+  workSchedule    Json?       @map("work_schedule") // Weekly schedule: 7 arrays (Mon=0..Sun=6) x 24 booleans (hours 0-23)
+  holidays        String[]    @default([]) // Holiday dates in DD.MM.YYYY format
+  offlineMessage  String?     @map("offline_message") // Message during non-working hours
+  
   user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   knowledgeBases  KnowledgeBase[]
   messages        AgentMessage[]
@@ -229,6 +234,7 @@ model TokenUsage {
   agentId          String?  @map("agent_id") @db.VarChar(255)
   responseTimeMs   Int      @default(0) @map("response_time_ms")
   createdAt        DateTime @default(now()) @map(name: "created_at")
+  isTest           Boolean  @default(false) @map("is_test") // True for test/manual API requests, excluded from analytics
   
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   agent            Agent?   @relation(fields: [agentId], references: [id], onDelete: SetNull)
@@ -236,6 +242,7 @@ model TokenUsage {
   @@index([userId])
   @@index([agentId], map: "idx_token_usage_agent_id")
   @@index([createdAt])
+  @@index([isTest], map: "idx_token_usage_is_test")
   @@map("token_usage")
 }
 
@@ -257,11 +264,13 @@ model AgentMessage {
   messageType    MessageType @map(name: "message_type")
   content        String      @db.Text
   createdAt      DateTime    @default(now()) @map(name: "created_at")
+  isTest         Boolean     @default(false) @map("is_test") // True for test/manual API dialogs, excluded from analytics
   
   agent          Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
   
   @@index([agentId, telegramUserId])
   @@index([createdAt])
+  @@index([isTest], map: "idx_agent_messages_is_test")
   @@map("agent_messages")
 }
 

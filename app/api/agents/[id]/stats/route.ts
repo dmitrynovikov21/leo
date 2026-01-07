@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { prisma } from "@/lib/db"
+import { env } from "@/env.mjs"
 
 export async function GET(
     req: NextRequest,
@@ -14,66 +14,26 @@ export async function GET(
         }
 
         const agentId = params.id
+        const orchestratorUrl = env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL?.replace("localhost", "host.docker.internal")
 
-        // Verify agent belongs to user
-        const agent = await prisma.agent.findUnique({
-            where: {
-                id: agentId,
-                userId: session.user.id
-            }
-        })
-
-        if (!agent) {
-            return new NextResponse("Not Found", { status: 404 })
+        if (!orchestratorUrl) {
+            return new NextResponse("Orchestrator URL not configured", { status: 500 })
         }
 
-        // 1. Total Dialogs (Unique users who talked to this agent)
-        const dialogs = await prisma.agentMessage.groupBy({
-            by: ['telegramUserId'],
-            where: {
-                agentId: agentId
-            }
-        })
-        const totalDialogs = dialogs.length
-
-        // 2. Today's Dialogs
-        const startOfToday = new Date()
-        startOfToday.setHours(0, 0, 0, 0)
-
-        const todayDialogsGroup = await prisma.agentMessage.groupBy({
-            by: ['telegramUserId'],
-            where: {
-                agentId: agentId,
-                createdAt: {
-                    gte: startOfToday
-                }
-            }
-        })
-        const todayDialogs = todayDialogsGroup.length
-
-        // 3. Token Usage & Avg Response Time
-        const tokenStats = await prisma.tokenUsage.aggregate({
-            _sum: {
-                totalTokens: true
-            },
-            _avg: {
-                responseTimeMs: true
-            },
-            where: {
-                agentId: agentId
+        // Proxy request to orchestrator
+        const response = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stats`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
             }
         })
 
-        const totalTokens = tokenStats._sum.totalTokens || 0
-        const avgResponseTimeMs = Math.round(tokenStats._avg.responseTimeMs || 0)
+        if (!response.ok) {
+            return new NextResponse(`Orchestrator error: ${response.status}`, { status: response.status })
+        }
 
-        // Return stats
-        return NextResponse.json({
-            totalDialogs,
-            todayDialogs,
-            totalTokens,
-            avgResponseTimeMs
-        })
+        const data = await response.json()
+        return NextResponse.json(data)
 
     } catch (error) {
         console.error("[AGENT_STATS_GET]", error)
