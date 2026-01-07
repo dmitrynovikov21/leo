@@ -7,11 +7,11 @@ import {
   DashboardSidebar,
   MobileSheetSidebar,
 } from "@/components/layout/dashboard-sidebar";
-import { ModeToggle } from "@/components/layout/mode-toggle";
 import { UserAccountNav } from "@/components/layout/user-account-nav";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { UserPreferencesProvider } from "@/components/providers/user-preferences-provider";
 import { UserProvider } from "@/components/providers/user-data-provider";
+import { SessionTracker } from "@/components/providers/session-tracker";
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -32,6 +32,7 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
   return (
     <UserPreferencesProvider>
       <UserProvider>
+        <SessionTracker />
         <div className="flex h-screen w-full overflow-hidden bg-background">
           {/* Sidebar - fixed height handled by component or flex */}
           <DashboardSidebar links={filteredLinks} />
@@ -47,7 +48,6 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
                   <SearchCommand links={filteredLinks} />
                 </div>
 
-                <ModeToggle />
                 <UserAccountNav />
               </div>
             </header>

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { headers } from "next/headers";
 
 // GET /api/user/sessions - List all user sessions
 export async function GET() {
@@ -15,10 +14,11 @@ export async function GET() {
             );
         }
 
-        const sessions = await prisma.session.findMany({
+        const userSessions = await prisma.userSession.findMany({
             where: {
                 userId: session.user.id,
-                expires: { gt: new Date() } // Only active sessions
+                isRevoked: false,
+                expiresAt: { gt: new Date() }
             },
             select: {
                 id: true,
@@ -26,18 +26,18 @@ export async function GET() {
                 ipAddress: true,
                 lastActivity: true,
                 createdAt: true,
-                expires: true,
+                expiresAt: true,
             },
             orderBy: { lastActivity: 'desc' }
         });
 
-        // Get current session token to mark it
-        const headersList = headers();
-        const currentSessionToken = headersList.get('x-session-token');
-
-        const formattedSessions = sessions.map(s => ({
-            ...s,
-            isCurrent: false, // Will be determined by comparing tokens if needed
+        const formattedSessions = userSessions.map(s => ({
+            id: s.id,
+            userAgent: s.userAgent,
+            ipAddress: s.ipAddress,
+            lastActivity: s.lastActivity,
+            createdAt: s.createdAt,
+            expires: s.expiresAt,
             device: parseUserAgent(s.userAgent),
         }));
 
@@ -65,32 +65,22 @@ export async function DELETE(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const keepCurrent = searchParams.get('keepCurrent') === 'true';
+        const currentSessionId = session.user.sessionId;
 
-        if (keepCurrent) {
-            // Delete all sessions except current one
-            // We need to get the current session token from cookie
-            const headersList = headers();
-            const cookies = headersList.get('cookie') || '';
-            const sessionTokenMatch = cookies.match(/next-auth\.session-token=([^;]+)/);
-            const currentToken = sessionTokenMatch?.[1];
-
-            if (currentToken) {
-                await prisma.session.deleteMany({
-                    where: {
-                        userId: session.user.id,
-                        sessionToken: { not: currentToken }
-                    }
-                });
-            } else {
-                // If we can't find current token, delete all
-                await prisma.session.deleteMany({
-                    where: { userId: session.user.id }
-                });
-            }
+        if (keepCurrent && currentSessionId) {
+            // Revoke all sessions except current
+            await prisma.userSession.updateMany({
+                where: {
+                    userId: session.user.id,
+                    id: { not: currentSessionId }
+                },
+                data: { isRevoked: true }
+            });
         } else {
-            // Delete ALL sessions (full logout)
-            await prisma.session.deleteMany({
-                where: { userId: session.user.id }
+            // Revoke ALL sessions
+            await prisma.userSession.updateMany({
+                where: { userId: session.user.id },
+                data: { isRevoked: true }
             });
         }
 

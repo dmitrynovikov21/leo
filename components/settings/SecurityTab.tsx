@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog"
 import { Laptop, Smartphone, Tablet, Monitor, Loader2, LogOut, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
+import { signOut } from "next-auth/react"
 
 interface SessionDevice {
     browser: string
@@ -36,7 +37,6 @@ interface Session {
     lastActivity: string
     createdAt: string
     expires: string
-    isCurrent: boolean
     device: SessionDevice
 }
 
@@ -75,8 +75,8 @@ export function SecurityTab() {
             })
 
             if (res.ok) {
-                setSessions(prev => prev.filter(s => s.id !== sessionId))
-                toast.success('Сессия завершена')
+                toast.success('Выход из системы...')
+                await signOut({ callbackUrl: '/login', redirect: true })
             } else {
                 toast.error('Не удалось завершить сессию')
             }
@@ -88,24 +88,16 @@ export function SecurityTab() {
         }
     }
 
-    const handleLogoutAll = async (keepCurrent: boolean) => {
+    const handleLogoutAll = async () => {
         setIsLoggingOutAll(true)
         try {
-            const res = await fetch(`/api/user/sessions?keepCurrent=${keepCurrent}`, {
+            const res = await fetch('/api/user/sessions', {
                 method: 'DELETE'
             })
 
             if (res.ok) {
-                if (keepCurrent) {
-                    // Keep only current session
-                    setSessions(prev => prev.filter(s => s.isCurrent))
-                    toast.success('Выход со всех других устройств выполнен')
-                } else {
-                    // Full logout - redirect to login
-                    toast.success('Выход со всех устройств')
-                    window.location.href = '/auth/signin'
-                }
-                setShowLogoutAllDialog(false)
+                toast.success('Выход со всех устройств')
+                await signOut({ callbackUrl: '/login', redirect: true })
             } else {
                 toast.error('Не удалось выполнить выход')
             }
@@ -248,25 +240,19 @@ export function SecurityTab() {
                                             </div>
                                         </div>
                                     </div>
-                                    {session.isCurrent ? (
-                                        <Button variant="ghost" size="sm" disabled className="text-zinc-400 font-medium">
-                                            Текущая
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="rounded-lg h-8 border-zinc-200 text-zinc-700 hover:text-red-600 hover:bg-red-50 hover:border-red-100 bg-white shadow-sm"
-                                            onClick={() => handleTerminateSession(session.id)}
-                                            disabled={isTerminating === session.id}
-                                        >
-                                            {isTerminating === session.id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                'Завершить'
-                                            )}
-                                        </Button>
-                                    )}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-lg h-8 border-zinc-200 text-zinc-700 hover:text-red-600 hover:bg-red-50 hover:border-red-100 bg-white shadow-sm"
+                                        onClick={() => handleTerminateSession(session.id)}
+                                        disabled={isTerminating === session.id}
+                                    >
+                                        {isTerminating === session.id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            'Завершить'
+                                        )}
+                                    </Button>
                                 </div>
                             )
                         })
@@ -300,26 +286,17 @@ export function SecurityTab() {
                             Отмена
                         </Button>
                         <Button
-                            variant="outline"
-                            className="flex-1 rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50"
-                            onClick={() => handleLogoutAll(true)}
-                            disabled={isLoggingOutAll}
-                        >
-                            {isLoggingOutAll ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Кроме текущей
-                        </Button>
-                        <Button
                             variant="destructive"
                             className="flex-1 rounded-xl h-11"
-                            onClick={() => handleLogoutAll(false)}
+                            onClick={() => handleLogoutAll()}
                             disabled={isLoggingOutAll}
                         >
                             {isLoggingOutAll ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Выйти везде
+                            Да, выйти
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }

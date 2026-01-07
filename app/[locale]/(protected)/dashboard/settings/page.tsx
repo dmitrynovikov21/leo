@@ -3,11 +3,8 @@
 import { useTranslations } from "next-intl"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProfileTab } from "@/components/settings/ProfileTab"
-import { OrganizationTab } from "@/components/settings/OrganizationTab"
 import { BillingTab } from "@/components/settings/BillingTab"
-import { NotificationsTab } from "@/components/settings/NotificationsTab"
 import { SecurityTab } from "@/components/settings/SecurityTab"
-import { ApiTab } from "@/components/settings/ApiTab"
 
 export default function SettingsPage() {
   const t = useTranslations('Settings')
@@ -21,35 +18,20 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="bg-zinc-100/50 p-1 rounded-xl h-auto flex-wrap justify-start gap-1 w-full sm:w-auto inline-flex">
           <TabsTrigger value="profile" className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all">Профиль</TabsTrigger>
-          <TabsTrigger value="organization" className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all">Организация</TabsTrigger>
           <TabsTrigger value="billing" className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all">Тариф</TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all">Уведомления</TabsTrigger>
           <TabsTrigger value="security" className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all">Безопасность</TabsTrigger>
-          <TabsTrigger value="api" className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-500 data-[state=active]:bg-white data-[state=active]:text-zinc-900 data-[state=active]:shadow-sm transition-all">API</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
           <ProfileTab />
         </TabsContent>
 
-        <TabsContent value="organization" className="space-y-4">
-          <OrganizationTab />
-        </TabsContent>
-
         <TabsContent value="billing" className="space-y-4">
           <BillingTab />
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-4">
-          <NotificationsTab />
-        </TabsContent>
-
         <TabsContent value="security" className="space-y-4">
           <SecurityTab />
-        </TabsContent>
-
-        <TabsContent value="api" className="space-y-4">
-          <ApiTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
-// DELETE /api/user/sessions/[id] - Delete specific session
+// DELETE /api/user/sessions/[id] - Revoke specific session
 export async function DELETE(
     req: Request,
     { params }: { params: { id: string } }
@@ -18,7 +18,7 @@ export async function DELETE(
         }
 
         // Verify the session belongs to the user
-        const targetSession = await prisma.session.findFirst({
+        const targetSession = await prisma.userSession.findFirst({
             where: {
                 id: params.id,
                 userId: session.user.id,
@@ -32,18 +32,20 @@ export async function DELETE(
             );
         }
 
-        await prisma.session.delete({
-            where: { id: params.id }
+        // Revoke the session
+        await prisma.userSession.update({
+            where: { id: params.id },
+            data: { isRevoked: true }
         });
 
         return NextResponse.json({
             success: true,
-            message: "Session terminated"
+            message: "Session revoked"
         });
     } catch (error) {
-        console.error("Error deleting session:", error);
+        console.error("Error revoking session:", error);
         return NextResponse.json(
-            { error: "Failed to delete session" },
+            { error: "Failed to revoke session" },
             { status: 500 }
         );
     }
