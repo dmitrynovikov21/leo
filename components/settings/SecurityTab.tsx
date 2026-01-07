@@ -136,6 +136,50 @@ export function SecurityTab() {
         return date.toLocaleDateString('ru-RU')
     }
 
+    const [passwordData, setPasswordData] = React.useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    })
+    const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false)
+
+    const handleUpdatePassword = async () => {
+        if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+            toast.error('Заполните все поля')
+            return
+        }
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            toast.error('Пароли не совпадают')
+            return
+        }
+
+        setIsUpdatingPassword(true)
+        try {
+            const res = await fetch('/api/user/password', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    currentPassword: passwordData.currentPassword,
+                    newPassword: passwordData.newPassword
+                })
+            })
+
+            if (res.ok) {
+                toast.success('Пароль успешно обновлен')
+                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+            } else {
+                const text = await res.text()
+                toast.error(text || 'Не удалось обновить пароль')
+            }
+        } catch (error) {
+            console.error(error)
+            toast.error('Ошибка при обновлении пароля')
+        } finally {
+            setIsUpdatingPassword(false)
+        }
+    }
+
     return (
         <div className="space-y-6">
             {/* Password Card */}
@@ -152,6 +196,8 @@ export function SecurityTab() {
                         <Input
                             id="current-password"
                             type="password"
+                            value={passwordData.currentPassword}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
                             className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
                         />
                     </div>
@@ -160,6 +206,8 @@ export function SecurityTab() {
                         <Input
                             id="new-password"
                             type="password"
+                            value={passwordData.newPassword}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                             className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
                         />
                     </div>
@@ -168,12 +216,21 @@ export function SecurityTab() {
                         <Input
                             id="confirm-password"
                             type="password"
+                            value={passwordData.confirmPassword}
+                            onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                             className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
                         />
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end pb-6 px-6">
-                    <Button className="rounded-xl h-10 px-6 font-medium bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm">Обновить пароль</Button>
+                    <Button
+                        className="rounded-xl h-10 px-6 font-medium bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm"
+                        onClick={handleUpdatePassword}
+                        disabled={isUpdatingPassword}
+                    >
+                        {isUpdatingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Обновить пароль
+                    </Button>
                 </CardFooter>
             </Card>
 

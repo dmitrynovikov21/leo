@@ -153,6 +153,7 @@ model Agent {
   knowledgeBases  KnowledgeBase[]
   messages        AgentMessage[]
   summaries       AgentSummary[]
+  tokenUsage      TokenUsage[]
   promptVersions  SystemPromptVersion[]
   
   @@index([userId])
@@ -225,11 +226,15 @@ model TokenUsage {
   completionTokens Int      @default(0) @map(name: "completion_tokens")
   totalTokens      Int      @default(0) @map(name: "total_tokens")
   model            String   @db.VarChar(100)
+  agentId          String?  @map("agent_id") @db.VarChar(255)
+  responseTimeMs   Int      @default(0) @map("response_time_ms")
   createdAt        DateTime @default(now()) @map(name: "created_at")
   
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent            Agent?   @relation(fields: [agentId], references: [id], onDelete: SetNull)
   
   @@index([userId])
+  @@index([agentId], map: "idx_token_usage_agent_id")
   @@index([createdAt])
   @@map("token_usage")
 }
@@ -247,7 +252,7 @@ enum MessageType {
 
 model AgentMessage {
   id             String      @id @default(cuid())
-  agentId        String
+  agentId        String      @map("agent_id")
   telegramUserId BigInt      @map(name: "telegram_user_id")
   messageType    MessageType @map(name: "message_type")
   content        String      @db.Text
@@ -262,7 +267,7 @@ model AgentMessage {
 
 model AgentSummary {
   id             String   @id @default(cuid())
-  agentId        String
+  agentId        String   @map("agent_id")
   telegramUserId BigInt   @map(name: "telegram_user_id")
   summary        String   @db.Text
   createdAt      DateTime @default(now()) @map(name: "created_at")

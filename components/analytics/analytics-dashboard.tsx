@@ -10,19 +10,70 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-// Mock Data for Chart
-const data = [
-    { name: "Mon", conversations: 120, engagement: 240 },
-    { name: "Tue", conversations: 132, engagement: 139 },
-    { name: "Wed", conversations: 101, engagement: 980 },
-    { name: "Thu", conversations: 134, engagement: 390 },
-    { name: "Fri", conversations: 190, engagement: 480 },
-    { name: "Sat", conversations: 230, engagement: 380 },
-    { name: "Sun", conversations: 100, engagement: 430 },
-]
+// Mock data removed in favor of real data
 
-export function AnalyticsDashboard() {
+
+export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
     const t = useTranslations('Agents.detail');
+    const [stats, setStats] = React.useState({
+        totalDialogs: 0,
+        todayDialogs: 0,
+        totalTokens: 0,
+        avgResponseTimeMs: 0
+    });
+    const [chartData, setChartData] = React.useState<any[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        if (!agentId) return;
+
+        const controller = new AbortController();
+
+        const fetchStats = async () => {
+            try {
+                // Fetch overview stats
+                const res = await fetch(`/api/agents/${agentId}/stats`, { signal: controller.signal });
+                if (res.ok) {
+                    const data = await res.json();
+                    setStats(data);
+                }
+
+                // Fetch daily stats for chart (last 7 days)
+                const toDate = new Date();
+                const fromDate = new Date();
+                fromDate.setDate(toDate.getDate() - 7);
+
+                const toStr = toDate.toISOString();
+                const fromStr = fromDate.toISOString();
+
+                const resPeriod = await fetch(`/api/agents/${agentId}/stats/period?from=${fromStr}&to=${toStr}`, { signal: controller.signal });
+                if (resPeriod.ok) {
+                    const periodData = await resPeriod.json();
+                    // Transform for recharts
+                    const formattedChartData = periodData.map((item: any) => ({
+                        name: new Date(item.date).toLocaleDateString('ru-RU', { weekday: 'short' }),
+                        dialogs: item.dialogs,
+                        tokens: item.tokens
+                    }));
+                    setChartData(formattedChartData);
+                }
+            } catch (error: any) {
+                if (error.name !== 'AbortError') {
+                    console.error("Failed to fetch stats:", error);
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchStats();
+
+        return () => {
+            controller.abort();
+        };
+    }, [agentId]);
 
     return (
         <Tabs defaultValue="overview" className="flex-1 space-y-6">
@@ -52,14 +103,10 @@ export function AnalyticsDashboard() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">1,284</div>
-                            <p className="text-xs text-zinc-500 font-medium flex items-center mt-1">
-                                <span className="text-zinc-900 flex items-center mr-1">
-                                    <ArrowUpRight className="h-3 w-3 mr-0.5" />
-                                    +12.5%
-                                </span>
-                                {t('fromLastMonth')}
-                            </p>
+                            <div className="text-2xl font-bold text-zinc-900">
+                                {isLoading ? "-" : stats.totalDialogs.toLocaleString()}
+                            </div>
+
                         </CardContent>
                     </Card>
                     <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
@@ -72,14 +119,10 @@ export function AnalyticsDashboard() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">42</div>
-                            <p className="text-xs text-zinc-500 font-medium flex items-center mt-1">
-                                <span className="text-zinc-900 flex items-center mr-1">
-                                    <ArrowUpRight className="h-3 w-3 mr-0.5" />
-                                    +5
-                                </span>
-                                к вчерашнему
-                            </p>
+                            <div className="text-2xl font-bold text-zinc-900">
+                                {isLoading ? "-" : stats.todayDialogs.toLocaleString()}
+                            </div>
+
                         </CardContent>
                     </Card>
                     <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
@@ -92,14 +135,10 @@ export function AnalyticsDashboard() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">142.5k</div>
-                            <p className="text-xs text-zinc-500 font-medium flex items-center mt-1">
-                                <span className="text-zinc-900 flex items-center mr-1">
-                                    <ArrowUpRight className="h-3 w-3 mr-0.5" />
-                                    +8.2%
-                                </span>
-                                за месяц
-                            </p>
+                            <div className="text-2xl font-bold text-zinc-900">
+                                {isLoading ? "-" : stats.totalTokens.toLocaleString()}
+                            </div>
+
                         </CardContent>
                     </Card>
                     <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
@@ -112,37 +151,33 @@ export function AnalyticsDashboard() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">1.2s</div>
-                            <p className="text-xs text-zinc-500 font-medium flex items-center mt-1">
-                                <span className="text-zinc-900 flex items-center mr-1">
-                                    <ArrowDownRight className="h-3 w-3 mr-0.5" />
-                                    -0.3s
-                                </span>
-                                {t('fasterThanAvg')}
-                            </p>
+                            <div className="text-2xl font-bold text-zinc-900">
+                                {isLoading ? "-" : (stats.avgResponseTimeMs / 1000).toFixed(1)}s
+                            </div>
+
                         </CardContent>
                     </Card>
                 </div>
 
                 {/* CHARTS ROW */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                    <Card className="col-span-4 border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="col-span-7 border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-lg font-bold text-zinc-900">{t('activityOverview')}</CardTitle>
+                            <CardTitle className="text-lg font-bold text-zinc-900">Обзор активности</CardTitle>
                             <CardDescription className="text-zinc-500 font-medium">
-                                {t('activityDesc')}
+                                Объем диалогов и потраченных токенов за последние 7 дней
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="pl-0 pr-2 pt-6">
                             <div className="h-[350px]">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+                                    <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
                                         <defs>
-                                            <linearGradient id="colorConv" x1="0" y1="0" x2="0" y2="1">
+                                            <linearGradient id="colorDialogs" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#18181b" stopOpacity={0.1} />
                                                 <stop offset="95%" stopColor="#18181b" stopOpacity={0} />
                                             </linearGradient>
-                                            <linearGradient id="colorEng" x1="0" y1="0" x2="0" y2="1">
+                                            <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
                                                 <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                                             </linearGradient>
@@ -169,8 +204,8 @@ export function AnalyticsDashboard() {
                                             cursor={{ stroke: '#e4e4e7', strokeWidth: 1 }}
                                         />
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f4f5" />
-                                        <Area type="monotone" dataKey="conversations" stroke="#18181b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorConv)" />
-                                        <Area type="monotone" dataKey="engagement" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorEng)" />
+                                        <Area type="monotone" dataKey="dialogs" stroke="#18181b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorDialogs)" />
+                                        <Area type="monotone" dataKey="tokens" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTokens)" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -178,73 +213,7 @@ export function AnalyticsDashboard() {
                     </Card>
 
                     {/* RECENT ACTIVITY / ALERTS */}
-                    <Card className="col-span-3 border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-lg font-bold text-zinc-900">{t('recentActivity')}</CardTitle>
-                            <CardDescription className="text-zinc-500 font-medium">
-                                {t('recentActivityDesc')}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-6">
-                                <div className="flex items-start group">
-                                    <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 mr-4">
-                                        <UserPlus className="h-4 w-4 text-emerald-600" />
-                                        <span className="absolute top-0 right-0 -mr-1 -mt-1 flex h-2.5 w-2.5">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 ring-2 ring-white"></span>
-                                        </span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-zinc-900 leading-none group-hover:text-emerald-600 transition-colors">New Lead Qualified</p>
-                                        <p className="text-xs text-zinc-500">
-                                            Agent Oleg qualified a lead from Telegram.
-                                        </p>
-                                    </div>
-                                    <div className="ml-auto font-medium text-xs text-zinc-400">Just now</div>
-                                </div>
 
-                                <div className="flex items-start group">
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-100 mr-4">
-                                        <FileText className="h-4 w-4 text-blue-600" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-zinc-900 leading-none group-hover:text-blue-600 transition-colors">Knowledge Base Updated</p>
-                                        <p className="text-xs text-zinc-500">
-                                            "Pricing_Q4.pdf" finish processing.
-                                        </p>
-                                    </div>
-                                    <div className="ml-auto font-medium text-xs text-zinc-400">2m ago</div>
-                                </div>
-
-                                <div className="flex items-start group">
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-50 border border-rose-100 mr-4">
-                                        <Activity className="h-4 w-4 text-rose-600" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-zinc-900 leading-none group-hover:text-rose-600 transition-colors">High Latency Alert</p>
-                                        <p className="text-xs text-zinc-500">
-                                            Response time spiked to 4.5s on Whatsapp.
-                                        </p>
-                                    </div>
-                                    <div className="ml-auto font-medium text-xs text-zinc-400">1h ago</div>
-                                </div>
-
-                                <div className="flex items-start group">
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100 border border-zinc-200 mr-4">
-                                        <Zap className="h-4 w-4 text-zinc-600" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-zinc-900 leading-none group-hover:text-zinc-700 transition-colors">New Agent Created</p>
-                                        <p className="text-xs text-zinc-500">
-                                            User created "HR Assistant" agent.
-                                        </p>
-                                    </div>
-                                    <div className="ml-auto font-medium text-xs text-zinc-400">3h ago</div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </TabsContent>
         </Tabs>

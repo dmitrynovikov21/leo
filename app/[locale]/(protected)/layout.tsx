@@ -45,7 +45,7 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
                 <MobileSheetSidebar links={filteredLinks} />
 
                 <div className="w-full flex-1">
-                  <SearchCommand links={filteredLinks} />
+                  {/* <SearchCommand links={filteredLinks} /> */}
                 </div>
 
                 <UserAccountNav />
