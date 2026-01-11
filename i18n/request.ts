@@ -3,8 +3,8 @@ import { getRequestConfig } from 'next-intl/server';
 export default getRequestConfig(async ({ requestLocale }) => {
     let locale = await requestLocale;
 
-    if (!locale || !['en', 'ru'].includes(locale)) {
-        locale = 'en';
+    if (!locale || locale !== 'ru') {
+        locale = 'ru';
     }
 
     return {

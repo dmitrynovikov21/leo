@@ -8,21 +8,25 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 interface BalanceWidgetProps {
-    balance: number
+    balance?: number
     currency?: string
     lowBalanceThreshold?: number
     compactMode?: boolean
 }
 
 export function BalanceWidget({
-    balance,
+    balance = 0,
     currency = "₽",
     lowBalanceThreshold = 500,
     compactMode = false,
 }: BalanceWidgetProps) {
     const t = useTranslations('Billing');
-    const isLowBalance = balance < lowBalanceThreshold
-    const runwayDays = Math.floor(balance / 50) // Mock calculation: ~50₽ per day
+
+    // Use balance prop directly
+    const currentBalance = balance
+
+    const isLowBalance = currentBalance < lowBalanceThreshold
+    const runwayDays = Math.floor(currentBalance / 50) // Mock calculation
 
     if (compactMode) {
         return (
@@ -45,7 +49,7 @@ export function BalanceWidget({
                                     isLowBalance && "text-destructive"
                                 )}
                             >
-                                {currency} {balance.toLocaleString()}
+                                {currency} {currentBalance.toLocaleString()}
                             </p>
                         </div>
                     </div>
@@ -68,7 +72,7 @@ export function BalanceWidget({
                                     isLowBalance && "text-destructive"
                                 )}
                             >
-                                {currency} {balance.toLocaleString()}
+                                {currency} {currentBalance.toLocaleString()}
                             </p>
                         </div>
                         {isLowBalance && (

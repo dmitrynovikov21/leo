@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Check, ChevronsUpDown, Plus } from "lucide-react"
+import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -159,9 +160,9 @@ export function SpaceSelector({ value: controlledValue, onValueChange, additiona
                         <CommandGroup>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <CommandItem onSelect={() => { }} className="cursor-pointer">
+                                    <CommandItem onSelect={() => toast("Скоро будет доступно", { description: "Функция создания пространств в разработке" })} className="cursor-pointer">
                                         <Plus className="mr-2 h-4 w-4" />
-                                        Создать пространство
+                                        Создать пространство (Скоро)
                                     </CommandItem>
                                 </DialogTrigger>
                                 {/* ... dialog content ... */}

@@ -3,9 +3,10 @@
 import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { NavItem, SidebarNavItem } from "@/types";
-import { Menu, PanelLeftClose, PanelRightClose } from "lucide-react";
+import { Menu, PanelLeftClose, PanelRightClose, LogOut } from "lucide-react";
 
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ interface DashboardSidebarProps {
 }
 
 export function DashboardSidebar({ links }: DashboardSidebarProps) {
+  const router = useRouter();
   const path = usePathname();
   const t = useTranslations(); // Move hook to component level
 
@@ -182,8 +184,33 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
 
               <div className="mt-auto p-4">
                 {isSidebarExpanded ? (
-                  <BalanceWidget balance={1250} compactMode={true} />
-                ) : null}
+                  <>
+                    <BalanceWidget compactMode={true} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+                      onClick={() => signOut({ redirect: false }).then(() => router.push("/"))}
+                    >
+                      <LogOut className="size-4" />
+                      Выйти
+                    </Button>
+                  </>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-full"
+                        onClick={() => signOut({ redirect: false }).then(() => router.push("/"))}
+                      >
+                        <LogOut className="size-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">Выйти</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </div>
           </aside>
@@ -273,7 +300,7 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
                 ))}
 
                 <div className="mt-auto">
-                  <BalanceWidget balance={1250} compactMode={false} />
+                  <BalanceWidget compactMode={false} />
                 </div>
               </nav>
             </div>

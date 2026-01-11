@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { User, Shield, Plus, X, Wand2, Save, FileText } from "lucide-react"
+import { User, Shield, Plus, X, Wand2, Save, FileText, Loader2, RefreshCw, Send } from "lucide-react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -21,26 +21,63 @@ import {
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useUserData } from "@/components/providers/user-data-provider"
+import { TelegramConnectionDialog } from "@/components/agents/telegram-connection-dialog"
+
+// Types
+interface PromptVersion {
+    id: string
+    version: string
+    isActive: boolean
+    createdAt: string
+}
+
+interface BehaviorData {
+    avatarEmoji: string
+    displayName: string
+    temperature: number
+    systemPrompt: string
+    tone: string[]
+    guardrails: { rule: string }[]
+    welcomeMessage?: string
+}
+
+interface PromptsData {
+    versions: PromptVersion[]
+    activePrompt: {
+        id: string
+        content: string
+    } | null
+}
 
 // Schema
 const behaviorSchema = z.object({
-    name: z.string().min(2),
-    model: z.string(),
-    creativity: z.number().min(0).max(1),
-    roleDefinition: z.string(),
+    displayName: z.string().min(2),
+    avatarEmoji: z.string(),
+    temperature: z.number().min(0).max(1),
+    systemPrompt: z.string(),
     tone: z.array(z.string()),
     guardrails: z.array(z.object({ rule: z.string() })),
+    welcomeMessage: z.string().optional(),
 })
 
 type BehaviorFormData = z.infer<typeof behaviorSchema>
 
 export function BehaviorEditor({ agentId }: { agentId: string }) {
-    const t = useTranslations('Behavior');
-    const tCommon = useTranslations('Common');
+    const t = useTranslations('Behavior')
+    const tCommon = useTranslations('Common')
+    const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
 
     const toneOptions = [
         { value: "friendly", label: t('friendly') },
@@ -51,19 +88,46 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         { value: "formal", label: t('formal') },
     ]
 
+    const [isLoading, setIsLoading] = React.useState(true)
     const [isSaving, setIsSaving] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+    const [promptVersions, setPromptVersions] = React.useState<PromptVersion[]>([])
+    const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null)
+    const [showRestartDialog, setShowRestartDialog] = React.useState(false)
+    const [isRestarting, setIsRestarting] = React.useState(false)
+    const [isNewVersion, setIsNewVersion] = React.useState(false)
 
-    // Mock initial data fetch
+    // Check Telegram connection
+    const { agents, refreshAgents } = useUserData()
+    const agent = agents.find(a => a.id === agentId)
+    const [showTelegramModal, setShowTelegramModal] = React.useState(false)
+
+    // Calculate next version number (1.0 -> 1.1 -> ... -> 1.9 -> 2.0)
+    const getNextVersion = (versions: PromptVersion[]): string => {
+        if (versions.length === 0) return 'v1.0'
+
+        const versionNumbers = versions
+            .map(v => v.version.replace('v', ''))
+            .map(v => parseFloat(v))
+            .filter(v => !isNaN(v))
+
+        const maxVersion = Math.max(...versionNumbers)
+        const major = Math.floor(maxVersion)
+        const minor = Math.round((maxVersion - major) * 10)
+
+        if (minor >= 9) {
+            return `v${major + 1}.0`
+        }
+        return `v${major}.${minor + 1}`
+    }
+
     const defaultValues: BehaviorFormData = {
-        name: "Alex Support",
-        model: "gpt-4o",
-        creativity: 0.5,
-        roleDefinition: "You are Alex, a senior support specialist. Your goal is to help users resolve technical issues efficiently while maintaining a calm and reassuring demeanor.",
-        tone: ["friendly", "concise"],
-        guardrails: [
-            { rule: "Never promise features that are not on the roadmap." },
-            { rule: "If unsure, escalate to a human agent." },
-        ],
+        displayName: "",
+        avatarEmoji: "😊",
+        temperature: 0.5,
+        systemPrompt: "",
+        tone: [],
+        guardrails: [],
     }
 
     const form = useForm<BehaviorFormData>({
@@ -77,19 +141,269 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         name: "guardrails",
     })
 
+    // Load behavior data
+    React.useEffect(() => {
+        const loadBehaviorData = async () => {
+            if (!orchestratorUrl) {
+                setError("Orchestrator URL not configured")
+                setIsLoading(false)
+                return
+            }
+
+            try {
+                setIsLoading(true)
+                setError(null)
+
+                // Fetch behavior data
+                const behaviorRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`)
+                if (!behaviorRes.ok) {
+                    throw new Error(`Failed to load behavior: ${behaviorRes.status}`)
+                }
+                const behaviorData: BehaviorData = await behaviorRes.json()
+
+                // Fetch prompt versions
+                const promptsRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`)
+                let activePromptContent = ""
+                if (promptsRes.ok) {
+                    const promptsData: PromptsData = await promptsRes.json()
+                    setPromptVersions(promptsData.versions || [])
+                    const activeVersion = promptsData.versions?.find(v => v.isActive)
+                    if (activeVersion) {
+                        setSelectedVersionId(activeVersion.id)
+                    }
+                    if (promptsData.activePrompt?.content) {
+                        activePromptContent = promptsData.activePrompt.content
+                    }
+                }
+
+                // Update form with loaded data
+                form.reset({
+                    displayName: behaviorData.displayName || "",
+                    avatarEmoji: behaviorData.avatarEmoji || "😊",
+                    temperature: behaviorData.temperature ?? 0.5,
+                    systemPrompt: activePromptContent || behaviorData.systemPrompt || "",
+                    tone: behaviorData.tone || [],
+                    guardrails: behaviorData.guardrails || [],
+                    welcomeMessage: behaviorData.welcomeMessage || "",
+                })
+            } catch (err) {
+                console.error("Error loading behavior:", err)
+                setError(err instanceof Error ? err.message : "Failed to load behavior data")
+            } finally {
+                setIsLoading(false)
+            }
+        }
+
+        loadBehaviorData()
+    }, [agentId, orchestratorUrl, form])
+
     const handleSave = async (data: BehaviorFormData) => {
+        if (!orchestratorUrl) {
+            toast.error("Orchestrator URL not configured")
+            return
+        }
+
         setIsSaving(true)
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 800))
-        setIsSaving(false)
-        toast.success(t('saveChanges'), { description: t('behaviorUpdated') })
+        try {
+            // Handle system prompt versioning separately
+            if (data.systemPrompt) {
+                if (isNewVersion) {
+                    // Create new version
+                    const nextVersion = getNextVersion(promptVersions)
+                    const promptRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            version: nextVersion,
+                            content: data.systemPrompt,
+                            isActive: true,
+                        }),
+                    })
+
+                    if (!promptRes.ok) {
+                        throw new Error(`Failed to create new version: ${promptRes.status}`)
+                    }
+
+                    // Reload versions
+                    const promptsRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`)
+                    if (promptsRes.ok) {
+                        const promptsData: PromptsData = await promptsRes.json()
+                        setPromptVersions(promptsData.versions || [])
+                        const activeVersion = promptsData.versions?.find(v => v.isActive)
+                        if (activeVersion) {
+                            setSelectedVersionId(activeVersion.id)
+                        }
+                    }
+
+                    setIsNewVersion(false)
+                } else if (selectedVersionId) {
+                    // Update existing version content
+                    const promptRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts/${selectedVersionId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: data.systemPrompt,
+                        }),
+                    })
+
+                    if (!promptRes.ok) {
+                        throw new Error(`Failed to update prompt: ${promptRes.status}`)
+                    }
+                }
+            }
+
+            // Save behavior settings (without systemPrompt)
+            const response = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    displayName: data.displayName,
+                    avatarEmoji: data.avatarEmoji,
+                    temperature: data.temperature,
+                    tone: data.tone,
+                    guardrails: data.guardrails,
+                    welcomeMessage: data.welcomeMessage,
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error(`Failed to save: ${response.status}`)
+            }
+
+            toast.success(t('saveChanges'), { description: t('behaviorUpdated') })
+            // Show restart dialog after successful save
+            setShowRestartDialog(true)
+        } catch (err) {
+            console.error("Error saving behavior:", err)
+            toast.error("Failed to save changes", {
+                description: err instanceof Error ? err.message : "Unknown error",
+            })
+        } finally {
+            setIsSaving(false)
+        }
     }
 
-    // Auto-save on blur logic could go here, or manual save for now
+    const handleRestart = async () => {
+        // Check Telegram connection first
+        if (!agent?.isTelegramConnected) {
+            setShowRestartDialog(false)
+            setShowTelegramModal(true)
+            return
+        }
+
+        if (!orchestratorUrl) return
+
+        setIsRestarting(true)
+        try {
+            // Stop the agent
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stop`, { method: 'POST' })
+
+            // Start the agent
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+
+            // Poll for running status
+            for (let i = 0; i < 5; i++) {
+                await new Promise(r => setTimeout(r, 1000))
+                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json()
+                    const newStatus = statusData.agent?.status || statusData.status
+                    if (newStatus === 'RUNNING') break
+                }
+            }
+
+            toast.success("Агент успешно перезапущен")
+            setShowRestartDialog(false)
+        } catch (error) {
+            console.error("Restart error:", error)
+            toast.error("Ошибка при перезапуске агента")
+        } finally {
+            setIsRestarting(false)
+        }
+    }
+
+    const handleVersionChange = async (versionId: string) => {
+        if (!orchestratorUrl) return
+
+        // Handle selecting "new" version
+        if (versionId === 'new') {
+            setIsNewVersion(true)
+            setSelectedVersionId(null)
+            form.setValue("systemPrompt", "", { shouldDirty: true })
+            return
+        }
+
+        if (!versionId) return
+
+        setIsNewVersion(false)
+        setSelectedVersionId(versionId)
+
+        try {
+            // Activate the selected version
+            const res = await fetch(
+                `${orchestratorUrl}/api/v1/agents/${agentId}/prompts/${versionId}/activate`,
+                { method: "PATCH" }
+            )
+
+            if (res.ok) {
+                // Reload prompt content and versions
+                const promptsRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`)
+                if (promptsRes.ok) {
+                    const promptsData: PromptsData = await promptsRes.json()
+                    setPromptVersions(promptsData.versions || [])
+                    if (promptsData.activePrompt) {
+                        form.setValue("systemPrompt", promptsData.activePrompt.content, { shouldDirty: false })
+                    }
+                }
+                toast.success("Версия активирована")
+            }
+        } catch (err) {
+            console.error("Error switching version:", err)
+            toast.error("Не удалось переключить версию")
+        }
+    }
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="max-w-4xl space-y-8">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-72" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <Separator />
+                <Skeleton className="h-24 w-full rounded-2xl" />
+                <Skeleton className="h-32 w-full rounded-2xl" />
+                <Skeleton className="h-48 w-full rounded-2xl" />
+            </div>
+        )
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="max-w-4xl">
+                <Card className="border-red-200 bg-red-50">
+                    <CardContent className="p-6">
+                        <p className="text-red-700">{error}</p>
+                        <Button
+                            variant="outline"
+                            className="mt-4"
+                            onClick={() => window.location.reload()}
+                        >
+                            Retry
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        )
+    }
 
     return (
         <div className="max-w-4xl">
-            {/* Config Form */}
             <div className="space-y-8 pb-20">
                 <form onSubmit={form.handleSubmit(handleSave)} className="space-y-8">
 
@@ -100,7 +414,11 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             <p className="text-muted-foreground">{t('description')}</p>
                         </div>
                         <Button type="submit" disabled={isSaving} size="lg">
-                            {isSaving ? t('savingChanges') : <><Save className="mr-2 h-4 w-4" /> {t('saveChanges')}</>}
+                            {isSaving ? (
+                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('savingChanges')}</>
+                            ) : (
+                                <><Save className="mr-2 h-4 w-4" /> {t('saveChanges')}</>
+                            )}
                         </Button>
                     </div>
 
@@ -112,26 +430,31 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             <User className="h-5 w-5" /> {t('identity')}
                         </h3>
                         <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
-                            <CardContent className="p-4">
+                            <CardContent className="p-4 space-y-4">
                                 <div className="flex items-center gap-4">
-                                    <button
-                                        type="button"
-                                        className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm bg-zinc-50 text-2xl hover:bg-zinc-100 hover:shadow-md transition-all duration-200 border border-zinc-100"
-                                        onClick={() => {
-                                            // TODO: Open emoji picker
-                                            console.log('Open emoji picker')
-                                        }}
-                                    >
-                                        😊
-                                    </button>
                                     <div className="flex-1">
                                         <Label className="sr-only">{t('displayName')}</Label>
                                         <Input
-                                            {...form.register("name")}
+                                            {...form.register("displayName")}
                                             placeholder={t('displayName')}
                                             className="h-10 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 placeholder:text-zinc-400"
                                         />
                                     </div>
+                                </div>
+                                {/* Welcome Message */}
+                                <div>
+                                    <Label htmlFor="welcomeMessage" className="text-sm font-medium text-zinc-700 mb-2 block">
+                                        Приветственное сообщение
+                                    </Label>
+                                    <Textarea
+                                        {...form.register("welcomeMessage")}
+                                        id="welcomeMessage"
+                                        placeholder="Введите сообщение, которое бот отправит при старте диалога..."
+                                        className="min-h-[80px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 resize-none"
+                                    />
+                                    <p className="text-xs text-zinc-500 mt-1">
+                                        Это сообщение будет автоматически отправлено пользователю при начале нового диалога
+                                    </p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -148,14 +471,15 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                     <div className="flex items-center justify-between">
                                         <Label className="text-zinc-900 font-medium">{t('creativity')}</Label>
                                         <Badge variant="outline" className="text-xs font-mono rounded-lg border-zinc-200 bg-zinc-50 text-zinc-600">
-                                            {form.watch("creativity")}
+                                            {form.watch("temperature")}
                                         </Badge>
                                     </div>
                                     <Slider
-                                        defaultValue={[defaultValues.creativity]}
+                                        value={[form.watch("temperature")]}
                                         max={1}
+                                        min={0}
                                         step={0.1}
-                                        onValueChange={(val) => form.setValue("creativity", val[0])}
+                                        onValueChange={(val) => form.setValue("temperature", val[0], { shouldDirty: true })}
                                         className="cursor-pointer"
                                     />
                                     <div className="flex justify-between text-xs text-zinc-400 px-1 font-medium">
@@ -181,22 +505,34 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                     <CardTitle className="text-base text-zinc-900">{t('roleDefinition')}</CardTitle>
                                     <CardDescription className="text-zinc-500">{t('roleDefinitionDesc')}</CardDescription>
                                 </div>
-                                <Select defaultValue="v1.2">
+                                <Select
+                                    value={isNewVersion ? 'new' : (selectedVersionId || undefined)}
+                                    onValueChange={handleVersionChange}
+                                >
                                     <SelectTrigger className="w-[140px] h-9 text-xs border-transparent bg-zinc-100/50 hover:bg-zinc-100 transition-all rounded-xl focus:ring-0">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Select version" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="v1.2">
+                                        {promptVersions.map((v) => (
+                                            <SelectItem key={v.id} value={v.id}>
+                                                <span className="flex items-center gap-2">
+                                                    <span>{v.version}</span>
+                                                    {v.isActive && (
+                                                        <Badge variant="secondary" className="text-[10px] h-4 px-1 py-0 border-0 bg-green-500/10 text-green-600 rounded-md">
+                                                            Current
+                                                        </Badge>
+                                                    )}
+                                                </span>
+                                            </SelectItem>
+                                        ))}
+                                        {/* NEW version option */}
+                                        <SelectItem value="new">
                                             <span className="flex items-center gap-2">
-                                                <span>v1.2</span>
-                                                <Badge variant="secondary" className="text-[10px] h-4 px-1 py-0 border-0 bg-green-500/10 text-green-600 rounded-md">Current</Badge>
+                                                <span>{getNextVersion(promptVersions)}</span>
+                                                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 border-0 bg-blue-500/10 text-blue-600 rounded-md font-semibold">
+                                                    NEW
+                                                </Badge>
                                             </span>
-                                        </SelectItem>
-                                        <SelectItem value="v1.1">
-                                            <span className="text-muted-foreground">v1.1 (Yesterday)</span>
-                                        </SelectItem>
-                                        <SelectItem value="v1.0">
-                                            <span className="text-muted-foreground">v1.0 (Dec 10)</span>
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -204,7 +540,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             <CardContent className="pb-6">
                                 <Textarea
                                     className="min-h-[150px] font-mono text-sm leading-relaxed border-transparent bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all rounded-xl resize-none text-zinc-800"
-                                    {...form.register("roleDefinition")}
+                                    {...form.register("systemPrompt")}
                                 />
                             </CardContent>
                         </Card>
@@ -291,6 +627,68 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                     </section>
                 </form>
             </div>
+
+            {/* Restart Dialog */}
+            <Dialog open={showRestartDialog} onOpenChange={setShowRestartDialog}>
+                <DialogContent className="sm:max-w-[400px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                    <DialogHeader className="text-center">
+                        <div className="mx-auto h-16 w-16 rounded-full bg-yellow-100 flex items-center justify-center mb-4">
+                            <RefreshCw className="h-8 w-8 text-yellow-600" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold text-zinc-900">
+                            Требуется перезапуск
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-500 mt-2">
+                            Изменения сохранены. Чтобы они вступили в силу, нужно перезапустить агента.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex gap-2 mt-6">
+                        <Button
+                            variant="outline"
+                            className="flex-1 rounded-xl h-11"
+                            onClick={() => setShowRestartDialog(false)}
+                        >
+                            Позже
+                        </Button>
+                        <Button
+                            className="flex-1 rounded-xl h-11 bg-yellow-500 hover:bg-yellow-600 text-white"
+                            onClick={handleRestart}
+                            disabled={isRestarting}
+                        >
+                            {isRestarting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isRestarting ? "Перезапуск..." : "Перезапустить"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Telegram Required Modal */}
+            <Dialog open={showTelegramModal} onOpenChange={setShowTelegramModal}>
+                <DialogContent className="sm:max-w-[450px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                    <DialogHeader className="text-center">
+                        <div className="mx-auto h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+                            <Send className="h-8 w-8 text-blue-600" />
+                        </div>
+                        <DialogTitle className="text-xl font-bold text-zinc-900">
+                            Подключите Telegram
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-500 mt-2">
+                            Для перезапуска агента необходимо подключить Telegram бота.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4">
+                        <TelegramConnectionDialog
+                            agentId={agentId}
+                            initialToken={agent?.telegramToken}
+                            embedded
+                            onSuccess={() => {
+                                setShowTelegramModal(false)
+                                refreshAgents()
+                            }}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

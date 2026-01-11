@@ -39,9 +39,8 @@ export function NavBar({ scroll = false }: NavBarProps) {
 
   return (
     <header
-      className={`sticky top-0 z-40 flex w-full justify-center bg-background/60 backdrop-blur-xl transition-all ${
-        scroll ? (scrolled ? "border-b" : "bg-transparent") : "border-b"
-      }`}
+      className={`sticky top-0 z-40 flex w-full justify-center bg-background/60 backdrop-blur-xl transition-all ${scroll ? (scrolled ? "border-b" : "bg-transparent") : "border-b"
+        }`}
     >
       <MaxWidthWrapper
         className="flex h-14 items-center justify-between py-4"
@@ -81,12 +80,12 @@ export function NavBar({ scroll = false }: NavBarProps) {
           {/* right header for docs */}
           {documentation ? (
             <div className="hidden flex-1 items-center space-x-4 sm:justify-end lg:flex">
-              <div className="hidden lg:flex lg:grow-0">
+              {/* <div className="hidden lg:flex lg:grow-0">
                 <DocsSearch />
               </div>
               <div className="flex lg:hidden">
                 <Icons.search className="size-6 text-muted-foreground" />
-              </div>
+              </div> */}
               <div className="flex space-x-4">
                 <Link
                   href={siteConfig.links.github}
@@ -115,16 +114,28 @@ export function NavBar({ scroll = false }: NavBarProps) {
               </Button>
             </Link>
           ) : status === "unauthenticated" ? (
-            <Button
-              className="hidden gap-2 px-5 md:flex"
-              variant="default"
-              size="sm"
-              rounded="full"
-              onClick={() => setShowSignInModal(true)}
-            >
-              <span>Sign In</span>
-              <Icons.arrowRight className="size-4" />
-            </Button>
+            <div className="hidden items-center gap-2 md:flex">
+              <Link href="/login">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  rounded="full"
+                >
+                  <span>Войти</span>
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button
+                  className="gap-2 px-5"
+                  variant="default"
+                  size="sm"
+                  rounded="full"
+                >
+                  <span>Регистрация</span>
+                  <Icons.arrowRight className="size-4" />
+                </Button>
+              </Link>
+            </div>
           ) : (
             <Skeleton className="hidden h-9 w-28 rounded-full lg:flex" />
           )}

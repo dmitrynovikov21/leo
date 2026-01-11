@@ -31,38 +31,55 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
   });
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
+  const [authError, setAuthError] = React.useState<string | null>(null);
   const searchParams = useSearchParams();
 
   async function onSubmit(data: FormData) {
     setIsLoading(true);
+    setAuthError(null);
 
-    const signInResult = await signIn("resend", {
-      email: data.email.toLowerCase(),
-      redirect: false,
-      callbackUrl: searchParams?.get("from") || "/dashboard",
-    });
+    try {
+      const signInResult = await signIn("credentials", {
+        email: data.email.toLowerCase(),
+        password: data.password,
+        redirect: false,
+      });
 
-    setIsLoading(false);
+      setIsLoading(false);
 
-    if (!signInResult?.ok) {
-      return toast.error("Something went wrong.", {
-        description: "Your sign in request failed. Please try again."
+      if (!signInResult?.ok || signInResult?.error) {
+        const errorMessage = "Неверный email или пароль";
+        setAuthError(errorMessage);
+        toast.error("Ошибка входа", {
+          description: errorMessage,
+        });
+        return;
+      }
+
+      // Success - redirect
+      toast.success("Успешный вход!");
+      window.location.href = searchParams?.get("from") || "/dashboard";
+    } catch (error) {
+      setIsLoading(false);
+      const errorMessage = "Произошла ошибка при входе. Попробуйте снова.";
+      setAuthError(errorMessage);
+      toast.error("Ошибка", {
+        description: errorMessage,
       });
     }
-
-    return toast.success("Check your email", {
-      description: "We sent you a login link. Be sure to check your spam too.",
-    });
   }
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid gap-2">
+        <div className="grid gap-4">
+          {authError && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+              {authError}
+            </div>
+          )}
           <div className="grid gap-1">
-            <Label className="sr-only" htmlFor="email">
-              Email
-            </Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               placeholder="name@example.com"
@@ -79,11 +96,27 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
               </p>
             )}
           </div>
+          <div className="grid gap-1">
+            <Label htmlFor="password">Пароль</Label>
+            <Input
+              id="password"
+              placeholder="••••••••"
+              type="password"
+              autoComplete="current-password"
+              disabled={isLoading || isGoogleLoading}
+              {...register("password")}
+            />
+            {errors?.password && (
+              <p className="px-1 text-xs text-red-600">
+                {errors.password.message}
+              </p>
+            )}
+          </div>
           <button className={cn(buttonVariants())} disabled={isLoading}>
             {isLoading && (
               <Icons.spinner className="mr-2 size-4 animate-spin" />
             )}
-            {type === "register" ? "Sign Up with Email" : "Sign In with Email"}
+            Войти
           </button>
         </div>
       </form>
@@ -93,7 +126,7 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
         </div>
         <div className="relative flex justify-center text-xs uppercase">
           <span className="bg-background px-2 text-muted-foreground">
-            Or continue with
+            Или войти через
           </span>
         </div>
       </div>

@@ -1,0 +1,46 @@
+services:
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    container_name: leo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: leo
+      POSTGRES_PASSWORD: leo_password
+      POSTGRES_DB: leo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leo -d leo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - leo_default
+
+  # Next.js app (production mode)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: leo-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - leo_default
+
+volumes:
+  postgres_data:
+
+networks:
+  leo_default:
+    external: true

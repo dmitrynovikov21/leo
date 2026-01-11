@@ -13,8 +13,6 @@ import { cn } from "@/lib/utils";
 import { DocsSidebarNav } from "@/components/docs/sidebar-nav";
 import { Icons } from "@/components/shared/icons";
 
-import { ModeToggle } from "./mode-toggle";
-
 export function NavMobile() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
@@ -132,7 +130,6 @@ export function NavMobile() {
             <Icons.gitHub className="size-6" />
             <span className="sr-only">GitHub</span>
           </Link>
-          <ModeToggle />
         </div>
       </nav>
     </>

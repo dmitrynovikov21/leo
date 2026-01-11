@@ -1,7 +1,7 @@
 import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
 
-export default function AgentOverviewPage() {
+export default function AgentOverviewPage({ params }: { params: { agentId: string } }) {
     return (
-        <AnalyticsDashboard />
+        <AnalyticsDashboard agentId={params.agentId} />
     )
 }

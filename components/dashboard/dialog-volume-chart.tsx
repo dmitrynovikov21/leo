@@ -8,42 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
-// Mock data
-const mockDialogData = {
-    "24h": [
-        { time: "00:00", count: 45 },
-        { time: "04:00", count: 29 },
-        { time: "08:00", count: 82 },
-        { time: "12:00", count: 101 },
-        { time: "16:00", count: 95 },
-        { time: "20:00", count: 67 },
-    ],
-    "7d": [
-        { day: "Пн", count: 120 },
-        { day: "Вт", count: 132 },
-        { day: "Ср", count: 101 },
-        { day: "Чт", count: 134 },
-        { day: "Пт", count: 190 },
-        { day: "Сб", count: 230 },
-        { day: "Вс", count: 100 },
-    ],
-    "30d": [
-        { week: "Н1", count: 520 },
-        { week: "Н2", count: 610 },
-        { week: "Н3", count: 580 },
-        { week: "Н4", count: 690 },
-    ],
-}
+import { DialogVolumeData } from "@/lib/data/types"
 
 interface DialogVolumeChartProps {
     className?: string
+    data?: DialogVolumeData
 }
 
-export function DialogVolumeChart({ className }: DialogVolumeChartProps) {
+export function DialogVolumeChart({ className, data }: DialogVolumeChartProps) {
     const t = useTranslations('Dashboard')
     const [timeframe, setTimeframe] = React.useState<"24h" | "7d" | "30d">("7d")
 
-    const data = mockDialogData[timeframe]
+    const chartData = data ? data[timeframe] : []
     const xAxisKey = timeframe === "24h" ? "time" : timeframe === "7d" ? "day" : "week"
 
     return (
@@ -68,7 +44,7 @@ export function DialogVolumeChart({ className }: DialogVolumeChartProps) {
             <CardContent className="pl-2">
                 <div className="h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />

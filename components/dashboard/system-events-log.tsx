@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 
+import { SystemEventData } from "@/lib/data/types"
+
 // Event types with small icons
-const eventIcons = {
+const eventIcons: Record<string, any> = {
     message: MessageCircle,
     warning: AlertTriangle,
     success: CheckCircle2,
@@ -18,47 +20,11 @@ const eventIcons = {
     bot: Bot,
 }
 
-// Mock compact events
-const mockEvents = [
-    {
-        id: "1",
-        type: "success" as const,
-        text: "New lead qualified via WhatsApp",
-        time: "2m ago",
-    },
-    {
-        id: "2",
-        type: "upload" as const,
-        text: "Document \"Pricing.pdf\" processed",
-        time: "5m ago",
-    },
-    {
-        id: "3",
-        type: "warning" as const,
-        text: "High latency detected on Telegram",
-        time: "1h ago",
-    },
-    {
-        id: "4",
-        type: "bot" as const,
-        text: "New agent \"Sales Bot\" deployed",
-        time: "3h ago",
-    },
-    {
-        id: "5",
-        type: "message" as const,
-        text: "Alice Support handled 45 chats",
-        time: "4h ago",
-    },
-    {
-        id: "6",
-        type: "success" as const,
-        text: "Integration with CRM connected",
-        time: "5h ago",
-    },
-]
+interface SystemEventsLogProps {
+    events?: SystemEventData[]
+}
 
-export function SystemEventsLog() {
+export function SystemEventsLog({ events = [] }: SystemEventsLogProps) {
     const t = useTranslations('Dashboard')
 
     return (
@@ -69,8 +35,8 @@ export function SystemEventsLog() {
             <CardContent>
                 <ScrollArea className="h-[420px] pr-3">
                     <div className="space-y-2">
-                        {mockEvents.map((event) => {
-                            const Icon = eventIcons[event.type]
+                        {events.map((event) => {
+                            const Icon = eventIcons[event.type] || eventIcons.message
 
                             return (
                                 <div key={event.id} className="flex items-start gap-2 py-1.5">

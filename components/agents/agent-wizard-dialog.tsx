@@ -2,8 +2,10 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bot, Wand2, Upload, FileText, CheckCircle2, ChevronLeft, ChevronRight, X, Sparkles } from "lucide-react"
+import { Bot, Wand2, Upload, FileText, CheckCircle2, ChevronLeft, ChevronRight, X, Sparkles, Loader2, Power } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -32,6 +34,8 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+// Import User Data Provider
+import { useUserData } from "@/components/providers/user-data-provider"
 
 // Schema
 const agentSchema = z.object({
@@ -44,7 +48,6 @@ const agentSchema = z.object({
 type AgentFormData = z.infer<typeof agentSchema>
 
 const steps = [
-    { id: 0, title: "Mode Selection" },
     { id: 1, title: "Basics" },
     { id: 2, title: "Persona" },
     { id: 3, title: "Knowledge" },
@@ -54,11 +57,21 @@ const steps = [
 export function AgentWizardDialog() {
     const t = useTranslations('Agents.wizard');
     const tCommon = useTranslations('Common');
+    const router = useRouter()
+    const { data: session } = useSession()
+    const { refreshAgents } = useUserData() // Context hook
 
     const [open, setOpen] = React.useState(false)
-    const [step, setStep] = React.useState(0)
+    const [step, setStep] = React.useState(1)
     const [isGenerating, setIsGenerating] = React.useState(false)
-    const [uploadedFiles, setUploadedFiles] = React.useState<string[]>([])
+    const [uploadedFiles, setUploadedFiles] = React.useState<{ name: string, file: File }[]>([])
+    const [chunks, setChunks] = React.useState<{ id: string, content: string }[]>([])
+    const [isParsing, setIsParsing] = React.useState(false)
+    const [isSavingChunks, setIsSavingChunks] = React.useState(false)
+    const [isStarting, setIsStarting] = React.useState(false)
+    const [chunksSaved, setChunksSaved] = React.useState(false)
+    const [createdAgentId, setCreatedAgentId] = React.useState<string | null>(null)
+    const [isCreatingAgent, setIsCreatingAgent] = React.useState(false)
 
     const form = useForm<AgentFormData>({
         resolver: zodResolver(agentSchema),
@@ -71,9 +84,12 @@ export function AgentWizardDialog() {
     })
 
     const resetWizard = () => {
-        setStep(0)
+        setStep(1)
         form.reset()
         setUploadedFiles([])
+        setChunks([])
+        setChunksSaved(false)
+        setCreatedAgentId(null)
         setOpen(false)
     }
 
@@ -82,53 +98,345 @@ export function AgentWizardDialog() {
             const result = await form.trigger(["name", "role", "description"])
             if (!result) return
         }
-        setStep((prev) => Math.min(prev + 1, steps.length - 1))
+
+        // Step 2 -> Step 3: создаём агента если ещё не создан
+        if (step === 2 && !createdAgentId) {
+            const success = await createAgent()
+            if (!success) return
+        }
+
+        // Step 3: нельзя идти дальше если есть несохранённые чанки
+        if (step === 3 && chunks.length > 0 && !chunksSaved) {
+            toast.error('Сохраните чанки перед тем как продолжить')
+            return
+        }
+        setStep((prev) => Math.min(prev + 1, steps.length))
+    }
+
+    // Создание агента через API
+    const createAgent = async (): Promise<boolean> => {
+        setIsCreatingAgent(true)
+
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+
+            if (!orchestratorUrl) {
+                // Mock если нет URL
+                const mockId = 'mock_agent_' + Date.now()
+                setCreatedAgentId(mockId)
+                toast.info('Агент создан (mock)')
+                return true
+            }
+
+            const response = await fetch(`${orchestratorUrl}/api/v1/agents`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: session?.user?.id,
+                    name: form.getValues('name'),
+                    role: form.getValues('role'),
+                    description: form.getValues('description'),
+                    systemPrompt: form.getValues('systemPrompt'),
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to create agent')
+            }
+
+            const data = await response.json()
+            setCreatedAgentId(data.id)
+
+            // Create initial prompt version (v1.0)
+            const systemPrompt = form.getValues('systemPrompt')
+            if (systemPrompt) {
+                try {
+                    await fetch(`${orchestratorUrl}/api/v1/agents/${data.id}/prompts`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            version: 'v1.0',
+                            content: systemPrompt,
+                            isActive: true,
+                        }),
+                    })
+                } catch (promptErr) {
+                    console.error('Failed to create initial prompt version:', promptErr)
+                }
+            }
+
+            await refreshAgents() // Refresh list
+            toast.success('Агент успешно создан!')
+            return true
+        } catch (error) {
+            console.error('Error creating agent:', error)
+            toast.error(tCommon('error'), {
+                description: 'Не удалось создать агента'
+            })
+            return false
+        } finally {
+            setIsCreatingAgent(false)
+        }
+    }
+
+    // Проверка можно ли нажать Далее
+    const canProceed = () => {
+        if (isParsing || isSavingChunks || isCreatingAgent) return false
+        if (step === 3 && chunks.length > 0 && !chunksSaved) return false
+        return true
     }
 
     const prevStep = () => {
-        setStep((prev) => Math.max(prev - 1, 0))
+        setStep((prev) => Math.max(prev - 1, 1))
     }
 
     const handleGeneratePersona = async () => {
+        const name = form.getValues("name")
+        const role = form.getValues("role")
         const desc = form.getValues("description")
+
         if (!desc) {
             toast.error(tCommon('error'), { description: t('enterDescFirst') })
             return
         }
 
         setIsGenerating(true)
-        // Simulate API streaming
-        const prompt = `You are a helpful AI assistant specialized in ${form.getValues("role") || "support"}. 
-Your goal is to assist users with ${desc}. 
-Maintain a professional and friendly tone. 
-Always verify information before answering.`
 
-        let currentText = ""
-        const words = prompt.split(" ")
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
 
-        for (let i = 0; i < words.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 50))
-            currentText += words[i] + " "
-            form.setValue("systemPrompt", currentText)
+            if (!gatewayUrl) {
+                // Fallback to mock if no gateway configured
+                const mockPrompt = `Ты — ${name || 'AI-ассистент'}, ${role || 'помощник'}. 
+${desc}
+
+Правила общения:
+- Отвечай вежливо и профессионально
+- Будь кратким, но информативным
+- Если не знаешь ответа — честно признайся
+- Не выходи за рамки своей роли`
+                form.setValue("systemPrompt", mockPrompt)
+                toast.info("Сгенерирован базовый промпт (AI Gateway не настроен)")
+                setIsGenerating(false)
+                return
+            }
+
+            const response = await fetch(`${gatewayUrl}/api/v1/generate-agent-prompt`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    agentName: name,
+                    role: role,
+                    description: desc,
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to generate prompt')
+            }
+
+            const data = await response.json()
+            form.setValue("systemPrompt", data.prompt || data.systemPrompt || "")
+            toast.success(t('promptGenerated') || 'Промпт успешно сгенерирован!')
+        } catch (error) {
+            console.error('Error generating persona:', error)
+            toast.error(tCommon('error'), {
+                description: 'Не удалось сгенерировать промпт. Попробуйте позже.'
+            })
+        } finally {
+            setIsGenerating(false)
         }
-
-        setIsGenerating(false)
     }
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
-        if (file) {
-            setUploadedFiles(prev => [...prev, file.name])
-            toast.success(t('fileUploaded'), { description: t('addedToKnowledge', { filename: file.name }) })
+        if (!file) return
+
+        setUploadedFiles(prev => [...prev, { name: file.name, file }])
+        setIsParsing(true)
+
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+
+            if (!gatewayUrl) {
+                // Mock chunks if no gateway
+                const mockChunks = [
+                    { id: '1', content: `Содержимое файла ${file.name} (mock)` },
+                    { id: '2', content: 'Это пример чанка для демонстрации.' },
+                ]
+                setChunks(prev => [...prev, ...mockChunks])
+                toast.info('Сгенерированы тестовые чанки (AI Gateway не настроен)')
+                setIsParsing(false)
+                return
+            }
+
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const response = await fetch(`${gatewayUrl}/api/v1/documents/parse-semantic`, {
+                method: 'POST',
+                body: formData,
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to parse document')
+            }
+
+            const data = await response.json()
+            const parsedChunks = (data.chunks || []).map((chunk: any, index: number) => ({
+                id: `${file.name}-${index}`,
+                content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
+            }))
+
+            setChunks(prev => [...prev, ...parsedChunks])
+            toast.success(t('fileUploaded'), {
+                description: `Создано ${parsedChunks.length} чанков`
+            })
+        } catch (error) {
+            console.error('Error parsing document:', error)
+            toast.error(tCommon('error'), {
+                description: 'Не удалось разобрать файл'
+            })
+        } finally {
+            setIsParsing(false)
         }
     }
 
-    const handleDeploy = () => {
-        const agentName = form.getValues("name")
-        toast.success(t('agentDeployed'), {
-            description: t('agentReady', { name: agentName }),
-        })
-        resetWizard()
+    const handleRemoveFile = (index: number) => {
+        setUploadedFiles(prev => prev.filter((_, i) => i !== index))
+    }
+
+    const handleChunkEdit = (id: string, newContent: string) => {
+        setChunks(prev => prev.map(chunk =>
+            chunk.id === id ? { ...chunk, content: newContent } : chunk
+        ))
+    }
+
+    const handleRemoveChunk = (id: string) => {
+        setChunks(prev => prev.filter(chunk => chunk.id !== id))
+    }
+
+    const handleSaveChunks = async () => {
+        if (chunks.length === 0) {
+            toast.info('Нет чанков для сохранения')
+            return
+        }
+
+        setIsSavingChunks(true)
+
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+
+            if (!gatewayUrl) {
+                setChunksSaved(true)
+                toast.success('Чанки сохранены (mock)')
+                setIsSavingChunks(false)
+                return
+            }
+
+            const response = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    agentId: createdAgentId,
+                    userId: session?.user?.id,
+                    filename: uploadedFiles[0]?.name || 'documents',
+                    chunks: chunks.map((c, index) => ({
+                        index,
+                        text: c.content,
+                    })),
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to vectorize chunks')
+            }
+
+            setChunksSaved(true)
+            toast.success('Чанки успешно сохранены в базу знаний!')
+        } catch (error) {
+            console.error('Error saving chunks:', error)
+            toast.error(tCommon('error'), {
+                description: 'Не удалось сохранить чанки'
+            })
+        } finally {
+            setIsSavingChunks(false)
+        }
+    }
+
+    const handleStartAgent = async () => {
+        if (!createdAgentId) {
+            toast.error("Agent ID not found")
+            return
+        }
+
+        setIsStarting(true)
+        try {
+            // 1. Start Agent
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) {
+                // Mock start
+                await new Promise(resolve => setTimeout(resolve, 2000))
+                toast.success("Агент успешно запущен (Mock)!", {
+                    description: "Статус: RUNNING"
+                })
+                setOpen(false)
+                router.refresh()
+                return
+            }
+
+            const startRes = await fetch(`${orchestratorUrl}/api/v1/agents/${createdAgentId}/start`, {
+                method: 'POST'
+            })
+
+            if (!startRes.ok) {
+                throw new Error("Failed to start agent")
+            }
+
+            const startData = await startRes.json()
+
+            // 2. Poll Status if not running immediately
+            let status = startData.status
+            if (status !== 'RUNNING') {
+                // Simple poll: check 3 times with 2s interval
+                for (let i = 0; i < 3; i++) {
+                    await new Promise(r => setTimeout(r, 2000))
+                    const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${createdAgentId}/status`)
+                    if (statusRes.ok) {
+                        const statusData = await statusRes.json()
+                        status = statusData.agent?.status || statusData.status
+                        if (status === 'RUNNING') break
+                    }
+                }
+            }
+
+            if (status === 'RUNNING') {
+                toast.success(tCommon('success'), {
+                    description: "Агент успешно запущен и готов к работе!"
+                })
+                setOpen(false)
+                router.refresh()
+            } else {
+                toast.warning("Агент запущен, но статус неизвестен", {
+                    description: `Текущий статус: ${status}`
+                })
+                setOpen(false)
+            }
+
+        } catch (error) {
+            console.error(error)
+            toast.error(tCommon('error'), {
+                description: "Не удалось запустить агента. Попробуйте вручную из списка."
+            })
+        } finally {
+            setIsStarting(false)
+        }
     }
 
     const WizardSelectionCard = ({
@@ -159,7 +467,7 @@ Always verify information before answering.`
                     {t('hireNewAgent')}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl overflow-hidden sm:max-w-3xl">
+            <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col overflow-hidden sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle>{t('createNew')}</DialogTitle>
                     <DialogDescription>
@@ -178,33 +486,8 @@ Always verify information before answering.`
                     </div>
                 )}
 
-                <div className="min-h-[400px] overflow-y-auto px-1 py-4">
+                <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4">
                     <AnimatePresence mode="wait">
-                        {step === 0 && (
-                            <motion.div
-                                key="step0"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="grid gap-6 md:grid-cols-2 pt-8"
-                            >
-                                <WizardSelectionCard
-                                    icon={Bot}
-                                    title={t('expertMode')}
-                                    desc={t('expertModeDesc')}
-                                    onClick={() => {
-                                        toast.info(t('openingExpertMode'))
-                                        setOpen(false)
-                                    }}
-                                />
-                                <WizardSelectionCard
-                                    icon={Wand2}
-                                    title={t('guidedWizard')}
-                                    desc={t('guidedWizardDesc')}
-                                    onClick={() => setStep(1)}
-                                />
-                            </motion.div>
-                        )}
 
                         {step === 1 && (
                             <motion.div
@@ -304,7 +587,8 @@ Always verify information before answering.`
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-6"
                             >
-                                <div className="rounded-lg border border-dashed p-10 text-center hover:bg-muted/50 transition-colors">
+                                {/* File Upload */}
+                                <div className="rounded-lg border border-dashed p-6 text-center hover:bg-muted/50 transition-colors">
                                     <div className="flex flex-col items-center gap-4">
                                         <div className="rounded-full bg-primary/10 p-4">
                                             <Upload className="h-8 w-8 text-primary" />
@@ -317,19 +601,75 @@ Always verify information before answering.`
                                             type="file"
                                             className="max-w-xs cursor-pointer"
                                             onChange={handleFileUpload}
+                                            disabled={isParsing}
+                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/markdown"
                                         />
+                                        {isParsing && (
+                                            <p className="text-sm text-muted-foreground animate-pulse">
+                                                Обработка файла...
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
+                                {/* Uploaded Files */}
                                 {uploadedFiles.length > 0 && (
                                     <div className="space-y-2">
-                                        <Label>{t('uploadedFiles')}</Label>
+                                        <Label>Загруженные файлы</Label>
                                         <div className="grid gap-2">
                                             {uploadedFiles.map((file, i) => (
                                                 <div key={i} className="flex items-center gap-3 rounded-md border p-3">
                                                     <FileText className="h-5 w-5 text-muted-foreground" />
-                                                    <span className="text-sm flex-1 truncate">{file}</span>
-                                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                                    <span className="text-sm flex-1 truncate">{file.name}</span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleRemoveFile(i)}
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Chunks Editor */}
+                                {chunks.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <Label>Чанки ({chunks.length})</Label>
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={handleSaveChunks}
+                                                disabled={isSavingChunks}
+                                            >
+                                                {isSavingChunks ? 'Сохранение...' : 'Сохранить в базу знаний'}
+                                            </Button>
+                                        </div>
+                                        <div className="max-h-[300px] overflow-y-auto space-y-3">
+                                            {chunks.map((chunk, i) => (
+                                                <div key={chunk.id} className="rounded-md border p-3 space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Чанк {i + 1}
+                                                        </span>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                                            onClick={() => handleRemoveChunk(chunk.id)}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                    <Textarea
+                                                        value={chunk.content}
+                                                        onChange={(e) => handleChunkEdit(chunk.id, e.target.value)}
+                                                        className="min-h-[80px] text-sm"
+                                                    />
                                                 </div>
                                             ))}
                                         </div>
@@ -373,7 +713,7 @@ Always verify information before answering.`
                                         <div className="flex gap-2">
                                             {uploadedFiles.length > 0 ? (
                                                 uploadedFiles.map((f, i) => (
-                                                    <Badge key={i} variant="secondary">{f}</Badge>
+                                                    <Badge key={i} variant="secondary">{f.name}</Badge>
                                                 ))
                                             ) : (
                                                 <span className="text-sm text-muted-foreground italic">{t('noFilesUploaded')}</span>
@@ -401,14 +741,27 @@ Always verify information before answering.`
                                 {t('back')}
                             </Button>
                             {step < 4 ? (
-                                <Button onClick={nextStep}>
-                                    {t('next')}
+                                <Button onClick={nextStep} disabled={!canProceed()}>
+                                    {isParsing ? 'Обработка...' : t('next')}
                                     <ChevronRight className="ml-2 h-4 w-4" />
                                 </Button>
                             ) : (
-                                <Button onClick={handleDeploy} className="bg-emerald-600 hover:bg-emerald-700">
-                                    {t('deployAgent')}
-                                    <Wand2 className="ml-2 h-4 w-4" />
+                                <Button
+                                    onClick={handleStartAgent}
+                                    disabled={isStarting}
+                                    className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
+                                >
+                                    {isStarting ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            {t('starting')}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {t('startAgent')}
+                                            <Power className="ml-2 h-4 w-4" />
+                                        </>
+                                    )}
                                 </Button>
                             )}
                         </div>

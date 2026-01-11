@@ -8,15 +8,8 @@ export const getCurrentUser = cache(async () => {
     const session = await auth();
     if (session?.user) return session.user;
   } catch (error) {
-    console.error("Auth failed, using mock user for migration review");
+    console.error("Auth error:", error);
   }
 
-  // MOCK USER FOR MIGRATION REVIEW
-  return {
-    id: "mock-user-id",
-    name: "Demo User",
-    email: "demo@example.com",
-    image: null,
-    role: "ADMIN", // Admin role to see all menus
-  };
+  return null;
 });

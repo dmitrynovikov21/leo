@@ -9,35 +9,25 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-// Mock channels data
-const mockChannels = [
-    {
-        id: "whatsapp",
-        name: "WhatsApp Business",
-        icon: MessageSquare,
-        status: "connected" as const,
-        lastActivity: "2 мин назад",
-        color: "#25D366",
-    },
-    {
-        id: "telegram",
-        name: "Telegram Bot",
-        icon: Send,
-        status: "connected" as const,
-        lastActivity: "5 мин назад",
-        color: "#0088cc",
-    },
-    {
-        id: "web",
-        name: "Web Chat Widget",
-        icon: Globe,
-        status: "connected" as const,
-        lastActivity: "1 час назад",
-        color: "#6366f1",
-    },
-]
+import { ChannelData } from "@/lib/data/types"
 
-export function ActiveChannels() {
+const CHANNEL_ICONS = {
+    whatsapp: MessageSquare,
+    telegram: Send,
+    web: Globe
+}
+
+const CHANNEL_COLORS = {
+    whatsapp: "#25D366",
+    telegram: "#0088cc",
+    web: "#6366f1"
+}
+
+interface ActiveChannelsProps {
+    channels?: ChannelData[]
+}
+
+export function ActiveChannels({ channels = [] }: ActiveChannelsProps) {
     const t = useTranslations('Dashboard')
 
     return (
@@ -53,8 +43,10 @@ export function ActiveChannels() {
             </CardHeader>
             <CardContent>
                 <div className="space-y-3">
-                    {mockChannels.map((channel) => {
-                        const Icon = channel.icon
+                    {channels.map((channel) => {
+                        const Icon = CHANNEL_ICONS[channel.type] || Globe
+                        const color = CHANNEL_COLORS[channel.type] || "#6366f1"
+
                         return (
                             <div
                                 key={channel.id}
@@ -63,7 +55,7 @@ export function ActiveChannels() {
                                 {/* Icon with channel color */}
                                 <div
                                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                                    style={{ backgroundColor: `${channel.color}15`, color: channel.color }}
+                                    style={{ backgroundColor: `${color}15`, color: color }}
                                 >
                                     <Icon className="h-5 w-5" />
                                 </div>

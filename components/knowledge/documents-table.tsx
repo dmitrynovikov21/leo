@@ -35,12 +35,13 @@ import { cn } from "@/lib/utils"
 interface DocumentsTableProps {
     onInspect?: (doc: Document) => void
     onRowClick?: (doc: Document) => void
+    onDelete?: (doc: Document) => void
     docs?: Document[]
 }
 
-export function DocumentsTable({ onInspect, onRowClick, docs }: DocumentsTableProps) {
-    const t = useTranslations('Knowledge');
+export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: DocumentsTableProps) {
     const tCommon = useTranslations('Common');
+    const t = useTranslations('Knowledge');
 
     // Use passed docs or default to all unique logic if not provided (fallback)
     const documents = docs || mockDocuments
@@ -67,9 +68,7 @@ export function DocumentsTable({ onInspect, onRowClick, docs }: DocumentsTablePr
                             <TableCell className="font-medium">
                                 <div className="flex items-center gap-3">
                                     <div className={cn(
-                                        "p-2.5 rounded-xl bg-zinc-100 text-zinc-500 group-hover:bg-white group-hover:shadow-sm transition-all border border-transparent group-hover:border-zinc-200/50",
-                                        doc.type === 'spreadsheet' && "bg-green-50 text-green-600 group-hover:bg-green-50 group-hover:border-green-100",
-                                        doc.type === 'folder' && "bg-blue-50 text-blue-600 group-hover:bg-blue-50 group-hover:border-blue-100"
+                                        "p-2.5 rounded-xl bg-transparent text-zinc-500 group-hover:bg-white group-hover:shadow-sm transition-all border border-transparent group-hover:border-zinc-200/50"
                                     )}>
                                         {doc.type === 'spreadsheet' ? <Sheet size={16} /> : doc.type === 'folder' ? <Folder size={16} fill="currentColor" className="opacity-50" /> : <FileText size={16} />}
                                     </div>
@@ -96,11 +95,11 @@ export function DocumentsTable({ onInspect, onRowClick, docs }: DocumentsTablePr
                             </TableCell>
                             <TableCell className="text-zinc-500 text-sm font-mono">{doc.size}</TableCell>
                             <TableCell>
-                                <Badge variant={doc.status === 'indexed' ? 'default' : 'secondary'} className={cn(
+                                <Badge variant={(doc.status === 'ready' || doc.status === 'vectorized') ? 'default' : 'secondary'} className={cn(
                                     "rounded-lg px-2 py-0.5 font-medium text-xs shadow-none border",
-                                    doc.status === 'indexed' ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                    (doc.status === 'ready' || doc.status === 'vectorized') ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
                                 )}>
-                                    {doc.status === 'indexed' ? 'Индексирован' : 'Обработка'}
+                                    {(doc.status === 'ready' || doc.status === 'vectorized') ? 'Индексирован' : 'Обработка'}
                                 </Badge>
                             </TableCell>
                             <TableCell className="text-right">
@@ -113,12 +112,15 @@ export function DocumentsTable({ onInspect, onRowClick, docs }: DocumentsTablePr
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="rounded-xl border-zinc-200 shadow-lg">
                                         <DropdownMenuLabel>Действия</DropdownMenuLabel>
-                                        <DropdownMenuItem onClick={() => onInspect?.(doc)} className="rounded-lg">
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onInspect?.(doc) }} className="rounded-lg">
                                             <Search className="mr-2 h-4 w-4" />
                                             Просмотр
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem className="text-red-600 rounded-lg focus:bg-red-50 focus:text-red-700">
+                                        <DropdownMenuItem
+                                            onClick={(e) => { e.stopPropagation(); onDelete?.(doc) }}
+                                            className="text-red-600 rounded-lg focus:bg-red-50 focus:text-red-700"
+                                        >
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Удалить
                                         </DropdownMenuItem>

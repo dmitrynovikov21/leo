@@ -9,11 +9,13 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 // Mock system status
-const mockSystemServices = [
-    { name: "OpenAI API", status: "operational" as const },
-    { name: "Database", status: "operational" as const },
-    { name: "Vector Store", status: "operational" as const },
-    { name: "Message Queue", status: "operational" as const },
+type ServiceStatus = "operational" | "degraded" | "down"
+
+const mockSystemServices: Array<{ name: string; status: ServiceStatus }> = [
+    { name: "OpenAI API", status: "operational" },
+    { name: "Database", status: "operational" },
+    { name: "Vector Store", status: "operational" },
+    { name: "Message Queue", status: "operational" },
 ]
 
 export function SystemHealthMini() {

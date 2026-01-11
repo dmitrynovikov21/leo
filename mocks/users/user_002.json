@@ -1,0 +1,175 @@
+{
+    "profile": {
+        "id": "user_002",
+        "name": "Alice Smith",
+        "email": "alice@corp.com",
+        "role": "Admin",
+        "plan": "enterprise",
+        "balance": 50
+    },
+    "dashboard": {
+        "kpis": [
+            {
+                "id": "total-dialogs",
+                "title": "totalDialogs",
+                "value": "15,000",
+                "change": 25.5,
+                "trend": "up",
+                "icon": "message-square"
+            },
+            {
+                "id": "total-messages",
+                "title": "totalMessages",
+                "value": "120k",
+                "change": 15.2,
+                "trend": "up",
+                "icon": "trending-up"
+            },
+            {
+                "id": "automation-rate",
+                "title": "automationRate",
+                "value": "99.5%",
+                "change": 1.2,
+                "trend": "up",
+                "icon": "zap"
+            },
+            {
+                "id": "cost-efficiency",
+                "title": "costEfficiency",
+                "value": "$5,200",
+                "change": -5.0,
+                "trend": "down",
+                "icon": "wallet"
+            }
+        ],
+        "recentAgents": [],
+        "charts": {
+            "volume": {
+                "24h": [
+                    {
+                        "time": "00:00",
+                        "count": 145
+                    },
+                    {
+                        "time": "04:00",
+                        "count": 129
+                    },
+                    {
+                        "time": "08:00",
+                        "count": 282
+                    },
+                    {
+                        "time": "12:00",
+                        "count": 401
+                    },
+                    {
+                        "time": "16:00",
+                        "count": 395
+                    },
+                    {
+                        "time": "20:00",
+                        "count": 167
+                    }
+                ],
+                "7d": [
+                    {
+                        "day": "Пн",
+                        "count": 920
+                    },
+                    {
+                        "day": "Вт",
+                        "count": 1132
+                    },
+                    {
+                        "day": "Ср",
+                        "count": 801
+                    },
+                    {
+                        "day": "Чт",
+                        "count": 1234
+                    },
+                    {
+                        "day": "Пт",
+                        "count": 1490
+                    },
+                    {
+                        "day": "Сб",
+                        "count": 1230
+                    },
+                    {
+                        "day": "Вс",
+                        "count": 500
+                    }
+                ],
+                "30d": [
+                    {
+                        "week": "Н1",
+                        "count": 3520
+                    },
+                    {
+                        "week": "Н2",
+                        "count": 4610
+                    },
+                    {
+                        "week": "Н3",
+                        "count": 4580
+                    },
+                    {
+                        "week": "Н4",
+                        "count": 5690
+                    }
+                ]
+            },
+            "trafficSources": [
+                {
+                    "name": "WhatsApp",
+                    "value": 15
+                },
+                {
+                    "name": "Telegram",
+                    "value": 75
+                },
+                {
+                    "name": "Web Widget",
+                    "value": 10
+                }
+            ]
+        },
+        "activeChannels": [
+            {
+                "id": "whatsapp",
+                "name": "WhatsApp Business",
+                "type": "whatsapp",
+                "status": "disconnected",
+                "lastActivity": "2 days ago"
+            },
+            {
+                "id": "telegram",
+                "name": "Telegram Bot",
+                "type": "telegram",
+                "status": "connected",
+                "lastActivity": "1 min ago"
+            }
+        ],
+        "systemEvents": [
+            {
+                "id": "1",
+                "type": "warning",
+                "text": "WhatsApp connection lost",
+                "time": "2d ago"
+            },
+            {
+                "id": "2",
+                "type": "message",
+                "text": "Telegram webhook updated",
+                "time": "5m ago"
+            }
+        ]
+    },
+    "agents": [],
+    "analytics": {
+        "kpis": [],
+        "volume": [],
+        "agentStats": []
+    }
+}

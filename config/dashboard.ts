@@ -51,20 +51,28 @@ export const sidebarLinks: SidebarNavItem[] = [
         icon: "user",
         title: "Agents.title",
       },
+      // Knowledge removed - now individual per bot
+      // {
+      //   href: "/dashboard/knowledge",
+      //   icon: "bookOpen",
+      //   title: "Knowledge.title",
+      // },
+      // Sources removed per user request
+      // {
+      //   href: "/dashboard/sources",
+      //   icon: "laptop",
+      //   title: "Источники",
+      // },
       {
-        href: "/dashboard/knowledge",
-        icon: "bookOpen",
-        title: "Knowledge.title",
+        href: "/dashboard/billing",
+        icon: "billing",
+        title: "Билинг",
       },
       {
         href: "/dashboard/inbox",
         icon: "messages",
-        title: "Inbox.title",
-      },
-      {
-        href: "/dashboard/billing",
-        icon: "billing",
-        title: "Billing.title",
+        title: "Входящие (Скоро)",
+        disabled: true,
       },
     ],
   },

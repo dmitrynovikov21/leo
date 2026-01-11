@@ -2,8 +2,8 @@ import createMiddleware from "next-intl/middleware";
 import { auth } from "@/auth";
 
 const intlMiddleware = createMiddleware({
-    locales: ["en", "ru"],
-    defaultLocale: "en",
+    locales: ["ru"],
+    defaultLocale: "ru",
     localePrefix: "always"
 });
 

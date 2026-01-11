@@ -1,15 +1,36 @@
 "use client"
 
 import { Bot } from "lucide-react"
+import { useTranslations } from "next-intl"
+
 import { AgentWizardDialog } from "@/components/agents/agent-wizard-dialog"
 import { AgentCard } from "@/components/agents/agent-card"
-import { mockAgents } from "@/mocks/agents"
-
-import { useTranslations } from "next-intl"
+import { useUser } from "@/components/providers/user-data-provider"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AgentsPage() {
     const t = useTranslations('Agents');
-    const hasAgents = mockAgents.length > 0
+    const { agents, isLoading } = useUser()
+
+    const hasAgents = agents.length > 0
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-1 flex-col gap-8 p-6">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-96" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map((i) => (
+                        <Skeleton key={i} className="h-[200px] w-full rounded-xl" />
+                    ))}
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="flex flex-1 flex-col gap-8 p-6">
@@ -28,7 +49,7 @@ export default function AgentsPage() {
             {/* Agents Grid */}
             {hasAgents ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {mockAgents.map((agent) => (
+                    {agents.map((agent) => (
                         <AgentCard key={agent.id} agent={agent} />
                     ))}
                 </div>
