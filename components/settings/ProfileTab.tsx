@@ -22,8 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function ProfileTab() {
     const { avatar, setAvatar } = useUserPreferences()
-    const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
     const [formData, setFormData] = useState({
         name: '',
         email: '',

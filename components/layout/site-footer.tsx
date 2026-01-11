@@ -4,8 +4,8 @@ import Link from "next/link";
 import { footerLinks, siteConfig } from "@/config/site";
 import { cn } from "@/lib/utils";
 
-import { NewsletterForm } from "../forms/newsletter-form";
 import { Icons } from "../shared/icons";
+import { NewsletterForm } from "../forms/newsletter-form";
 
 export function SiteFooter({ className }: React.HTMLAttributes<HTMLElement>) {
   return (

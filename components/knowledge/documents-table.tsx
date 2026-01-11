@@ -40,8 +40,8 @@ interface DocumentsTableProps {
 }
 
 export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: DocumentsTableProps) {
-    const t = useTranslations('Knowledge');
     const tCommon = useTranslations('Common');
+    const t = useTranslations('Knowledge');
 
     // Use passed docs or default to all unique logic if not provided (fallback)
     const documents = docs || mockDocuments

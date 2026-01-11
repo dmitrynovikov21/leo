@@ -1,6 +1,6 @@
 import "@/styles/globals.css";
 
-import { fontGeistSans, fontGeistMono, fontHeading, fontSans, fontUrban } from "@/assets/fonts";
+import { fontGeistMono, fontGeistSans, fontHeading, fontSans, fontUrban } from "@/assets/fonts";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { NextIntlClientProvider } from 'next-intl';

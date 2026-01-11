@@ -11,8 +11,8 @@ import { TrafficSourceData } from "@/lib/data/types"
 
 // Channel colors
 const COLORS: Record<string, string> = {
-    whatsapp: "#25D366",
     telegram: "#0088cc",
+    whatsapp: "#25D366",
     web: "#6366f1",
     // Fallback colors for other sources
     other: "#a1a1aa"
