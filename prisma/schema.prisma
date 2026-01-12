@@ -81,6 +81,7 @@ model User {
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 
   userSessions UserSession[]
+  libraryItems LibraryItem[]
 
   @@map(name: "users")
 }
@@ -301,5 +302,37 @@ model AgentNote {
 
   @@index([agentId])
   @@map("agent_notes")
+}
+
+model LibraryItem {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String   @db.VarChar(255) // filename or note title
+  type      String   @db.VarChar(50)  // 'FILE' or 'NOTE'
+  content   String?  @db.Text         // for notes
+  fileUrl   String?  @map("file_url") // for files
+  fileSize  Int?     @map("file_size")
+  mimeType  String?  @map("mime_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks    LibraryChunk[]
+
+  @@index([userId])
+  @@map("library_items")
+}
+
+model LibraryChunk {
+  id            String      @id @default(cuid())
+  libraryItemId String      @map("library_item_id")
+  content       String      @db.Text
+  chunkIndex    Int         @map("chunk_index")
+  metadata      Json?
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  libraryItem   LibraryItem @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+
+  @@index([libraryItemId])
+  @@map("library_chunks")
 }
 

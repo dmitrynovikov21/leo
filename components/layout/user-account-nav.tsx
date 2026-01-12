@@ -20,7 +20,12 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 
 import { useUserPreferences } from "@/components/providers/user-preferences-provider";
 
-export function UserAccountNav() {
+interface UserAccountNavProps {
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "start" | "center" | "end";
+}
+
+export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNavProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const user = session?.user ? {
@@ -139,7 +144,7 @@ export function UserAccountNav() {
           className="size-8"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align={align} side={side} sideOffset={10}>
         <div className="flex items-center justify-start gap-2 p-2">
           <div className="flex flex-col space-y-1 leading-none">
             {user?.name ? <p className="font-medium">{user.name}</p> : <div className="h-4 w-24 bg-muted animate-pulse rounded" />}
@@ -156,7 +161,7 @@ export function UserAccountNav() {
           <DropdownMenuItem asChild>
             <Link href="/admin" className="flex items-center space-x-2.5">
               <Lock className="size-4" />
-              <p className="text-sm">Admin</p>
+              <p className="text-sm">Админ</p>
             </Link>
           </DropdownMenuItem>
         ) : null}
@@ -164,7 +169,7 @@ export function UserAccountNav() {
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="flex items-center space-x-2.5">
             <LayoutDashboard className="size-4" />
-            <p className="text-sm">Dashboard</p>
+            <p className="text-sm">Дашборд</p>
           </Link>
         </DropdownMenuItem>
 
@@ -175,7 +180,7 @@ export function UserAccountNav() {
             className="flex items-center space-x-2.5"
           >
             <Settings className="size-4" />
-            <p className="text-sm">Settings</p>
+            <p className="text-sm">Настройки</p>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -190,7 +195,7 @@ export function UserAccountNav() {
         >
           <div className="flex items-center space-x-2.5">
             <LogOut className="size-4" />
-            <p className="text-sm">Log out </p>
+            <p className="text-sm">Выйти</p>
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

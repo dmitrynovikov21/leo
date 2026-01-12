@@ -15,6 +15,11 @@ import { SpaceSelector } from "@/components/knowledge/space-selector"
 import { DocumentsTable } from "@/components/knowledge/documents-table"
 import { cn } from "@/lib/utils"
 import { NoteEditorDialog, Note } from "@/components/knowledge/note-editor-dialog"
+import { BookOpen } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { getLibraryItems, getLibraryItemChunks, LibraryItemWithChunks } from "@/actions/library"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 
 
 export default function KnowledgePage({ params }: { params: { agentId: string } }) {
@@ -39,6 +44,12 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
     const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
     const [isSavingNote, setIsSavingNote] = React.useState(false)
 
+    // Library Import State
+    const [isLibraryDialogOpen, setIsLibraryDialogOpen] = React.useState(false)
+    const [libraryItems, setLibraryItems] = React.useState<LibraryItemWithChunks[]>([])
+    const [isLoadingLibrary, setIsLoadingLibrary] = React.useState(false)
+    const [importingItem, setImportingItem] = React.useState<string | null>(null)
+
     // --- Handlers ---
 
     const fetchDocuments = React.useCallback(async () => {
@@ -46,7 +57,12 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
             const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
             if (!gatewayUrl) return
 
-            const response = await fetch(`${gatewayUrl}/api/v1/agents/${params.agentId}/documents`)
+            const response = await fetch(`${gatewayUrl}/api/v1/agents/${params.agentId}/documents`, {
+                cache: 'no-store',
+                headers: {
+                    'Pragma': 'no-cache'
+                }
+            })
 
             if (response.ok) {
                 const data = await response.json()
@@ -63,6 +79,7 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
             }
         } catch (error) {
             console.error('Error fetching documents:', error)
+            toast.error("Failed to refresh documents list")
         }
     }, [params.agentId])
 
@@ -160,6 +177,71 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
     const handleOpenEditNote = (note: Note) => {
         setEditingNote(note)
         setIsNoteDialogOpen(true)
+        setIsNoteDialogOpen(true)
+    }
+
+    // Library Handler
+    const handleOpenLibrary = async () => {
+        setIsLibraryDialogOpen(true)
+        setIsLoadingLibrary(true)
+        try {
+            const items = await getLibraryItems()
+            setLibraryItems(items)
+        } catch (error) {
+            toast.error("Failed to load library")
+        } finally {
+            setIsLoadingLibrary(false)
+        }
+    }
+
+    const handleImportFromLibrary = async (item: LibraryItemWithChunks) => {
+        setImportingItem(item.id)
+        try {
+            const chunks = await getLibraryItemChunks(item.id)
+            if (!chunks || chunks.length === 0) {
+                toast.error("Item has no chunks")
+                return
+            }
+
+            // Vectorize
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+            if (!gatewayUrl) return
+
+            const payload = {
+                agentId: params.agentId,
+                userId: session?.user?.id,
+                filename: item.name,
+                fileSize: item.fileSize || 0,
+                mimeType: item.mimeType || item.type,
+                chunks: chunks.map((c) => ({
+                    index: c.chunkIndex,
+                    text: c.content
+                })),
+            }
+
+            const response = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+
+            if (!response.ok) throw new Error('Failed to vectorize')
+
+            toast.success('Imported from Library!')
+            setIsLibraryDialogOpen(false)
+
+            // Wait a bit for DB propagation then refresh
+            setTimeout(() => {
+                fetchDocuments()
+                window.location.reload() // Force reload to be sure if router.refresh() is not enough for table state
+            }, 1000)
+
+        } catch (error) {
+            console.error(error)
+            toast.error("Import failed")
+        } finally {
+            setImportingItem(null)
+        }
     }
 
     // 1. File Upload & Parsing
@@ -379,6 +461,22 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                 </label>
                             </div>
 
+                            {/* Import from Library */}
+                            <div
+                                className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-8 hover:bg-zinc-50 hover:border-primary/50 transition-colors cursor-pointer"
+                                onClick={handleOpenLibrary}
+                            >
+                                <div className="flex flex-col items-center justify-center gap-3">
+                                    <div className="p-4 rounded-full bg-white shadow-sm border">
+                                        <BookOpen className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <p className="font-semibold text-zinc-900">Импорт из библиотеки</p>
+                                        <p className="text-xs text-muted-foreground">Выбрать из готовых материалов</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Create Note */}
                             <div
                                 onClick={handleOpenCreateNote}
@@ -513,10 +611,59 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                 open={isNoteDialogOpen}
                 onOpenChange={setIsNoteDialogOpen}
                 note={editingNote}
-                mode={editingNote ? 'edit' : 'create'}
                 onSave={handleSaveNote}
                 onDelete={handleDeleteNote}
             />
+            {/* Library Import Dialog */}
+            <Dialog open={isLibraryDialogOpen} onOpenChange={setIsLibraryDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Импорт из библиотеки</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="min-h-[300px]">
+                        {isLoadingLibrary ? (
+                            <div className="flex items-center justify-center h-40">
+                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : libraryItems.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                                <p>Библиотека пуста</p>
+                                <Button variant="link" onClick={() => window.open('/dashboard/knowledge', '_blank')}>Перейти в библиотеку</Button>
+                            </div>
+                        ) : (
+                            <ScrollArea className="h-[400px] pr-4">
+                                <div className="space-y-2">
+                                    {libraryItems.map((item) => (
+                                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 rounded bg-muted">
+                                                    {item.type === 'NOTE' ? <StickyNote className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm">{item.name}</p>
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                                                        <span>•</span>
+                                                        <span>{item._count.chunks} chunks</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => handleImportFromLibrary(item)}
+                                                disabled={!!importingItem}
+                                            >
+                                                {importingItem === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Импорт"}
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
