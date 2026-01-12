@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { Sparkles } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -85,15 +86,17 @@ export function TrafficSourceChart({ data = [] }: TrafficSourceChartProps) {
                 </div>
 
                 {/* Overlay Badge */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
-                    <div className="flex flex-col items-center gap-2">
-                        <Badge
-                            variant="secondary"
-                            className="text-base font-semibold px-6 py-2 bg-gradient-to-r from-zinc-900 to-zinc-700 text-white shadow-lg border-0 animate-pulse"
-                        >
-                            🚀 Скоро
-                        </Badge>
-                        <span className="text-xs text-zinc-500">Аналитика в разработке</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[2px] z-10 transition-all duration-500">
+                    <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 ring-1 ring-black/5 mx-6">
+                        <div className="p-3 rounded-full bg-linear-to-br from-violet-50 to-fuchsia-50 border border-violet-100/50 shadow-inner">
+                            <Sparkles className="h-5 w-5 text-violet-500" />
+                        </div>
+                        <div className="text-center space-y-1.5">
+                            <h4 className="text-sm font-bold text-zinc-900 tracking-tight">Скоро доступно</h4>
+                            <p className="text-xs text-zinc-500 leading-relaxed max-w-[200px]">
+                                Мы работаем над продвинутой аналитикой источников трафика
+                            </p>
+                        </div>
                     </div>
                 </div>
             </CardContent>

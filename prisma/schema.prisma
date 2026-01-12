@@ -160,6 +160,7 @@ model Agent {
   summaries       AgentSummary[]
   tokenUsage      TokenUsage[]
   promptVersions  SystemPromptVersion[]
+  notes           AgentNote[]
   
   @@index([userId])
   @@map("agents")
@@ -285,5 +286,20 @@ model AgentSummary {
   
   @@index([agentId, telegramUserId])
   @@map("agent_summaries")
+}
+
+model AgentNote {
+  id        String   @id @default(cuid())
+  agentId   String   @map("agent_id")
+  title     String   @db.VarChar(255)
+  content   String   @db.Text
+  vectorId  String?  @map("vector_id") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@map("agent_notes")
 }
 

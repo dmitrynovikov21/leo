@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { Send, Phone, MessageSquare, MessageCircle, ArrowRight, CheckCircle2 } from "lucide-react"
+import { Send, Phone, MessageSquare, MessageCircle, ArrowRight, CheckCircle2, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -86,8 +86,10 @@ export default function SourcesPage() {
                         <Card
                             key={source.id}
                             className={cn(
-                                "group flex flex-col h-full transition-all duration-200 border-zinc-200/50 shadow-sm rounded-2xl bg-white overflow-hidden",
-                                source.status === 'active' ? "hover:shadow-md hover:border-zinc-300" : "opacity-70 bg-white grayscale-[0.5]"
+                                "group flex flex-col h-full transition-all duration-300 border-zinc-200/50 shadow-sm rounded-2xl bg-white overflow-hidden relative",
+                                source.status === 'active'
+                                    ? "hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-zinc-300 hover:-translate-y-1"
+                                    : "opacity-80"
                             )}
                         >
                             <CardHeader className="pb-4">
@@ -106,7 +108,6 @@ export default function SourcesPage() {
                             </CardHeader>
 
                             <CardContent className="flex-1">
-                                {/* Spacer content if needed, currently empty to push footer down */}
                             </CardContent>
 
                             <CardFooter className="pt-0 pb-6">
@@ -128,16 +129,21 @@ export default function SourcesPage() {
                                         </Button>
                                     )
                                 ) : (
-                                    <div className="w-full flex items-center justify-center h-10">
-                                        <Badge
-                                            variant="secondary"
-                                            className="bg-zinc-100 text-zinc-500 hover:bg-zinc-100 border-zinc-200 px-3 py-1 rounded-lg"
-                                        >
-                                            Скоро
-                                        </Badge>
-                                    </div>
+                                    <div className="w-full h-10" /> // Spacer
                                 )}
                             </CardFooter>
+
+                            {/* Premium Overlay for Coming Soon */}
+                            {source.status === 'coming_soon' && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 transition-all duration-500">
+                                    <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 ring-1 ring-black/5 mx-6 transform transition-transform group-hover:scale-105">
+                                        <div className="text-center space-y-1">
+                                            <h4 className="text-sm font-bold text-zinc-900 tracking-tight">Скоро</h4>
+                                            <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400">В разработке</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </Card>
                     )
 

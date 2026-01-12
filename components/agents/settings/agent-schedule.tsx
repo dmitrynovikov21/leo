@@ -34,7 +34,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 
-const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 const hours = Array.from({ length: 24 }, (_, i) => i)
 
 interface Agent {

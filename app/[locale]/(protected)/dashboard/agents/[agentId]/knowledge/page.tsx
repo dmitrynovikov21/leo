@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { UploadCloud, FileText, Zap, X, Save, Loader2, Trash2, Wand2 } from "lucide-react"
+import { UploadCloud, FileText, Zap, X, Save, Loader2, Trash2, Wand2, StickyNote } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { AnimatePresence, motion } from "framer-motion"
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { SpaceSelector } from "@/components/knowledge/space-selector"
 import { DocumentsTable } from "@/components/knowledge/documents-table"
 import { cn } from "@/lib/utils"
+import { NoteEditorDialog, Note } from "@/components/knowledge/note-editor-dialog"
 
 
 export default function KnowledgePage({ params }: { params: { agentId: string } }) {
@@ -31,6 +32,12 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
     const [isParsing, setIsParsing] = React.useState(false)
     const [isSaving, setIsSaving] = React.useState(false)
     const [editorMode, setEditorMode] = React.useState<'idle' | 'parsing' | 'editing'>('idle')
+
+    // Notes State
+    const [notes, setNotes] = React.useState<Note[]>([])
+    const [editingNote, setEditingNote] = React.useState<Note | undefined>(undefined)
+    const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
+    const [isSavingNote, setIsSavingNote] = React.useState(false)
 
     // --- Handlers ---
 
@@ -61,7 +68,99 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
 
     React.useEffect(() => {
         fetchDocuments()
+        fetchNotes()
     }, [fetchDocuments])
+
+    // --- Notes Handlers ---
+    const fetchNotes = async () => {
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) return
+
+            const response = await fetch(`${orchestratorUrl}/api/v1/agents/${params.agentId}/notes`)
+            if (response.ok) {
+                const data = await response.json()
+                setNotes(data || [])
+            }
+        } catch (error) {
+            console.error('Error fetching notes:', error)
+        }
+    }
+
+    const handleSaveNote = async (noteData: Partial<Note>) => {
+        setIsSavingNote(true)
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) {
+                toast.error("Orchestrator URL not configured")
+                return
+            }
+
+            const isEdit = !!noteData.id
+
+            const response = await fetch(
+                isEdit
+                    ? `${orchestratorUrl}/api/v1/agents/${params.agentId}/notes/${noteData.id}`
+                    : `${orchestratorUrl}/api/v1/agents/${params.agentId}/notes`,
+                {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: noteData.title,
+                        content: noteData.content
+                    })
+                }
+            )
+
+            if (!response.ok) throw new Error('Failed to save note')
+
+            toast.success(isEdit ? "Заметка обновлена и перевекторизована" : "Заметка создана и векторизована")
+            fetchNotes()
+            fetchDocuments() // Refresh documents list too
+            setIsNoteDialogOpen(false)
+            setEditingNote(undefined)
+        } catch (error) {
+            console.error('Error saving note:', error)
+            toast.error("Ошибка сохранения заметки")
+        } finally {
+            setIsSavingNote(false)
+        }
+    }
+
+    const handleDeleteNote = async (noteId: number | string) => {
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) return
+
+            const response = await fetch(
+                `${orchestratorUrl}/api/v1/agents/${params.agentId}/notes/${noteId}`,
+                { method: 'DELETE' }
+            )
+
+            if (response.ok) {
+                toast.success("Заметка удалена")
+                fetchNotes()
+                fetchDocuments()
+                setIsNoteDialogOpen(false)
+                setEditingNote(undefined)
+            } else {
+                throw new Error('Failed to delete note')
+            }
+        } catch (error) {
+            console.error('Error deleting note:', error)
+            toast.error("Ошибка удаления заметки")
+        }
+    }
+
+    const handleOpenCreateNote = () => {
+        setEditingNote(undefined)
+        setIsNoteDialogOpen(true)
+    }
+
+    const handleOpenEditNote = (note: Note) => {
+        setEditingNote(note)
+        setIsNoteDialogOpen(true)
+    }
 
     // 1. File Upload & Parsing
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,23 +358,42 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-8 hover:bg-zinc-50 hover:border-primary/50 transition-colors"
+                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
                         >
-                            <label className="flex flex-col items-center justify-center cursor-pointer gap-3">
-                                <div className="p-4 rounded-full bg-white shadow-sm border">
-                                    <UploadCloud className="h-6 w-6 text-primary" />
+                            {/* Upload File */}
+                            <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-8 hover:bg-zinc-50 hover:border-primary/50 transition-colors">
+                                <label className="flex flex-col items-center justify-center cursor-pointer gap-3">
+                                    <div className="p-4 rounded-full bg-white shadow-sm border">
+                                        <UploadCloud className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <p className="font-semibold text-zinc-900">Загрузить файл знаний</p>
+                                        <p className="text-xs text-muted-foreground">PDF, DOCX, TXT. Перетащите или нажмите.</p>
+                                    </div>
+                                    <Input
+                                        type="file"
+                                        className="hidden"
+                                        accept=".pdf,.doc,.docx,.txt,.md"
+                                        onChange={handleFileUpload}
+                                    />
+                                </label>
+                            </div>
+
+                            {/* Create Note */}
+                            <div
+                                onClick={handleOpenCreateNote}
+                                className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-8 hover:bg-zinc-50 hover:border-amber-400/50 transition-colors cursor-pointer"
+                            >
+                                <div className="flex flex-col items-center justify-center gap-3">
+                                    <div className="p-4 rounded-full bg-white shadow-sm border">
+                                        <StickyNote className="h-6 w-6 text-amber-500" />
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <p className="font-semibold text-zinc-900">Добавить заметку</p>
+                                        <p className="text-xs text-muted-foreground">Текстовая заметка с автовекторизацией.</p>
+                                    </div>
                                 </div>
-                                <div className="text-center space-y-1">
-                                    <p className="font-semibold text-zinc-900">Загрузить файл знаний</p>
-                                    <p className="text-xs text-muted-foreground">PDF, DOCX, TXT. Перетащите или нажмите.</p>
-                                </div>
-                                <Input
-                                    type="file"
-                                    className="hidden"
-                                    accept=".pdf,.doc,.docx,.txt,.md"
-                                    onChange={handleFileUpload}
-                                />
-                            </label>
+                            </div>
                         </motion.div>
                     )}
 
@@ -389,6 +507,16 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                     />
                 </div>
             </div>
+
+            {/* Note Editor Dialog */}
+            <NoteEditorDialog
+                open={isNoteDialogOpen}
+                onOpenChange={setIsNoteDialogOpen}
+                note={editingNote}
+                mode={editingNote ? 'edit' : 'create'}
+                onSave={handleSaveNote}
+                onDelete={handleDeleteNote}
+            />
         </div>
     )
 }
