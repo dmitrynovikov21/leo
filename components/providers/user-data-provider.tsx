@@ -16,6 +16,10 @@ interface Agent {
     containerId?: string
     createdAt: string
     updatedAt: string
+    // Statistics (from API or mock)
+    totalDialogs?: number
+    dialogsToday?: number
+    source?: 'telegram' | 'whatsapp' | 'web' | null
 }
 
 interface UserContextType {
@@ -73,6 +77,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 containerId: agent.container_id || agent.containerId,
                 createdAt: agent.created_at || agent.createdAt,
                 updatedAt: agent.updated_at || agent.updatedAt,
+                // Statistics
+                totalDialogs: agent.total_dialogs || agent.totalDialogs || 0,
+                dialogsToday: agent.dialogs_today || agent.dialogsToday || 0,
+                source: (agent.telegram_token || agent.telegramToken ? 'telegram' : null) as 'telegram' | 'whatsapp' | 'web' | null,
             }))
 
             setAgents(normalizedAgents)

@@ -1,6 +1,6 @@
 "use client"
 
-import { Settings, Bot } from "lucide-react"
+import { Settings, Bot, MessageSquare, Send } from "lucide-react"
 import { Link } from "@/i18n/routing"
 import { useTranslations } from "next-intl"
 
@@ -16,6 +16,10 @@ interface Agent {
     description: string
     status: 'STOPPED' | 'STARTING' | 'RUNNING' | 'ERROR'
     createdAt: string
+    // Statistics
+    totalDialogs?: number
+    dialogsToday?: number
+    source?: 'telegram' | 'whatsapp' | 'web' | null
 }
 
 interface AgentCardProps {
@@ -45,12 +49,12 @@ export function AgentCard({ agent }: AgentCardProps) {
                 }
             case 'ERROR':
                 return {
-                    label: 'Error',
+                    label: 'Ошибка',
                     className: "bg-red-500/10 text-red-600 border-red-200"
                 }
             default:
                 return {
-                    label: 'Unknown',
+                    label: 'Неизвестно',
                     className: "bg-slate-500/10 text-slate-600 border-slate-200"
                 }
         }
@@ -58,14 +62,12 @@ export function AgentCard({ agent }: AgentCardProps) {
 
     const statusConfig = getStatusConfig()
 
-    // Get initials from name
-    const getInitials = (name: string) => {
-        return name
-            .split(' ')
-            .map(word => word[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2)
+    // Get source icon
+    const getSourceIcon = () => {
+        if (agent.source === 'telegram') {
+            return <Send className="h-4 w-4 text-[#0088cc]" />
+        }
+        return null
     }
 
     return (
@@ -95,18 +97,33 @@ export function AgentCard({ agent }: AgentCardProps) {
                     </Badge>
                 </CardHeader>
 
-                {/* Body - Description */}
+                {/* Body - Statistics */}
                 <CardContent className="py-3 flex-1">
-                    <p className="text-sm text-muted-foreground line-clamp-3">
-                        {agent.description}
-                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-zinc-50 border border-zinc-100/50 group-hover:bg-zinc-100 transition-colors">
+                            <span className="text-[10px] uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5">
+                                <MessageSquare size={12} className="opacity-50 shrink-0" /> Всего диалогов
+                            </span>
+                            <span className="text-xl font-bold text-zinc-900 tracking-tight">
+                                {(agent.totalDialogs || 0).toLocaleString('ru-RU')}
+                            </span>
+                        </div>
+                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-zinc-50 border border-zinc-100/50 group-hover:bg-zinc-100 transition-colors">
+                            <span className="text-[10px] uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5">
+                                <MessageSquare size={12} className="opacity-50 shrink-0" /> Сегодня
+                            </span>
+                            <span className="text-xl font-bold text-zinc-900 tracking-tight">
+                                {(agent.dialogsToday || 0).toLocaleString('ru-RU')}
+                            </span>
+                        </div>
+                    </div>
                 </CardContent>
 
                 {/* Footer */}
                 <CardFooter className="pt-3 pb-3 gap-2 border-t border-zinc-100 flex items-center justify-between mt-auto">
-                    <span className="text-xs text-muted-foreground">
-                        Создан: {new Date(agent.createdAt).toLocaleDateString('ru-RU')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        {getSourceIcon()}
+                    </div>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -120,3 +137,4 @@ export function AgentCard({ agent }: AgentCardProps) {
         </Link>
     )
 }
+

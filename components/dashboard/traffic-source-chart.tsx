@@ -86,9 +86,15 @@ export function TrafficSourceChart({ data = [] }: TrafficSourceChartProps) {
 
                 {/* Overlay Badge */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
-                    <Badge variant="secondary" className="text-sm font-medium px-4 py-1.5 bg-white/90 backdrop-blur-sm border-zinc-200 shadow-sm text-zinc-900 ring-1 ring-zinc-200">
-                        Скоро
-                    </Badge>
+                    <div className="flex flex-col items-center gap-2">
+                        <Badge
+                            variant="secondary"
+                            className="text-base font-semibold px-6 py-2 bg-gradient-to-r from-zinc-900 to-zinc-700 text-white shadow-lg border-0 animate-pulse"
+                        >
+                            🚀 Скоро
+                        </Badge>
+                        <span className="text-xs text-zinc-500">Аналитика в разработке</span>
+                    </div>
                 </div>
             </CardContent>
         </Card>

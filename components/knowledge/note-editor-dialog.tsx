@@ -55,19 +55,19 @@ export function NoteEditorDialog({
 
     const handleSave = () => {
         if (!title.trim()) {
-            toast.error("Title is required")
+            toast.error("Заголовок обязателен")
             return
         }
         onSave({ ...note, title, content })
         onOpenChange?.(false)
-        toast.success(mode === 'create' ? "Note created" : "Note updated")
+        toast.success(mode === 'create' ? "Заметка создана" : "Заметка обновлена")
     }
 
     const handleDelete = () => {
         if (note?.id) {
             onDelete?.(note.id)
             onOpenChange?.(false)
-            toast.success("Note deleted")
+            toast.success("Заметка удалена")
         }
     }
 

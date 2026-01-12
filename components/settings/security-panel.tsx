@@ -28,9 +28,9 @@ export function SecurityPanel() {
     return (
         <div className="space-y-6">
             <div>
-                <h3 className="text-lg font-medium">Security</h3>
+                <h3 className="text-lg font-medium">Безопасность</h3>
                 <p className="text-sm text-muted-foreground">
-                    Manage your account security and audit logs.
+                    Управляйте безопасностью аккаунта и журналом действий.
                 </p>
             </div>
 
@@ -39,10 +39,10 @@ export function SecurityPanel() {
                 <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
                         <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                        <span className="text-base font-medium">Multi-Factor Authentication</span>
+                        <span className="text-base font-medium">Двухфакторная аутентификация</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Require an email verification code when logging in from a new device.
+                        Требовать код подтверждения по email при входе с нового устройства.
                     </p>
                 </div>
                 <Switch
@@ -50,9 +50,9 @@ export function SecurityPanel() {
                     onCheckedChange={(val) => {
                         setMfaEnabled(val)
                         if (val) {
-                            toast.success("MFA Enabled", { description: "You will now be asked for a code on login." })
+                            toast.success("MFA включена", { description: "Теперь при входе будет запрашиваться код." })
                         } else {
-                            toast.warning("MFA Disabled", { description: "Your account is less secure." })
+                            toast.warning("MFA отключена", { description: "Ваш аккаунт стал менее защищён." })
                         }
                     }}
                 />
@@ -63,40 +63,40 @@ export function SecurityPanel() {
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <History className="h-5 w-5 text-muted-foreground" />
-                        <CardTitle>Audit Log</CardTitle>
+                        <CardTitle>Журнал действий</CardTitle>
                     </div>
                     <CardDescription>
-                        Recent sensitive actions performed in your workspace.
+                        Недавние важные действия в вашем рабочем пространстве.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Action</TableHead>
-                                <TableHead>User</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Status</TableHead>
+                                <TableHead>Действие</TableHead>
+                                <TableHead>Пользователь</TableHead>
+                                <TableHead>Дата</TableHead>
+                                <TableHead className="text-right">Статус</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             <TableRow>
-                                <TableCell className="font-medium">User Login</TableCell>
+                                <TableCell className="font-medium">Вход пользователя</TableCell>
                                 <TableCell>dima@example.com</TableCell>
-                                <TableCell>Just now</TableCell>
-                                <TableCell className="text-right"><Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-200">Success</Badge></TableCell>
+                                <TableCell>Только что</TableCell>
+                                <TableCell className="text-right"><Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-200">Успешно</Badge></TableCell>
                             </TableRow>
                             <TableRow>
-                                <TableCell className="font-medium">Update Billing</TableCell>
+                                <TableCell className="font-medium">Обновление биллинга</TableCell>
                                 <TableCell>dima@example.com</TableCell>
-                                <TableCell>2 hours ago</TableCell>
-                                <TableCell className="text-right"><Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-200">Success</Badge></TableCell>
+                                <TableCell>2 часа назад</TableCell>
+                                <TableCell className="text-right"><Badge variant="outline" className="text-emerald-600 bg-emerald-50 border-emerald-200">Успешно</Badge></TableCell>
                             </TableRow>
                             <TableRow>
-                                <TableCell className="font-medium">Delete Agent "Sales Bot"</TableCell>
+                                <TableCell className="font-medium">Удаление агента "Sales Bot"</TableCell>
                                 <TableCell>sarah@example.com</TableCell>
-                                <TableCell>Yesterday</TableCell>
-                                <TableCell className="text-right"><Badge variant="outline" className="text-orange-600 bg-orange-50 border-orange-200">Warning</Badge></TableCell>
+                                <TableCell>Вчера</TableCell>
+                                <TableCell className="text-right"><Badge variant="outline" className="text-orange-600 bg-orange-50 border-orange-200">Предупреждение</Badge></TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>

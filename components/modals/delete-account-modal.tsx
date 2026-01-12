@@ -64,10 +64,10 @@ function DeleteAccountModal({
             image: session?.user?.image || null,
           }}
         />
-        <h3 className="text-lg font-semibold">Delete Account</h3>
+        <h3 className="text-lg font-semibold">Удаление аккаунта</h3>
         <p className="text-center text-sm text-muted-foreground">
-          <b>Warning:</b> This will permanently delete your account and your
-          active subscription!
+          <b>Внимание:</b> Это действие навсегда удалит ваш аккаунт и вашу
+          активную подписку!
         </p>
 
         {/* TODO: Use getUserSubscriptionPlan(session.user.id) to display the user's subscription if he have a paid plan */}
@@ -77,8 +77,8 @@ function DeleteAccountModal({
         onSubmit={async (e) => {
           e.preventDefault();
           toast.promise(deleteAccount(), {
-            loading: "Deleting account...",
-            success: "Account deleted successfully!",
+            loading: "Удаление аккаунта...",
+            success: "Аккаунт успешно удалён!",
             error: (err) => err,
           });
         }}
@@ -86,17 +86,17 @@ function DeleteAccountModal({
       >
         <div>
           <label htmlFor="verification" className="block text-sm">
-            To verify, type{" "}
+            Для подтверждения введите{" "}
             <span className="font-semibold text-black dark:text-white">
-              confirm delete account
+              удалить аккаунт
             </span>{" "}
-            below
+            ниже
           </label>
           <Input
             type="text"
             name="verification"
             id="verification"
-            pattern="confirm delete account"
+            pattern="удалить аккаунт"
             required
             autoFocus={false}
             autoComplete="off"
@@ -108,7 +108,7 @@ function DeleteAccountModal({
           variant={deleting ? "disable" : "destructive"}
           disabled={deleting}
         >
-          Confirm delete account
+          Подтвердить удаление
         </Button>
       </form>
     </Modal>

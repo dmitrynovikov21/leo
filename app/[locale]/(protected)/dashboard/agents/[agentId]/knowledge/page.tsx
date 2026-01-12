@@ -249,7 +249,7 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
             <div className="space-y-4">
                 <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <Zap size={14} className="text-primary" />
-                    ADD / EDIT KNOWLEDGE
+                    ДОБАВИТЬ / РЕДАКТИРОВАТЬ ЗНАНИЯ
                 </h3>
 
                 <AnimatePresence mode="wait">
@@ -266,8 +266,8 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                     <UploadCloud className="h-6 w-6 text-primary" />
                                 </div>
                                 <div className="text-center space-y-1">
-                                    <p className="font-semibold text-zinc-900">Upload Knowledge File</p>
-                                    <p className="text-xs text-muted-foreground">PDF, DOCX, TXT supported. Drag & drop or click.</p>
+                                    <p className="font-semibold text-zinc-900">Загрузить файл знаний</p>
+                                    <p className="text-xs text-muted-foreground">PDF, DOCX, TXT. Перетащите или нажмите.</p>
                                 </div>
                                 <Input
                                     type="file"
@@ -292,8 +292,8 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                 <Wand2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
                             </div>
                             <div className="text-center">
-                                <p className="font-medium">Analyzing {uploadedFile?.name}...</p>
-                                <p className="text-xs text-muted-foreground">Extracting semantic chunks</p>
+                                <p className="font-medium">Анализируем {uploadedFile?.name}...</p>
+                                <p className="text-xs text-muted-foreground">Извлекаем семантические чанки</p>
                             </div>
                         </motion.div>
                     )}
@@ -310,7 +310,7 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                 <div className="flex items-center gap-2">
                                     <FileText className="h-4 w-4 text-primary" />
                                     <span className="font-medium text-sm">{uploadedFile?.name}</span>
-                                    <span className="text-xs text-muted-foreground">({chunks.length} chunks)</span>
+                                    <span className="text-xs text-muted-foreground">({chunks.length} чанков)</span>
                                 </div>
                                 <Button
                                     variant="ghost"
@@ -322,7 +322,7 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                         setChunks([])
                                     }}
                                 >
-                                    Cancel
+                                    Отмена
                                 </Button>
                             </div>
 
@@ -330,7 +330,7 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                 {chunks.map((chunk, i) => (
                                     <div key={chunk.id} className="relative group bg-white rounded-lg border shadow-sm p-4 transition-all hover:shadow-md">
                                         <div className="flex items-start justify-between gap-4 mb-2">
-                                            <Label className="text-xs font-mono text-muted-foreground uppercase">Segment {i + 1}</Label>
+                                            <Label className="text-xs font-mono text-muted-foreground uppercase">Сегмент {i + 1}</Label>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
@@ -358,12 +358,12 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                     {isSaving ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Saving...
+                                            Сохранение...
                                         </>
                                     ) : (
                                         <>
                                             <Save className="mr-2 h-4 w-4" />
-                                            Save to Knowledge Base
+                                            Сохранить в базу знаний
                                         </>
                                     )}
                                 </Button>
@@ -377,7 +377,7 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
             {/* --- BOTTOM: LIST AREA --- */}
             <div className="flex-1 space-y-4 pt-4">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">ALL RESOURCES</h3>
+                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">ВСЕ РЕСУРСЫ</h3>
                 </div>
 
                 <div className="rounded-md border-0 bg-background/50 flex-1 overflow-hidden">

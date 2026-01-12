@@ -41,7 +41,7 @@ import { useUserData } from "@/components/providers/user-data-provider"
 const agentSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     role: z.string().min(1, "Please select a role"),
-    description: z.string().min(10, "Description needs to be at least 10 characters"),
+    description: z.string().min(10, "Описание должно быть не менее 10 символов"),
     systemPrompt: z.string(),
 })
 
