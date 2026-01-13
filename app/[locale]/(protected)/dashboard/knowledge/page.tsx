@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils"
 // Reusing NoteEditorDialog logic but adapting for Library (no vectorization needed in UI, just save)
 // Actually we can reuse the same dialog UI but handle save differently.
 import { NoteEditorDialog, Note } from "@/components/knowledge/note-editor-dialog"
-import { createLibraryItem, getLibraryItems, deleteLibraryItem, LibraryItemWithChunks, getLibraryItemChunks } from "@/actions/library"
+import { createLibraryItem, getLibraryItems, deleteLibraryItem, LibraryItemWithChunks, getLibraryItemChunks, updateLibraryChunk } from "@/actions/library"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function GlobalKnowledgePage() {
@@ -58,6 +58,8 @@ export default function GlobalKnowledgePage() {
     const [viewingItem, setViewingItem] = React.useState<LibraryItemWithChunks | null>(null)
     const [viewingChunks, setViewingChunks] = React.useState<any[]>([])
     const [isLoadingChunks, setIsLoadingChunks] = React.useState(false)
+    const [editedChunks, setEditedChunks] = React.useState<Record<string, string>>({})
+    const [isSavingChunk, setIsSavingChunk] = React.useState<string | null>(null)
 
 
     const fetchItems = React.useCallback(async () => {
@@ -221,6 +223,7 @@ export default function GlobalKnowledgePage() {
     const handleViewChunks = async (item: LibraryItemWithChunks) => {
         setViewingItem(item)
         setViewingChunks([])
+        setEditedChunks({})
         setIsLoadingChunks(true)
 
         try {
@@ -230,6 +233,39 @@ export default function GlobalKnowledgePage() {
             toast.error("Failed to load chunks")
         } finally {
             setIsLoadingChunks(false)
+        }
+    }
+
+    const handleChunkContentChange = (chunkId: string, content: string) => {
+        setEditedChunks(prev => ({ ...prev, [chunkId]: content }))
+    }
+
+    const handleSaveChunk = async (chunkId: string) => {
+        const content = editedChunks[chunkId]
+        if (content === undefined) return
+
+        setIsSavingChunk(chunkId)
+        try {
+            const result = await updateLibraryChunk(chunkId, content)
+            if (result.success) {
+                toast.success("Чанк сохранён")
+                // Update the local state
+                setViewingChunks(prev => prev.map(c =>
+                    c.id === chunkId ? { ...c, content } : c
+                ))
+                // Clear edited state for this chunk
+                setEditedChunks(prev => {
+                    const next = { ...prev }
+                    delete next[chunkId]
+                    return next
+                })
+            } else {
+                toast.error("Не удалось сохранить")
+            }
+        } catch (err) {
+            toast.error("Ошибка сохранения")
+        } finally {
+            setIsSavingChunk(null)
         }
     }
 
@@ -312,7 +348,7 @@ export default function GlobalKnowledgePage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary" className="uppercase text-[10px]">{item.type === 'NOTE' ? 'Заметка' : item.mimeType?.split('/')[1] || 'FILE'}</Badge>
+                                        <Badge variant="secondary" className="uppercase text-[10px]">{item.type === 'NOTE' ? 'Заметка' : item.name.split('.').pop() || 'FILE'}</Badge>
                                     </TableCell>
                                     <TableCell>{item._count.chunks}</TableCell>
                                     <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
@@ -436,27 +472,51 @@ export default function GlobalKnowledgePage() {
                 isSaving={false} // Saving happens in parent but fast enough usually
             />
 
-            {/* View Chunks Dialog (Reusable) */}
+            {/* View Chunks Dialog (Editable) */}
             <Dialog open={!!viewingItem} onOpenChange={(open) => !open && setViewingItem(null)}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
                     <DialogHeader>
-                        <DialogTitle>Просмотр: {viewingItem?.name}</DialogTitle>
+                        <DialogTitle>Редактирование: {viewingItem?.name}</DialogTitle>
                     </DialogHeader>
                     {isLoadingChunks ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
-                        <ScrollArea className="h-[400px] pr-4">
+                        <ScrollArea className="h-[60vh] pr-4">
                             <div className="space-y-6">
-                                {viewingChunks.map((chunk) => (
-                                    <div key={chunk.id} className="p-4 rounded-lg border bg-muted/30">
-                                        <div className="flex justify-between mb-2">
-                                            <Badge variant="outline">Chunk #{chunk.chunkIndex + 1}</Badge>
+                                {viewingChunks.map((chunk) => {
+                                    const isEdited = editedChunks[chunk.id] !== undefined
+                                    const currentContent = editedChunks[chunk.id] ?? chunk.content
+                                    const isSaving = isSavingChunk === chunk.id
+
+                                    return (
+                                        <div key={chunk.id} className="p-4 rounded-lg border bg-muted/30 space-y-3">
+                                            <div className="flex justify-between items-center">
+                                                <Badge variant="outline">Чанк #{chunk.chunkIndex + 1}</Badge>
+                                                {isEdited && (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleSaveChunk(chunk.id)}
+                                                        disabled={isSaving}
+                                                    >
+                                                        {isSaving ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                        ) : (
+                                                            <Save className="h-4 w-4 mr-2" />
+                                                        )}
+                                                        Сохранить
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <Textarea
+                                                value={currentContent}
+                                                onChange={(e) => handleChunkContentChange(chunk.id, e.target.value)}
+                                                className="min-h-[120px] max-h-[300px] text-sm leading-relaxed bg-background"
+                                            />
                                         </div>
-                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{chunk.content}</p>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </ScrollArea>
                     )}

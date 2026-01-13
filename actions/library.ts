@@ -115,3 +115,35 @@ export async function getLibraryItemChunks(id: string) {
 
     return item.chunks
 }
+
+export async function updateLibraryChunk(chunkId: string, content: string) {
+    const user = await getCurrentUser()
+    if (!user) throw new Error("Unauthorized")
+
+    try {
+        // Verify ownership through library item
+        const chunk = await prisma.libraryChunk.findUnique({
+            where: { id: chunkId },
+            include: {
+                libraryItem: {
+                    select: { userId: true }
+                }
+            }
+        })
+
+        if (!chunk || chunk.libraryItem.userId !== user.id) {
+            return { success: false, error: "Chunk not found" }
+        }
+
+        await prisma.libraryChunk.update({
+            where: { id: chunkId },
+            data: { content }
+        })
+
+        revalidatePath('/dashboard/knowledge')
+        return { success: true }
+    } catch (error) {
+        console.error("Failed to update chunk:", error)
+        return { success: false, error: "Failed to update chunk" }
+    }
+}
