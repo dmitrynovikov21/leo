@@ -40,6 +40,11 @@ export default {
           return null;
         }
 
+        // Block login if email not verified
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
+
         return {
           id: user.id,
           email: user.email,

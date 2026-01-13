@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -14,17 +13,24 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Icons } from "@/components/shared/icons";
 import { signIn } from "next-auth/react";
+import { VerificationCodeForm } from "./verification-code-form";
 
 interface UserRegisterFormProps extends React.HTMLAttributes<HTMLDivElement> { }
 
 type FormData = z.infer<typeof userRegisterSchema>;
 
+type Step = "register" | "verify";
+
 export function UserRegisterForm({ className, ...props }: UserRegisterFormProps) {
-    const router = useRouter();
+    const [step, setStep] = React.useState<Step>("register");
+    const [registeredEmail, setRegisteredEmail] = React.useState("");
+    const [registeredPassword, setRegisteredPassword] = React.useState("");
+
     const {
         register,
         handleSubmit,
         formState: { errors },
+        getValues,
     } = useForm<FormData>({
         resolver: zodResolver(userRegisterSchema),
     });
@@ -45,26 +51,21 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
                 }),
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || "Registration failed");
+            const result = await response.json();
+
+            if (!response.ok && response.status !== 200) {
+                throw new Error(result.message || "Registration failed");
             }
 
-            toast.success("Account created!", {
-                description: "You can now sign in with your credentials.",
-            });
+            if (result.requiresVerification) {
+                // Store credentials for auto-login after verification
+                setRegisteredEmail(data.email.toLowerCase());
+                setRegisteredPassword(data.password);
+                setStep("verify");
 
-            // Auto sign in after registration
-            const signInResult = await signIn("credentials", {
-                email: data.email.toLowerCase(),
-                password: data.password,
-                redirect: false,
-            });
-
-            if (signInResult?.ok) {
-                router.push("/dashboard");
-            } else {
-                router.push("/login");
+                toast.success("Verification code sent!", {
+                    description: "Check your email for the 6-digit code.",
+                });
             }
         } catch (error) {
             toast.error("Registration failed", {
@@ -73,6 +74,18 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
         } finally {
             setIsLoading(false);
         }
+    }
+
+    if (step === "verify") {
+        return (
+            <VerificationCodeForm
+                email={registeredEmail}
+                password={registeredPassword}
+                onBack={() => setStep("register")}
+                className={className}
+                {...props}
+            />
+        );
     }
 
     return (

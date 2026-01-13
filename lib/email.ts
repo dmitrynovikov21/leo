@@ -1,4 +1,5 @@
 import { MagicLinkEmail } from "@/emails/magic-link-email";
+import { VerificationCodeEmail } from "@/emails/verification-code-email";
 import { EmailConfig } from "next-auth/providers/email";
 import { Resend } from "resend";
 
@@ -49,3 +50,34 @@ export const sendVerificationRequest: EmailConfig["sendVerificationRequest"] =
       throw new Error("Failed to send verification email.");
     }
   };
+
+export async function sendVerificationCode(
+  email: string,
+  code: string,
+  name: string
+) {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: env.EMAIL_FROM,
+      to: email,
+      subject: `${code} — код подтверждения для ${siteConfig.name}`,
+      react: VerificationCodeEmail({
+        firstName: name,
+        code,
+        siteName: siteConfig.name,
+      }),
+      headers: {
+        "X-Entity-Ref-ID": new Date().getTime() + "",
+      },
+    });
+
+    if (error || !data) {
+      throw new Error(error?.message);
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Failed to send verification code email:", error);
+    throw new Error("Failed to send verification code email.");
+  }
+}

@@ -82,6 +82,7 @@ model User {
 
   userSessions UserSession[]
   libraryItems LibraryItem[]
+  emailVerificationCodes EmailVerificationCode[]
 
   @@map(name: "users")
 }
@@ -114,6 +115,20 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map(name: "verification_tokens")
+}
+
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String   @db.VarChar(6)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([code])
+  @@map("email_verification_codes")
 }
 
 // ============================================

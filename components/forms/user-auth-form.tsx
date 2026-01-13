@@ -48,7 +48,11 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
       setIsLoading(false);
 
       if (!signInResult?.ok || signInResult?.error) {
-        const errorMessage = "Неверный email или пароль";
+        // Check for email not verified error
+        const isEmailNotVerified = signInResult?.error?.includes("EMAIL_NOT_VERIFIED");
+        const errorMessage = isEmailNotVerified
+          ? "Пожалуйста, подтвердите вашу почту. Проверьте email или зарегистрируйтесь заново."
+          : "Неверный email или пароль";
         setAuthError(errorMessage);
         toast.error("Ошибка входа", {
           description: errorMessage,
