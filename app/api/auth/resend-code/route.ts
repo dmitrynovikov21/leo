@@ -52,8 +52,9 @@ export async function POST(req: Request) {
             );
         }
 
-        // Delete old codes and create new one
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        // Delete old codes and create new one (use fixed code in dev mode)
+        const isDev = process.env.NODE_ENV === "development";
+        const code = isDev ? "248293" : Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
         await prisma.emailVerificationCode.deleteMany({
@@ -68,12 +69,14 @@ export async function POST(req: Request) {
             },
         });
 
-        // Send email
-        await sendVerificationCode(
-            user.email!,
-            code,
-            user.name || "User"
-        );
+        // Send email (skip in dev mode)
+        if (!isDev) {
+            await sendVerificationCode(
+                user.email!,
+                code,
+                user.name || "User"
+            );
+        }
 
         return NextResponse.json(
             { message: "Verification code sent" },
