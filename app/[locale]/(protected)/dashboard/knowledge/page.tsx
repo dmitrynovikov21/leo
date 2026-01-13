@@ -255,7 +255,7 @@ export default function GlobalKnowledgePage() {
                         <UploadCloud className="h-8 w-8 text-primary" />
                     </div>
                     <h3 className="text-lg font-semibold mb-1">Загрузить файл</h3>
-                    <p className="text-sm text-muted-foreground mb-4">PDF, DOCX, TXT. Будет автоматически разбит на чанки.</p>
+                    <p className="text-sm text-muted-foreground mb-4">PDF, DOCX, XLS, TXT, изображения (OCR). Будет автоматически разбит на чанки.</p>
                     <Button variant="secondary">Выбрать файл</Button>
                 </div>
 
@@ -351,12 +351,12 @@ export default function GlobalKnowledgePage() {
                                 className="hidden"
                                 id="file-upload"
                                 onChange={handleFileSelect}
-                                accept=".txt,.md,.pdf,.docx"
+                                accept=".txt,.md,.pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.tif,.gif"
                             />
                             <Label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
                                 <UploadCloud className={cn("h-10 w-10 mb-4 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
                                 <span className="text-lg font-medium">{isDragging ? "Отпустите файл" : "Выберите или перетащите файл"}</span>
-                                <span className="text-sm text-muted-foreground">PDF, DOCX, TXT, MD. Максимум 50MB</span>
+                                <span className="text-sm text-muted-foreground">PDF, DOCX, XLS, TXT, изображения. Максимум 50MB</span>
                             </Label>
                         </div>
                     ) : (

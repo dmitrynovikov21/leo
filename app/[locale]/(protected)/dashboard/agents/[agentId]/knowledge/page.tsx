@@ -484,12 +484,12 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                                         <p className="font-semibold text-zinc-900">
                                             {isDragging ? "Отпустите файл" : "Загрузить файл знаний"}
                                         </p>
-                                        <p className="text-xs text-muted-foreground">PDF, DOCX, TXT. Перетащите или нажмите.</p>
+                                        <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, изображения. Перетащите или нажмите.</p>
                                     </div>
                                     <Input
                                         type="file"
                                         className="hidden"
-                                        accept=".pdf,.doc,.docx,.txt,.md"
+                                        accept=".pdf,.doc,.docx,.txt,.md,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.tif,.gif"
                                         onChange={handleFileUpload}
                                     />
                                 </label>
