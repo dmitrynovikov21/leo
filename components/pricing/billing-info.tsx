@@ -31,9 +31,9 @@ export function BillingInfo({ userSubscriptionPlan }: BillingInfoProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Subscription Plan</CardTitle>
+        <CardTitle>План подписки</CardTitle>
         <CardDescription>
-          You are currently on the <strong>{title}</strong> plan.
+          Вы сейчас на тарифе <strong>{title}</strong>.
         </CardDescription>
       </CardHeader>
       <CardContent>{description}</CardContent>
@@ -41,8 +41,8 @@ export function BillingInfo({ userSubscriptionPlan }: BillingInfoProps) {
         {isPaid ? (
           <p className="text-sm font-medium text-muted-foreground">
             {isCanceled
-              ? "Your plan will be canceled on "
-              : "Your plan renews on "}
+              ? "Ваш план будет отменён "
+              : "Ваш план продлится "}
             {formatDate(stripeCurrentPeriodEnd)}.
           </p>
         ) : null}
@@ -51,7 +51,7 @@ export function BillingInfo({ userSubscriptionPlan }: BillingInfoProps) {
           <CustomerPortalButton userStripeId={stripeCustomerId} />
         ) : (
           <Link href="/pricing" className={cn(buttonVariants())}>
-            Choose a plan
+            Выбрать план
           </Link>
         )}
       </CardFooter>

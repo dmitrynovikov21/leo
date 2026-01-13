@@ -25,6 +25,7 @@ import ProjectSwitcher from "@/components/dashboard/project-switcher";
 import { UpgradeCard } from "@/components/dashboard/upgrade-card";
 import { BalanceWidget } from "@/components/dashboard/balance-widget";
 import { Icons } from "@/components/shared/icons";
+import { UserAccountNav } from "@/components/layout/user-account-nav";
 
 interface DashboardSidebarProps {
   links: SidebarNavItem[];
@@ -182,34 +183,19 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                 })}
               </nav>
 
-              <div className="mt-auto p-4">
+              <div className="mt-auto p-4 flex flex-col gap-4">
                 {isSidebarExpanded ? (
                   <>
                     <BalanceWidget compactMode={true} />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2 w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-                      onClick={() => signOut({ redirect: false }).then(() => router.push("/"))}
-                    >
-                      <LogOut className="size-4" />
-                      Выйти
-                    </Button>
+                    <div className="flex items-center gap-3 px-2">
+                      <UserAccountNav side="right" align="start" />
+                    </div>
                   </>
                 ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-full"
-                        onClick={() => signOut({ redirect: false }).then(() => router.push("/"))}
-                      >
-                        <LogOut className="size-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">Выйти</TooltipContent>
-                  </Tooltip>
+                  <div className="flex flex-col gap-4 items-center">
+                    <BalanceWidget compactMode={true} />
+                    <UserAccountNav side="right" align="start" />
+                  </div>
                 )}
               </div>
             </div>
@@ -299,8 +285,12 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
                   </section>
                 ))}
 
-                <div className="mt-auto">
+                <div className="mt-auto flex flex-col gap-4">
                   <BalanceWidget compactMode={false} />
+                  <div className="flex items-center gap-3">
+                    <UserAccountNav side="top" align="start" />
+                    <span className="text-sm font-medium text-muted-foreground">Профиль</span>
+                  </div>
                 </div>
               </nav>
             </div>

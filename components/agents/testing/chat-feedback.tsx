@@ -17,7 +17,7 @@ export function ChatFeedback({ messageId }: { messageId: string }) {
         if (vote === "down") {
             setStatus("negative")
         } else {
-            toast.success("Thanks for the feedback!")
+            toast.success("Спасибо за отзыв!")
         }
     }
 
@@ -30,8 +30,8 @@ export function ChatFeedback({ messageId }: { messageId: string }) {
         await new Promise(r => setTimeout(r, 1500))
 
         setStatus("fixed")
-        toast.success("Instruction Updated", {
-            description: "We've added a new guardrail based on your feedback."
+        toast.success("Инструкция обновлена", {
+            description: "Мы добавили новое правило на основе вашего отзыва."
         })
     }
 
@@ -41,9 +41,9 @@ export function ChatFeedback({ messageId }: { messageId: string }) {
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100">
                     <Check className="h-3 w-3" />
                 </div>
-                Fixed!
+                Исправлено!
                 <Button variant="link" className="h-auto p-0 text-emerald-600 text-xs ml-2" onClick={() => setStatus("idle")}>
-                    Undo
+                    Отменить
                 </Button>
             </div>
         )
@@ -53,7 +53,7 @@ export function ChatFeedback({ messageId }: { messageId: string }) {
         return (
             <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Tuning agent behavior...
+                Настройка поведения агента...
             </div>
         )
     }
@@ -65,7 +65,7 @@ export function ChatFeedback({ messageId }: { messageId: string }) {
                     autoFocus
                     value={issue}
                     onChange={(e) => setIssue(e.target.value)}
-                    placeholder="What went wrong?"
+                    placeholder="Что пошло не так?"
                     className="h-7 text-xs w-[200px]"
                 />
                 <Button size="sm" type="submit" className="h-7 px-2" disabled={!issue}>

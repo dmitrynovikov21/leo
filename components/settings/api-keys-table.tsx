@@ -162,7 +162,7 @@ export function APIKeysTable() {
                         {keys.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                                    No API keys generated yet.
+                                    Ключей API пока нет.
                                 </TableCell>
                             </TableRow>
                         ) : (

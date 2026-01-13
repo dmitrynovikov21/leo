@@ -2,12 +2,10 @@ import { redirect } from "next/navigation";
 
 import { sidebarLinks } from "@/config/dashboard";
 import { getCurrentUser } from "@/lib/session";
-import { SearchCommand } from "@/components/dashboard/search-command";
 import {
   DashboardSidebar,
   MobileSheetSidebar,
 } from "@/components/layout/dashboard-sidebar";
-import { UserAccountNav } from "@/components/layout/user-account-nav";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { UserPreferencesProvider } from "@/components/providers/user-preferences-provider";
 import { UserProvider } from "@/components/providers/user-data-provider";
@@ -39,18 +37,11 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
 
           {/* Main Content Area */}
           <div className="flex flex-1 flex-col h-full overflow-hidden">
-            {/* Header - Stays at top */}
-            <header className="flex h-14 shrink-0 bg-background px-4 lg:h-[60px] xl:px-8 border-b">
-              <div className="flex w-full max-w-full items-center gap-x-3 px-0">
-                <MobileSheetSidebar links={filteredLinks} />
-
-                <div className="w-full flex-1">
-                  {/* <SearchCommand links={filteredLinks} /> */}
-                </div>
-
-                <UserAccountNav />
-              </div>
-            </header>
+            {/* Mobile Header (md:hidden) */}
+            <div className="md:hidden flex h-14 items-center border-b px-4 bg-background shrink-0 gap-4">
+              <MobileSheetSidebar links={filteredLinks} />
+              <span className="font-bold text-lg">LEO</span>
+            </div>
 
             {/* Scrollable Content */}
             <main className="flex-1 overflow-y-auto p-4 xl:px-8 scrollbar-thin">

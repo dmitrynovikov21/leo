@@ -102,6 +102,20 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     const agent = agents.find(a => a.id === agentId)
     const [showTelegramModal, setShowTelegramModal] = React.useState(false)
 
+    // Autosave timer
+    const autosaveTimerRef = React.useRef<NodeJS.Timeout | null>(null)
+    const AUTOSAVE_INTERVAL = 30000 // 30 seconds
+    const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false)
+
+    // Cleanup autosave timer on unmount
+    React.useEffect(() => {
+        return () => {
+            if (autosaveTimerRef.current) {
+                clearTimeout(autosaveTimerRef.current)
+            }
+        }
+    }, [])
+
     // Calculate next version number (1.0 -> 1.1 -> ... -> 1.9 -> 2.0)
     const getNextVersion = (versions: PromptVersion[]): string => {
         if (versions.length === 0) return 'v1.0'
@@ -140,6 +154,53 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         control: form.control,
         name: "guardrails",
     })
+
+    // Watch form changes for autosave
+    const watchedValues = form.watch()
+
+    React.useEffect(() => {
+        // Skip during initial load
+        if (isLoading) return
+
+        setHasUnsavedChanges(true)
+
+        // Reset autosave timer
+        if (autosaveTimerRef.current) {
+            clearTimeout(autosaveTimerRef.current)
+        }
+
+        autosaveTimerRef.current = setTimeout(() => {
+            const data = form.getValues()
+            handleAutosave(data)
+        }, AUTOSAVE_INTERVAL)
+
+    }, [JSON.stringify(watchedValues), isLoading])
+
+    const handleAutosave = async (data: BehaviorFormData) => {
+        if (!orchestratorUrl || !hasUnsavedChanges) return
+
+        try {
+            // Save behavior settings silently
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    displayName: data.displayName,
+                    avatarEmoji: data.avatarEmoji,
+                    temperature: data.temperature,
+                    tone: data.tone,
+                    guardrails: data.guardrails,
+                    welcomeMessage: data.welcomeMessage,
+                }),
+            })
+
+            setHasUnsavedChanges(false)
+            toast.success("Автосохранение", { description: "Изменения поведения сохранены" })
+        } catch (err) {
+            console.error("Autosave error:", err)
+            // Silent fail for autosave
+        }
+    }
 
     // Load behavior data
     React.useEffect(() => {
@@ -271,8 +332,10 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
             }
 
             toast.success(t('saveChanges'), { description: t('behaviorUpdated') })
-            // Show restart dialog after successful save
-            setShowRestartDialog(true)
+            // Show restart dialog after successful save only if agent is running
+            if (agent?.status === 'RUNNING') {
+                setShowRestartDialog(true)
+            }
         } catch (err) {
             console.error("Error saving behavior:", err)
             toast.error("Failed to save changes", {

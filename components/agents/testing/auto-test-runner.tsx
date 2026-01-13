@@ -53,12 +53,31 @@ export function AutoTestRunner() {
     const params = useParams()
     const agentId = params.agentId as string
 
-    const [testCases, setTestCases] = React.useState<TestCase[]>([
-        { id: "1", question: "Каковы ваши часы работы?", expectedAnswer: "с 9:00 до 18:00" },
-        { id: "2", question: "Есть ли у вас возврат?", expectedAnswer: "да, в течение 30 дней" },
-    ])
+    const [testCases, setTestCases] = React.useState<TestCase[]>([])
     const [newQuestion, setNewQuestion] = React.useState("")
     const [newExpected, setNewExpected] = React.useState("")
+
+    // Load test cases from localStorage on mount
+    React.useEffect(() => {
+        const saved = localStorage.getItem(`autotest-${agentId}`)
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved)
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setTestCases(parsed)
+                }
+            } catch (e) {
+                console.error('Failed to load saved test cases:', e)
+            }
+        }
+    }, [agentId])
+
+    // Save test cases to localStorage on change
+    React.useEffect(() => {
+        if (testCases.length > 0) {
+            localStorage.setItem(`autotest-${agentId}`, JSON.stringify(testCases))
+        }
+    }, [testCases, agentId])
 
     const [status, setStatus] = React.useState<TestState>("idle")
     const [progress, setProgress] = React.useState(0)
@@ -219,9 +238,19 @@ export function AutoTestRunner() {
                         <div className="space-y-2">
                             <h2 className="text-2xl font-bold tracking-tight text-zinc-900">{t('autoLab')}</h2>
                             <p className="text-zinc-500 max-w-md mx-auto">
-                                Добавьте вопросы и ожидаемые ответы. Тест проверит, что ответ агента содержит не менее 50% слов из ожидаемого.
+                                Добавьте тест-кейсы в панели справа и нажмите "Запустить тесты" для проверки агента.
                             </p>
                         </div>
+                        {/* Run Button moved here */}
+                        <Button
+                            size="lg"
+                            className="h-12 px-8 text-base shadow-lg bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl"
+                            onClick={runTest}
+                            disabled={testCases.length === 0}
+                        >
+                            <Play className="mr-2 h-5 w-5 fill-current" />
+                            {t('runStressTest')} ({testCases.length} тестов)
+                        </Button>
                     </div>
 
                     {/* Test Cases List */}
@@ -282,16 +311,7 @@ export function AutoTestRunner() {
                         </CardContent>
                     </Card>
 
-                    {/* Run Button */}
-                    <Button
-                        size="lg"
-                        className="w-full h-12 text-base shadow-lg bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl"
-                        onClick={runTest}
-                        disabled={testCases.length === 0}
-                    >
-                        <Play className="mr-2 h-5 w-5 fill-current" />
-                        {t('runStressTest')} ({testCases.length} тестов)
-                    </Button>
+
                 </>
             )}
 

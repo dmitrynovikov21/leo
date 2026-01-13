@@ -63,7 +63,7 @@ export function ChunkInspector({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
                 <SheetHeader className="p-6 pb-4">
-                    <SheetTitle>Document Content Inspector</SheetTitle>
+                    <SheetTitle>Инспектор контента документа</SheetTitle>
                     <SheetDescription>{documentName}</SheetDescription>
                 </SheetHeader>
 
@@ -71,7 +71,7 @@ export function ChunkInspector({
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                            placeholder="Search chunks..."
+                            placeholder="Поиск по чанкам..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-10"

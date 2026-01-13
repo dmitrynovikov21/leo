@@ -57,7 +57,7 @@ export function SearchCommand({ links }: { links: SidebarNavItem[] }) {
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandEmpty>Ничего не найдено.</CommandEmpty>
           {links.map((section) => (
             <CommandGroup key={section.title} heading={section.title}>
               {section.items.map((item) => {

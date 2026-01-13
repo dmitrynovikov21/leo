@@ -25,49 +25,55 @@ export interface Note {
 
 interface NoteEditorDialogProps {
     trigger?: React.ReactNode
-    note?: Note
+    initialNote?: Note // Renaming back to match Page usage or updating Page. Let's update component to accept initialNote as alias or change usage in Page. 
+    // Actually, Page uses `initialNote={editingNote}`. So component should accept initialNote.
+    note?: Note // Keeping for backward compat if needed, but let's standardise on initialNote
     open?: boolean
     onOpenChange?: (open: boolean) => void
     onSave: (note: Partial<Note>) => void
     onDelete?: (id: number | string) => void
-    mode: 'create' | 'edit'
+    isSaving?: boolean // Adding isSaving prop as used in Page
 }
 
 export function NoteEditorDialog({
     trigger,
+    initialNote,
     note,
     open,
     onOpenChange,
     onSave,
     onDelete,
-    mode
+    isSaving
 }: NoteEditorDialogProps) {
-    const [title, setTitle] = React.useState(note?.title || "")
-    const [content, setContent] = React.useState(note?.content || "")
+    const activeNote = initialNote || note
+    const mode = activeNote ? 'edit' : 'create'
 
-    // Reset form when opening in create mode or changing note
+    const [title, setTitle] = React.useState(activeNote?.title || "")
+    const [content, setContent] = React.useState(activeNote?.content || "")
+
+    // Reset when opening
     React.useEffect(() => {
         if (open) {
-            setTitle(note?.title || "")
-            setContent(note?.content || "")
+            setTitle(activeNote?.title || "")
+            setContent(activeNote?.content || "")
         }
-    }, [open, note])
+    }, [open, activeNote])
 
     const handleSave = () => {
         if (!title.trim()) {
-            toast.error("Title is required")
+            toast.error("Заголовок обязателен")
             return
         }
         onSave({ ...note, title, content })
         onOpenChange?.(false)
-        toast.success(mode === 'create' ? "Note created" : "Note updated")
+        toast.success(mode === 'create' ? "Заметка создана" : "Заметка обновлена")
     }
 
     const handleDelete = () => {
         if (note?.id) {
             onDelete?.(note.id)
             onOpenChange?.(false)
-            toast.success("Note deleted")
+            toast.success("Заметка удалена")
         }
     }
 
@@ -117,14 +123,14 @@ export function NoteEditorDialog({
                 {/* Footer */}
                 <div className="flex justify-between items-center p-4 border-t bg-background/50 backdrop-blur-sm">
                     <div>
-                        {mode === 'edit' && onDelete && (
+                        {mode === 'edit' && onDelete && note && (
                             <Button
                                 type="button"
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => {
                                     onDelete(note.id)
-                                    onOpenChange(false)
+                                    onOpenChange?.(false)
                                 }}
                             >
                                 <Trash2 className="h-4 w-4 mr-2" />
@@ -133,7 +139,7 @@ export function NoteEditorDialog({
                         )}
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                        <Button variant="ghost" onClick={() => onOpenChange?.(false)}>
                             Отмена
                         </Button>
                         <Button onClick={handleSave} className="min-w-[100px]">

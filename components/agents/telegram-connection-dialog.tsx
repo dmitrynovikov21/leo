@@ -23,9 +23,11 @@ interface TelegramConnectionDialogProps {
 export function TelegramConnectionDialog({ children, agentId, initialToken, onSuccess, embedded = false }: TelegramConnectionDialogProps) {
     const { agents, refreshAgents } = useUserData()
     const [loading, setLoading] = useState(false)
+    const [validating, setValidating] = useState(false)
     const [token, setToken] = useState(initialToken || "")
-    const [step, setStep] = useState<"input" | "success" | "restart">("input")
+    const [step, setStep] = useState<"input" | "validated" | "success" | "restart">("input")
     const [open, setOpen] = useState(false)
+    const [botInfo, setBotInfo] = useState<{ id: number; first_name: string; username: string } | null>(null)
 
     // Find current agent to check status
     const agent = agents.find(a => a.id === agentId)
@@ -35,8 +37,39 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     useEffect(() => {
         if (open) {
             setStep('input')
+            setBotInfo(null)
         }
     }, [open])
+
+    // Validate token with Telegram API
+    const handleValidateToken = async () => {
+        if (!token.trim()) {
+            toast.error("Введите токен")
+            return
+        }
+
+        setValidating(true)
+        try {
+            const response = await fetch(`https://api.telegram.org/bot${token}/getMe`)
+            const data = await response.json()
+
+            if (data.ok && data.result) {
+                setBotInfo({
+                    id: data.result.id,
+                    first_name: data.result.first_name,
+                    username: data.result.username || ''
+                })
+                setStep('validated')
+            } else {
+                toast.error("Неверный токен", { description: data.description || "Проверьте правильность токена" })
+            }
+        } catch (error) {
+            console.error('Validation error:', error)
+            toast.error("Ошибка проверки токена")
+        } finally {
+            setValidating(false)
+        }
+    }
 
     const handleConnect = async () => {
         setLoading(true)
@@ -78,6 +111,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
         } catch (error) {
             console.error(error)
             toast.error("Не удалось сохранить токен")
+            setStep('input') // Go back to input on error
         } finally {
             setLoading(false)
         }
@@ -148,12 +182,45 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                         </div>
                         <Button
                             className="w-full rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm"
-                            onClick={handleConnect}
-                            disabled={!token || loading}
+                            onClick={handleValidateToken}
+                            disabled={!token || validating}
                         >
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {loading ? "Сохранение..." : "Подключить Telegram"}
+                            {validating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {validating ? "Проверка..." : "Проверить токен"}
                         </Button>
+                    </div>
+                )}
+                {step === "validated" && botInfo && (
+                    <div className="space-y-4">
+                        <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+                            <div className="flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-full bg-[#0088cc] flex items-center justify-center">
+                                    <BotIcon className="h-6 w-6 text-white" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-zinc-900">{botInfo.first_name}</p>
+                                    <p className="text-sm text-zinc-500">@{botInfo.username}</p>
+                                </div>
+                                <CheckCircle2 className="h-5 w-5 text-green-500 ml-auto" />
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                className="flex-1 rounded-xl"
+                                onClick={() => setStep('input')}
+                            >
+                                Назад
+                            </Button>
+                            <Button
+                                className="flex-1 rounded-xl bg-green-600 hover:bg-green-700 text-white"
+                                onClick={handleConnect}
+                                disabled={loading}
+                            >
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {loading ? "Сохранение..." : "Сохранить"}
+                            </Button>
+                        </div>
                     </div>
                 )}
                 {step === "success" && (
@@ -244,7 +311,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                             />
                                         </div>
                                         <p className="text-[11px] text-zinc-400 px-1">
-                                            Этот токен можно получить у <a href="#" className="underline decoration-zinc-300 hover:text-zinc-600">@BotFather</a> в Telegram.
+                                            Этот токен можно получить у <a href="https://t.me/BotFather" target="_blank" className="underline decoration-zinc-300 hover:text-zinc-600">@BotFather</a> в Telegram.
                                         </p>
                                     </div>
 
@@ -262,11 +329,42 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                     <Button variant="ghost" className="rounded-xl hover:bg-zinc-100 text-zinc-600" onClick={() => setOpen(false)}>Отмена</Button>
                                     <Button
                                         className="rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm shadow-blue-200"
+                                        onClick={handleValidateToken}
+                                        disabled={!token || validating}
+                                    >
+                                        {validating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {validating ? "Проверка..." : "Проверить токен"}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === "validated" && botInfo && (
+                            <div className="flex flex-col items-center justify-center flex-1 py-4 space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="p-6 bg-green-50 border border-green-200 rounded-2xl w-full">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-14 w-14 rounded-full bg-[#0088cc] flex items-center justify-center shadow-lg">
+                                            <BotIcon className="h-7 w-7 text-white" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-lg font-bold text-zinc-900">{botInfo.first_name}</p>
+                                            <p className="text-sm text-zinc-500">@{botInfo.username}</p>
+                                        </div>
+                                        <CheckCircle2 className="h-6 w-6 text-green-500" />
+                                    </div>
+                                </div>
+                                <p className="text-sm text-zinc-500 text-center">Токен проверен успешно. Сохранить подключение?</p>
+                                <div className="flex w-full gap-2">
+                                    <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep('input')}>
+                                        Назад
+                                    </Button>
+                                    <Button
+                                        className="flex-1 rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-md"
                                         onClick={handleConnect}
-                                        disabled={!token || loading}
+                                        disabled={loading}
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        {loading ? "Сохранение..." : (initialToken ? "Обновить токен" : "Подключить Telegram")}
+                                        {loading ? "Сохранение..." : "Сохранить подключение"}
                                     </Button>
                                 </div>
                             </div>

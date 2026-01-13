@@ -45,13 +45,13 @@ export function UserNameForm({ user }: UserNameFormProps) {
       const { status } = await updateUserNameWithId(data);
 
       if (status !== "success") {
-        toast.error("Something went wrong.", {
-          description: "Your name was not updated. Please try again.",
+        toast.error("Что-то пошло не так.", {
+          description: "Ваше имя не было обновлено. Попробуйте снова.",
         });
       } else {
         await update();
         setUpdated(false);
-        toast.success("Your name has been updated.");
+        toast.success("Ваше имя обновлено.");
       }
     });
   });
@@ -59,12 +59,12 @@ export function UserNameForm({ user }: UserNameFormProps) {
   return (
     <form onSubmit={onSubmit}>
       <SectionColumns
-        title="Your Name"
-        description="Please enter a display name you are comfortable with."
+        title="Ваше имя"
+        description="Введите имя, которое вам комфортно использовать."
       >
         <div className="flex w-full items-center gap-2">
           <Label className="sr-only" htmlFor="name">
-            Name
+            Имя
           </Label>
           <Input
             id="name"
@@ -83,8 +83,8 @@ export function UserNameForm({ user }: UserNameFormProps) {
               <Icons.spinner className="size-4 animate-spin" />
             ) : (
               <p>
-                Save
-                <span className="hidden sm:inline-flex">&nbsp;Changes</span>
+                Сохранить
+                <span className="hidden sm:inline-flex">&nbsp;изменения</span>
               </p>
             )}
           </Button>
@@ -95,7 +95,7 @@ export function UserNameForm({ user }: UserNameFormProps) {
               {errors.name.message}
             </p>
           )}
-          <p className="text-[13px] text-muted-foreground">Max 32 characters</p>
+          <p className="text-[13px] text-muted-foreground">Максимум 32 символа</p>
         </div>
       </SectionColumns>
     </form>

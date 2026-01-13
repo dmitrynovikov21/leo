@@ -81,6 +81,8 @@ model User {
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 
   userSessions UserSession[]
+  libraryItems LibraryItem[]
+  emailVerificationCodes EmailVerificationCode[]
 
   @@map(name: "users")
 }
@@ -113,6 +115,20 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map(name: "verification_tokens")
+}
+
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  code      String   @db.VarChar(6)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([code])
+  @@map("email_verification_codes")
 }
 
 // ============================================
@@ -160,9 +176,24 @@ model Agent {
   summaries       AgentSummary[]
   tokenUsage      TokenUsage[]
   promptVersions  SystemPromptVersion[]
+  notes           AgentNote[]
+  testCases       AgentTestCase[]
   
   @@index([userId])
   @@map("agents")
+}
+
+model AgentTestCase {
+  id             String   @id @default(cuid())
+  agentId        String   @map("agent_id")
+  question       String   @db.Text
+  expectedAnswer String   @map("expected_answer") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  agent          Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId])
+  @@map("agent_test_cases")
 }
 
 model SystemPromptVersion {
@@ -285,5 +316,52 @@ model AgentSummary {
   
   @@index([agentId, telegramUserId])
   @@map("agent_summaries")
+}
+
+model AgentNote {
+  id        String   @id @default(cuid())
+  agentId   String   @map("agent_id")
+  title     String   @db.VarChar(255)
+  content   String   @db.Text
+  vectorId  String?  @map("vector_id") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@map("agent_notes")
+}
+
+model LibraryItem {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  name      String   @db.VarChar(255) // filename or note title
+  type      String   @db.VarChar(50)  // 'FILE' or 'NOTE'
+  content   String?  @db.Text         // for notes
+  fileUrl   String?  @map("file_url") // for files
+  fileSize  Int?     @map("file_size")
+  mimeType  String?  @map("mime_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks    LibraryChunk[]
+
+  @@index([userId])
+  @@map("library_items")
+}
+
+model LibraryChunk {
+  id            String      @id @default(cuid())
+  libraryItemId String      @map("library_item_id")
+  content       String      @db.Text
+  chunkIndex    Int         @map("chunk_index")
+  metadata      Json?
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  libraryItem   LibraryItem @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+
+  @@index([libraryItemId])
+  @@map("library_chunks")
 }
 
