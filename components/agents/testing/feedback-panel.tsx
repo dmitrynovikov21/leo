@@ -29,6 +29,8 @@ interface FeedbackPanelProps {
     setTestCases: React.Dispatch<React.SetStateAction<TestCaseItem[]>>
     onRunTests: () => void
     isRunning: boolean
+    onAddTestCase?: (question: string, expectedAnswer: string) => Promise<void>
+    onRemoveTestCase?: (id: string) => Promise<void>
 }
 
 // Calculate string similarity (simple word overlap)
@@ -48,32 +50,46 @@ function calculateSimilarity(expected: string, actual: string): number {
     return Math.round((matchCount / expectedWords.length) * 100)
 }
 
-export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning }: FeedbackPanelProps) {
+export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, onAddTestCase, onRemoveTestCase }: FeedbackPanelProps) {
     const pendingCount = testCases.filter(i => i.status === 'pending').length
     const [isAddOpen, setIsAddOpen] = React.useState(false)
     const [newQuestion, setNewQuestion] = React.useState("")
     const [newExpected, setNewExpected] = React.useState("")
+    const [isAdding, setIsAdding] = React.useState(false)
 
-    const handleAddTestCase = () => {
+    const handleAddTestCase = async () => {
         if (!newQuestion.trim() || !newExpected.trim()) {
             toast.error("Заполните оба поля")
             return
         }
-        const newItem: TestCaseItem = {
-            id: Date.now().toString(),
-            question: newQuestion.trim(),
-            expectedAnswer: newExpected.trim(),
-            status: 'pending'
+
+        if (onAddTestCase) {
+            setIsAdding(true)
+            await onAddTestCase(newQuestion.trim(), newExpected.trim())
+            setIsAdding(false)
+        } else {
+            // Fallback to local state
+            const newItem: TestCaseItem = {
+                id: Date.now().toString(),
+                question: newQuestion.trim(),
+                expectedAnswer: newExpected.trim(),
+                status: 'pending'
+            }
+            setTestCases(prev => [...prev, newItem])
+            toast.success("Добавлено в очередь")
         }
-        setTestCases(prev => [...prev, newItem])
+
         setNewQuestion("")
         setNewExpected("")
         setIsAddOpen(false)
-        toast.success("Добавлено в очередь")
     }
 
-    const handleRemoveTestCase = (id: string) => {
-        setTestCases(prev => prev.filter(tc => tc.id !== id))
+    const handleRemoveTestCase = async (id: string) => {
+        if (onRemoveTestCase) {
+            await onRemoveTestCase(id)
+        } else {
+            setTestCases(prev => prev.filter(tc => tc.id !== id))
+        }
     }
 
     const getStatusIcon = (status: TestCaseItem['status']) => {

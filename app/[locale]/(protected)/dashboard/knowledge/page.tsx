@@ -48,6 +48,7 @@ export default function GlobalKnowledgePage() {
     const [chunks, setChunks] = React.useState<{ id: string, content: string }[]>([])
     const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
     const [isSaving, setIsSaving] = React.useState(false)
+    const [isDragging, setIsDragging] = React.useState(false)
 
     // Note State
     const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
@@ -117,6 +118,28 @@ export default function GlobalKnowledgePage() {
         } finally {
             setIsParsing(false)
         }
+    }
+
+    // Handle dropped file
+    const handleFileDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
+        const file = e.dataTransfer.files?.[0]
+        if (file) {
+            // Trigger the same logic as file select
+            const fakeEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>
+            handleFileSelect(fakeEvent)
+        }
+    }
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(true)
+    }
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
     }
 
     const handleSaveFileToLibrary = async () => {
@@ -314,7 +337,15 @@ export default function GlobalKnowledgePage() {
                     </DialogHeader>
 
                     {!uploadedFile ? (
-                        <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/50">
+                        <div
+                            className={cn(
+                                "flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg transition-colors",
+                                isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 bg-muted/50"
+                            )}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleFileDrop}
+                        >
                             <Input
                                 type="file"
                                 className="hidden"
@@ -323,9 +354,9 @@ export default function GlobalKnowledgePage() {
                                 accept=".txt,.md,.pdf,.docx"
                             />
                             <Label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
-                                <UploadCloud className="h-10 w-10 mb-4 text-muted-foreground" />
-                                <span className="text-lg font-medium">Выберите файл</span>
-                                <span className="text-sm text-muted-foreground">Максимум 50MB</span>
+                                <UploadCloud className={cn("h-10 w-10 mb-4 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
+                                <span className="text-lg font-medium">{isDragging ? "Отпустите файл" : "Выберите или перетащите файл"}</span>
+                                <span className="text-sm text-muted-foreground">PDF, DOCX, TXT, MD. Максимум 50MB</span>
                             </Label>
                         </div>
                     ) : (

@@ -49,6 +49,7 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
     const [libraryItems, setLibraryItems] = React.useState<LibraryItemWithChunks[]>([])
     const [isLoadingLibrary, setIsLoadingLibrary] = React.useState(false)
     const [importingItem, setImportingItem] = React.useState<string | null>(null)
+    const [isDragging, setIsDragging] = React.useState(false)
 
     // --- Handlers ---
 
@@ -292,6 +293,27 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
         }
     }
 
+    // Handle dropped file
+    const handleFileDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
+        const file = e.dataTransfer.files?.[0]
+        if (file) {
+            const fakeEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>
+            handleFileUpload(fakeEvent)
+        }
+    }
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(true)
+    }
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDragging(false)
+    }
+
     // 2. Save / Vectorize
     const handleSaveChunks = async () => {
         if (chunks.length === 0) return
@@ -443,13 +465,25 @@ export default function KnowledgePage({ params }: { params: { agentId: string } 
                             className="grid grid-cols-1 md:grid-cols-2 gap-4"
                         >
                             {/* Upload File */}
-                            <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-8 hover:bg-zinc-50 hover:border-primary/50 transition-colors">
+                            <div
+                                className={cn(
+                                    "rounded-xl border border-dashed p-8 transition-colors",
+                                    isDragging
+                                        ? "border-primary bg-primary/5"
+                                        : "border-zinc-300 bg-zinc-50/50 hover:bg-zinc-50 hover:border-primary/50"
+                                )}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleFileDrop}
+                            >
                                 <label className="flex flex-col items-center justify-center cursor-pointer gap-3">
-                                    <div className="p-4 rounded-full bg-white shadow-sm border">
-                                        <UploadCloud className="h-6 w-6 text-primary" />
+                                    <div className={cn("p-4 rounded-full bg-white shadow-sm border transition-colors", isDragging && "border-primary")}>
+                                        <UploadCloud className={cn("h-6 w-6 transition-colors", isDragging ? "text-primary" : "text-primary")} />
                                     </div>
                                     <div className="text-center space-y-1">
-                                        <p className="font-semibold text-zinc-900">Загрузить файл знаний</p>
+                                        <p className="font-semibold text-zinc-900">
+                                            {isDragging ? "Отпустите файл" : "Загрузить файл знаний"}
+                                        </p>
                                         <p className="text-xs text-muted-foreground">PDF, DOCX, TXT. Перетащите или нажмите.</p>
                                     </div>
                                     <Input

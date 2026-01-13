@@ -11,7 +11,8 @@ import { FeedbackPanel, TestCaseItem, calculateSimilarity } from "@/components/a
 import { TestResultScorecard, type TestReport } from "@/components/agents/testing/test-result-scorecard"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { RotateCcw } from "lucide-react"
+import { RotateCcw, Play, Loader2 } from "lucide-react"
+import { getTestCases, addTestCase, deleteTestCase } from "@/actions/test-cases"
 
 export default function TestingPage() {
     const t = useTranslations('Testing')
@@ -19,15 +20,59 @@ export default function TestingPage() {
     const agentId = params.agentId as string
 
     const [activeTab, setActiveTab] = React.useState("manual")
-    const [testCases, setTestCases] = React.useState<TestCaseItem[]>([
-        { id: "1", question: "Каковы ваши часы работы?", expectedAnswer: "с 9:00 до 18:00", status: 'pending' },
-        { id: "2", question: "Есть ли у вас возврат?", expectedAnswer: "да, в течение 30 дней", status: 'pending' },
-    ])
+    const [testCases, setTestCases] = React.useState<TestCaseItem[]>([])
     const [isRunning, setIsRunning] = React.useState(false)
     const [showResults, setShowResults] = React.useState(false)
     const [sessionId, setSessionId] = React.useState<string | null>(null)
+    const [isLoadingCases, setIsLoadingCases] = React.useState(true)
 
     const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL || ''
+
+    // Load test cases from DB on mount
+    React.useEffect(() => {
+        const loadCases = async () => {
+            try {
+                const cases = await getTestCases(agentId)
+                setTestCases(cases.map(c => ({
+                    ...c,
+                    status: 'pending' as const
+                })))
+            } catch (error) {
+                console.error('Failed to load test cases:', error)
+            } finally {
+                setIsLoadingCases(false)
+            }
+        }
+        loadCases()
+    }, [agentId])
+
+    // Handle adding test case (save to DB)
+    const handleAddTestCase = async (question: string, expectedAnswer: string) => {
+        try {
+            const result = await addTestCase(agentId, question, expectedAnswer)
+            if (result.success) {
+                setTestCases(prev => [...prev, {
+                    id: result.id,
+                    question,
+                    expectedAnswer,
+                    status: 'pending' as const
+                }])
+                toast.success("Добавлено в очередь")
+            }
+        } catch (error) {
+            toast.error("Ошибка сохранения")
+        }
+    }
+
+    // Handle removing test case (delete from DB)
+    const handleRemoveTestCase = async (id: string) => {
+        try {
+            await deleteTestCase(id)
+            setTestCases(prev => prev.filter(tc => tc.id !== id))
+        } catch (error) {
+            toast.error("Ошибка удаления")
+        }
+    }
 
     const handleFeedbackSubmit = (text: string) => {
         // Not used anymore, but kept for compatibility
@@ -177,9 +222,27 @@ export default function TestingPage() {
                                                     <span className="text-2xl">🧪</span>
                                                 </div>
                                                 <h3 className="text-lg font-semibold text-zinc-900 mb-2">Автотестирование</h3>
-                                                <p className="text-sm text-zinc-500 max-w-sm">
-                                                    Добавьте тест-кейсы в панели справа и нажмите "Запустить тесты" для проверки агента.
+                                                <p className="text-sm text-zinc-500 max-w-sm mb-6">
+                                                    Добавьте тест-кейсы в панели справа и нажмите кнопку ниже для проверки агента.
                                                 </p>
+                                                <Button
+                                                    size="lg"
+                                                    className="h-12 px-8 gap-2 font-medium bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl shadow-lg"
+                                                    disabled={testCases.filter(tc => tc.status === 'pending').length === 0 || isRunning}
+                                                    onClick={handleRunTests}
+                                                >
+                                                    {isRunning ? (
+                                                        <>
+                                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                                            Тестирование...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Play className="h-5 w-5 fill-current" />
+                                                            Запустить тесты ({testCases.filter(tc => tc.status === 'pending').length})
+                                                        </>
+                                                    )}
+                                                </Button>
                                             </div>
                                         )}
                                     </TabsContent>
@@ -203,6 +266,8 @@ export default function TestingPage() {
                                     setTestCases={setTestCases}
                                     onRunTests={handleRunTests}
                                     isRunning={isRunning}
+                                    onAddTestCase={handleAddTestCase}
+                                    onRemoveTestCase={handleRemoveTestCase}
                                 />
                             </ResizablePanel>
                         </>

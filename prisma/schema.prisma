@@ -162,9 +162,23 @@ model Agent {
   tokenUsage      TokenUsage[]
   promptVersions  SystemPromptVersion[]
   notes           AgentNote[]
+  testCases       AgentTestCase[]
   
   @@index([userId])
   @@map("agents")
+}
+
+model AgentTestCase {
+  id             String   @id @default(cuid())
+  agentId        String   @map("agent_id")
+  question       String   @db.Text
+  expectedAnswer String   @map("expected_answer") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  agent          Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId])
+  @@map("agent_test_cases")
 }
 
 model SystemPromptVersion {
