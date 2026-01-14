@@ -29,9 +29,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 
 import { cn } from "@/lib/utils"
-// Reusing NoteEditorDialog logic but adapting for Library (no vectorization needed in UI, just save)
-// Actually we can reuse the same dialog UI but handle save differently.
-import { NoteEditorDialog, Note } from "@/components/knowledge/note-editor-dialog"
+// NoteEditorDialog removed as per request
+// import { NoteEditorDialog, Note } from "@/components/knowledge/note-editor-dialog"
 import { createLibraryItem, getLibraryItems, deleteLibraryItem, LibraryItemWithChunks, getLibraryItemChunks, updateLibraryChunk } from "@/actions/library"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -50,9 +49,9 @@ export default function GlobalKnowledgePage() {
     const [isSaving, setIsSaving] = React.useState(false)
     const [isDragging, setIsDragging] = React.useState(false)
 
-    // Note State
-    const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
-    const [editingNote, setEditingNote] = React.useState<Note | undefined>(undefined)
+    // Note State - Removed
+    // const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
+    // const [editingNote, setEditingNote] = React.useState<Note | undefined>(undefined)
 
     // View Chunks State
     const [viewingItem, setViewingItem] = React.useState<LibraryItemWithChunks | null>(null)
@@ -177,36 +176,7 @@ export default function GlobalKnowledgePage() {
     }
 
 
-    // --- Note Logic ---
-    const handleSaveNote = async (noteData: Partial<Note>) => {
-        // We treat note as a library item with 1 chunk (or more if we split, but user said "no chunking for notes" usually, 
-        // but for Library consistency we can store it as 1 chunk. 
-        // Wait, for *Agent Notes* user said "vectorize without chunking". 
-        // For *Library Notes*, we should probably just save the content.
-        // Let's save as 1 chunk so it's uniform.
-
-        try {
-            const result = await createLibraryItem({
-                name: noteData.title || "Untitled Note",
-                type: 'NOTE',
-                content: noteData.content,
-                chunks: [{
-                    content: noteData.content || "",
-                    index: 0
-                }]
-            })
-
-            if (result.success) {
-                toast.success("Note saved to Library")
-                setIsNoteDialogOpen(false)
-                fetchItems()
-            } else {
-                toast.error("Failed to save note")
-            }
-        } catch (error) {
-            toast.error("Error saving note")
-        }
-    }
+    // --- Note Logic Removed ---
 
     const handleDelete = async (id: string) => {
         if (confirm("Delete this item?")) {
@@ -295,21 +265,7 @@ export default function GlobalKnowledgePage() {
                     <Button variant="secondary">Выбрать файл</Button>
                 </div>
 
-                {/* Create Note Card */}
-                <div
-                    className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-muted/50 transition-colors cursor-pointer group"
-                    onClick={() => {
-                        setEditingNote(undefined)
-                        setIsNoteDialogOpen(true)
-                    }}
-                >
-                    <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <StickyNote className="h-8 w-8 text-primary" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-1">Создать заметку</h3>
-                    <p className="text-sm text-muted-foreground mb-4">Напишите текст прямо здесь.</p>
-                    <Button variant="secondary">Написать</Button>
-                </div>
+
             </div>
 
             {/* Library List */}
@@ -463,14 +419,7 @@ export default function GlobalKnowledgePage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Note Dialog */}
-            <NoteEditorDialog
-                open={isNoteDialogOpen}
-                onOpenChange={setIsNoteDialogOpen}
-                onSave={handleSaveNote}
-                initialNote={editingNote}
-                isSaving={false} // Saving happens in parent but fast enough usually
-            />
+
 
             {/* View Chunks Dialog (Editable) */}
             <Dialog open={!!viewingItem} onOpenChange={(open) => !open && setViewingItem(null)}>
