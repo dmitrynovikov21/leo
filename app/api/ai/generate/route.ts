@@ -14,9 +14,9 @@ export async function POST(req: Request) {
 
         const body = await req.json();
 
-        // Use URL from env (localhost:8080 works from host for Gateway)
-        // If we needed Docker networking, we'd use host.docker.internal
-        const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL;
+        // Server-side URL (for Docker: use host.docker.internal)
+        // Falls back to NEXT_PUBLIC_ for local dev without Docker
+        const gatewayUrl = process.env.AI_GATEWAY_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_URL;
 
         if (!gatewayUrl) {
             console.error("Gateway URL is not defined");

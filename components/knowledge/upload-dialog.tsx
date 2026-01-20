@@ -40,48 +40,70 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     const [progress, setProgress] = React.useState(0)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
+    // Track processed files to prevent duplicates
+    const processedFilesRef = React.useRef<Set<string>>(new Set())
+
     // Handle external files (drag & drop from parent)
     React.useEffect(() => {
         if (externalFiles && externalFiles.length > 0) {
-            handleFiles(externalFiles)
+            // Filter out already processed files
+            const newFiles = externalFiles.filter(f => !processedFilesRef.current.has(f.name + f.size))
+            if (newFiles.length > 0) {
+                newFiles.forEach(f => processedFilesRef.current.add(f.name + f.size))
+                handleFiles(newFiles)
+            }
         }
     }, [externalFiles])
 
     const processFile = async (file: File) => {
-        // Read file content if text/md
+        const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+
+        let chunks: { content: string; index: number; metadata?: any }[] = []
         let content = ""
-        if (file.type === "text/plain" || file.name.endsWith(".md")) {
-            content = await file.text()
-        } else {
-            content = "File processing pending... Content will be extracted by OCR/Parser worker."
+
+        // Always try to parse through Gateway first
+        if (gatewayUrl) {
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+
+                const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+                    method: 'POST',
+                    body: formData,
+                })
+
+                if (parseResponse.ok) {
+                    const parseData = await parseResponse.json()
+                    chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
+                        content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
+                        index,
+                        metadata: { fileName: file.name, ...(chunk.metadata || {}) }
+                    }))
+                    content = chunks.map(c => c.content).join('\n\n')
+                } else {
+                    console.warn('Gateway parse failed, falling back to local processing')
+                }
+            } catch (err) {
+                console.warn('Gateway unavailable, falling back to local processing:', err)
+            }
         }
 
-        // If agentId is provided, upload to agent via API
-        if (agentId) {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) {
-                toast.error("AI Gateway URL не настроен")
-                return
+        // Fallback: local processing for text files
+        if (chunks.length === 0) {
+            if (file.type === "text/plain" || file.name.endsWith(".md")) {
+                content = await file.text()
+            } else {
+                content = `Файл ${file.name} требует обработки через OCR/Parser.`
             }
+            chunks = [{
+                content: content.slice(0, 2000) || "Empty content",
+                index: 0,
+                metadata: { fileName: file.name }
+            }]
+        }
 
-            // Parse file first
-            const formData = new FormData()
-            formData.append('file', file)
-
-            const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
-                method: 'POST',
-                body: formData,
-            })
-
-            if (!parseResponse.ok) throw new Error('Failed to parse document')
-
-            const parseData = await parseResponse.json()
-            const chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
-                index,
-                text: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || ''
-            }))
-
-            // Vectorize and save
+        // If agentId is provided, vectorize for agent
+        if (agentId && gatewayUrl) {
             const vectorizeResponse = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -91,19 +113,13 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                     filename: file.name,
                     fileSize: file.size,
                     mimeType: file.type || 'application/octet-stream',
-                    chunks,
+                    chunks: chunks.map(c => ({ index: c.index, text: c.content })),
                 }),
             })
 
             if (!vectorizeResponse.ok) throw new Error('Failed to vectorize')
         } else {
-            // Upload to library
-            const chunks = [{
-                content: content.slice(0, 500) || "Empty content",
-                index: 0,
-                metadata: { fileName: file.name }
-            }]
-
+            // Save to global library
             await createLibraryItem({
                 name: file.name,
                 type: 'FILE',

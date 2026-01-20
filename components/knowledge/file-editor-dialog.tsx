@@ -1,23 +1,41 @@
 "use client"
 
 import * as React from "react"
-import { FileText, Save } from "lucide-react"
+import { FileText, Save, Loader2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import { toast } from "sonner"
+import { getLibraryItemChunks, updateLibraryChunk } from "@/actions/library"
+import { cn } from "@/lib/utils"
+
+interface Chunk {
+    id: string
+    content: string
+    chunkIndex: number
+    metadata?: any
+}
 
 interface FileEditorDialogProps {
-    file: any // using any for now to be flexible with Document type
+    file: {
+        id: string
+        name: string
+        type?: string
+        chunksCount?: number
+        chunks?: Chunk[]
+        isAgentDocument?: boolean
+    } | null
     open: boolean
     onOpenChange: (open: boolean) => void
-    onSave: (fileId: string | number, newContent: string) => void
+    onSave?: (fileId: string, newContent: string) => void
 }
 
 export function FileEditorDialog({
@@ -26,21 +44,76 @@ export function FileEditorDialog({
     onOpenChange,
     onSave
 }: FileEditorDialogProps) {
-    // Mock content based on file name if no content provided
-    const [content, setContent] = React.useState("")
+    const [chunks, setChunks] = React.useState<Chunk[]>([])
+    const [isLoading, setIsLoading] = React.useState(false)
+    const [editingChunkId, setEditingChunkId] = React.useState<string | null>(null)
+    const [editedContent, setEditedContent] = React.useState("")
+    const [isSaving, setIsSaving] = React.useState(false)
 
+    // Load chunks when dialog opens
     React.useEffect(() => {
-        if (open && file) {
-            // In a real app, this would fetch content.
-            // For now, we seed it with dummy text or existing content.
-            setContent(file.content || `[System]: Content for ${file.name}\n\nThis is a placeholder for the file content chunks. User can edit this text area.\n\nChunk 1:\nKey policies regarding remote work...\n\nChunk 2:\nSecurity protocols for VPN access...`)
+        if (open && file?.id) {
+            // If chunks are passed directly (agent documents), use them
+            if (file.chunks && Array.isArray(file.chunks)) {
+                setChunks(file.chunks)
+                setIsLoading(false)
+            } else {
+                // Otherwise load from library DB
+                loadChunks()
+            }
         }
-    }, [open, file])
+    }, [open, file?.id, file?.chunks])
 
-    const handleSave = () => {
-        if (file) {
-            onSave(file.id, content)
-            onOpenChange(false)
+    const loadChunks = async () => {
+        if (!file?.id) return
+
+        setIsLoading(true)
+        try {
+            const data = await getLibraryItemChunks(file.id)
+            setChunks(data || [])
+        } catch (err) {
+            console.error("Failed to load chunks:", err)
+            toast.error("Не удалось загрузить чанки")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const startEditing = (chunk: Chunk) => {
+        setEditingChunkId(chunk.id)
+        setEditedContent(chunk.content)
+    }
+
+    const cancelEditing = () => {
+        setEditingChunkId(null)
+        setEditedContent("")
+    }
+
+    const saveChunk = async () => {
+        if (!editingChunkId) return
+
+        setIsSaving(true)
+        try {
+            const result = await updateLibraryChunk(editingChunkId, editedContent)
+
+            if (result.success) {
+                // Update local state
+                setChunks(prev => prev.map(c =>
+                    c.id === editingChunkId
+                        ? { ...c, content: editedContent }
+                        : c
+                ))
+                setEditingChunkId(null)
+                setEditedContent("")
+                toast.success("Чанк сохранён")
+            } else {
+                toast.error(result.error || "Ошибка сохранения")
+            }
+        } catch (err) {
+            console.error("Failed to save chunk:", err)
+            toast.error("Ошибка сохранения")
+        } finally {
+            setIsSaving(false)
         }
     }
 
@@ -48,23 +121,107 @@ export function FileEditorDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[800px] h-[85vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Редактирование: {file.name}</DialogTitle>
+            <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col p-0">
+                <DialogHeader className="p-6 pb-4 border-b">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-zinc-100">
+                            <FileText className="h-5 w-5 text-zinc-600" />
+                        </div>
+                        <div>
+                            <DialogTitle className="text-lg">{file.name}</DialogTitle>
+                            <p className="text-sm text-muted-foreground">
+                                {chunks.length} чанков
+                            </p>
+                        </div>
+                    </div>
                 </DialogHeader>
-                <div className="flex-1 py-4">
-                    <Textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        className="h-full font-mono text-sm resize-none"
-                    />
-                </div>
-                <DialogFooter>
+
+                <ScrollArea className="flex-1 px-6 pr-8">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : chunks.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                            <p className="text-muted-foreground">Чанки не найдены</p>
+                            <p className="text-sm text-muted-foreground/70">
+                                Файл ещё не был распарсен
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 py-4">
+                            {chunks.map((chunk, idx) => (
+                                <div
+                                    key={chunk.id}
+                                    className={cn(
+                                        "rounded-xl border p-4 transition-all",
+                                        editingChunkId === chunk.id
+                                            ? "border-primary bg-primary/5"
+                                            : "border-zinc-200 bg-white hover:border-zinc-300"
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <Badge variant="outline" className="text-xs">
+                                            Чанк {chunk.chunkIndex + 1}
+                                        </Badge>
+                                        {editingChunkId === chunk.id ? (
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={cancelEditing}
+                                                    disabled={isSaving}
+                                                >
+                                                    Отмена
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={saveChunk}
+                                                    disabled={isSaving}
+                                                >
+                                                    {isSaving ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Save className="h-3 w-3 mr-1" />
+                                                            Сохранить
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => startEditing(chunk)}
+                                            >
+                                                Редактировать
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {editingChunkId === chunk.id ? (
+                                        <Textarea
+                                            value={editedContent}
+                                            onChange={(e) => setEditedContent(e.target.value)}
+                                            className="min-h-[150px] font-mono text-sm"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">
+                                            {chunk.content}
+                                        </p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </ScrollArea>
+
+                <DialogFooter className="p-6 pt-4 border-t">
                     <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Отмена
-                    </Button>
-                    <Button onClick={() => onSave(file.id, content)}>
-                        Сохранить
+                        Закрыть
                     </Button>
                 </DialogFooter>
             </DialogContent>

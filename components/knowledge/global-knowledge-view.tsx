@@ -134,20 +134,13 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 setIsLoading(true)
                 const items = await getLibraryItems()
 
-                if (items.length > 0) {
-                    // Use real data from database
-                    const docs = items.map(libraryItemToDocument)
-                    setDocuments(docs)
-                } else {
-                    // DEV MODE: Use mock data for design testing
-                    const { mockDocuments } = await import("@/mocks/documents")
-                    setDocuments(mockDocuments as Document[])
-                }
+                // Use real data from database only
+                const docs = items.map(libraryItemToDocument)
+                setDocuments(docs)
             } catch (err) {
                 console.error('Failed to load documents:', err)
-                // Fallback to mocks on error
-                const { mockDocuments } = await import("@/mocks/documents")
-                setDocuments(mockDocuments as Document[])
+                setError('Не удалось загрузить документы')
+                setDocuments([])
             } finally {
                 setIsLoading(false)
             }

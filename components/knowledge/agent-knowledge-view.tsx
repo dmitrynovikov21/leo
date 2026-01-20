@@ -150,14 +150,19 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
 
             if (response.ok) {
                 const data = await response.json()
-                const normalizedDocs = data.map((d: any) => {
+                // Filter out notes (filename starts with note_) - they are shown separately
+                const filteredData = data.filter((d: any) => {
+                    const filename = d.filename || d.name || ''
+                    return !filename.startsWith('note_')
+                })
+                const normalizedDocs = filteredData.map((d: any) => {
                     const filename = d.filename || d.name || ''
                     const rawMimeType = d.mime_type || d.mimeType || d.type || ''
                     return {
                         id: d.id,
                         name: filename,
                         type: mimeTypeToLabel(rawMimeType, filename),
-                        size: d.size ? formatBytes(d.size) : 'Unknown',
+                        size: d.size || 'Unknown',
                         chunksCount: d.chunks_count || 0,
                         tokensUsage: (d.chunks_count || 0) * 500,
                         updatedAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Только что',
@@ -283,6 +288,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
         try {
             const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
             if (!orchestratorUrl) {
                 toast.error("Orchestrator URL not configured")
                 return
@@ -301,6 +307,26 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
             )
 
             if (response.ok) {
+                // Also vectorize the note for RAG
+                if (gatewayUrl) {
+                    try {
+                        await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                agentId: internalAgentId,
+                                userId: session?.user?.id,
+                                filename: `note_${noteData.title}`,
+                                fileSize: noteData.content.length,
+                                mimeType: 'text/plain',
+                                chunks: [{ index: 0, text: noteData.content }],
+                            }),
+                        })
+                    } catch (vecErr) {
+                        console.warn('Note vectorization failed:', vecErr)
+                    }
+                }
+
                 toast.success(isEdit ? "Заметка обновлена" : "Заметка создана")
                 setIsNoteDialogOpen(false)
                 setSelectedNote(null)
@@ -379,6 +405,47 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
         setImportingItem(item.id)
         try {
+            // Check if this is a NOTE type - import as agent note
+            if (item.type?.toUpperCase() === 'NOTE') {
+                const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+                const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+                if (!orchestratorUrl) {
+                    toast.error("Orchestrator URL not configured")
+                    return
+                }
+
+                // Create as agent note
+                const noteResponse = await fetch(`${orchestratorUrl}/api/v1/agents/${internalAgentId}/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: item.name, content: item.content || '' }),
+                })
+
+                if (!noteResponse.ok) throw new Error('Failed to create note')
+
+                // Also vectorize for RAG
+                if (gatewayUrl && item.content) {
+                    await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            agentId: internalAgentId,
+                            userId: session?.user?.id,
+                            filename: `note_${item.name}`,
+                            fileSize: item.content.length,
+                            mimeType: 'text/plain',
+                            chunks: [{ index: 0, text: item.content }],
+                        }),
+                    })
+                }
+
+                toast.success('Заметка импортирована!')
+                setIsLibraryDialogOpen(false)
+                fetchNotes()
+                return
+            }
+
+            // Regular file import
             const chunks = await getLibraryItemChunks(item.id)
             if (!chunks || chunks.length === 0) {
                 toast.error("Файл не содержит чанков")
@@ -467,9 +534,19 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                     const response = await fetch(`${gatewayUrl}/api/v1/agents/${internalAgentId}/documents/${doc.id}`)
                     if (response.ok) {
                         const data = await response.json()
-                        // Combine chunks into text
-                        const content = (data.chunks || []).map((c: any) => c.text || c.content).join('\n\n')
-                        setEditingFile({ ...doc, content })
+                        // Map chunks to format expected by FileEditorDialog
+                        const chunks = (data.chunks || []).map((c: any, index: number) => ({
+                            id: c.id || `chunk-${index}`,
+                            content: c.text || c.content || '',
+                            chunkIndex: index
+                        }))
+                        // Pass chunks directly to the editor
+                        setEditingFile({
+                            ...doc,
+                            chunks,
+                            chunksCount: chunks.length,
+                            isAgentDocument: true // Flag to indicate this is from agent API
+                        })
                     } else {
                         setEditingFile(doc) // Fallback
                     }
@@ -626,7 +703,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                                         <div>
                                             <p className="font-medium">{item.name}</p>
                                             <p className="text-sm text-muted-foreground">
-                                                {item._count.chunks} чанков
+                                                {item._count.chunks} чанков • {item.fileSize ? formatBytes(item.fileSize) : '-'}
                                             </p>
                                         </div>
                                         <Badge variant={importingItem === item.id ? "secondary" : "outline"}>

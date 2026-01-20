@@ -89,6 +89,17 @@ CREATE TABLE "verification_tokens" (
 );
 
 -- CreateTable
+CREATE TABLE "email_verification_codes" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "code" VARCHAR(6) NOT NULL,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "email_verification_codes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "agents" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -109,8 +120,22 @@ CREATE TABLE "agents" (
     "tone" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "guardrails" JSONB DEFAULT '[]',
     "welcome_message" TEXT,
+    "work_schedule" JSONB,
+    "holidays" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "offline_message" TEXT,
 
     CONSTRAINT "agents_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "agent_test_cases" (
+    "id" TEXT NOT NULL,
+    "agent_id" TEXT NOT NULL,
+    "question" TEXT NOT NULL,
+    "expected_answer" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "agent_test_cases_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -165,6 +190,7 @@ CREATE TABLE "token_usage" (
     "agent_id" VARCHAR(255),
     "response_time_ms" INTEGER NOT NULL DEFAULT 0,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "is_test" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "token_usage_pkey" PRIMARY KEY ("id")
 );
@@ -177,6 +203,7 @@ CREATE TABLE "agent_messages" (
     "message_type" "MessageType" NOT NULL,
     "content" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "is_test" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "agent_messages_pkey" PRIMARY KEY ("id")
 );
@@ -190,6 +217,60 @@ CREATE TABLE "agent_summaries" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "agent_summaries_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "agent_notes" (
+    "id" TEXT NOT NULL,
+    "agent_id" TEXT NOT NULL,
+    "title" VARCHAR(255) NOT NULL,
+    "content" TEXT NOT NULL,
+    "vector_id" VARCHAR(255),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "agent_notes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "library_items" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "type" VARCHAR(50) NOT NULL,
+    "content" TEXT,
+    "file_url" TEXT,
+    "file_size" INTEGER,
+    "mime_type" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "library_items_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "library_chunks" (
+    "id" TEXT NOT NULL,
+    "library_item_id" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "chunk_index" INTEGER NOT NULL,
+    "metadata" JSONB,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "library_chunks_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "global_system_prompts" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "content" TEXT NOT NULL,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "global_system_prompts_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -229,7 +310,16 @@ CREATE UNIQUE INDEX "verification_tokens_token_key" ON "verification_tokens"("to
 CREATE UNIQUE INDEX "verification_tokens_identifier_token_key" ON "verification_tokens"("identifier", "token");
 
 -- CreateIndex
+CREATE INDEX "email_verification_codes_user_id_idx" ON "email_verification_codes"("user_id");
+
+-- CreateIndex
+CREATE INDEX "email_verification_codes_code_idx" ON "email_verification_codes"("code");
+
+-- CreateIndex
 CREATE INDEX "agents_userId_idx" ON "agents"("userId");
+
+-- CreateIndex
+CREATE INDEX "agent_test_cases_agent_id_idx" ON "agent_test_cases"("agent_id");
 
 -- CreateIndex
 CREATE INDEX "system_prompt_versions_agent_id_idx" ON "system_prompt_versions"("agent_id");
@@ -250,13 +340,31 @@ CREATE INDEX "idx_token_usage_agent_id" ON "token_usage"("agent_id");
 CREATE INDEX "token_usage_created_at_idx" ON "token_usage"("created_at");
 
 -- CreateIndex
+CREATE INDEX "idx_token_usage_is_test" ON "token_usage"("is_test");
+
+-- CreateIndex
 CREATE INDEX "agent_messages_agent_id_telegram_user_id_idx" ON "agent_messages"("agent_id", "telegram_user_id");
 
 -- CreateIndex
 CREATE INDEX "agent_messages_created_at_idx" ON "agent_messages"("created_at");
 
 -- CreateIndex
+CREATE INDEX "idx_agent_messages_is_test" ON "agent_messages"("is_test");
+
+-- CreateIndex
 CREATE INDEX "agent_summaries_agent_id_telegram_user_id_idx" ON "agent_summaries"("agent_id", "telegram_user_id");
+
+-- CreateIndex
+CREATE INDEX "agent_notes_agent_id_idx" ON "agent_notes"("agent_id");
+
+-- CreateIndex
+CREATE INDEX "library_items_user_id_idx" ON "library_items"("user_id");
+
+-- CreateIndex
+CREATE INDEX "library_chunks_library_item_id_idx" ON "library_chunks"("library_item_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "global_system_prompts_key_key" ON "global_system_prompts"("key");
 
 -- AddForeignKey
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -268,7 +376,13 @@ ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userI
 ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "email_verification_codes" ADD CONSTRAINT "email_verification_codes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "agents" ADD CONSTRAINT "agents_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "agent_test_cases" ADD CONSTRAINT "agent_test_cases_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "system_prompt_versions" ADD CONSTRAINT "system_prompt_versions_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -290,3 +404,12 @@ ALTER TABLE "agent_messages" ADD CONSTRAINT "agent_messages_agent_id_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "agent_summaries" ADD CONSTRAINT "agent_summaries_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "agent_notes" ADD CONSTRAINT "agent_notes_agent_id_fkey" FOREIGN KEY ("agent_id") REFERENCES "agents"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "library_items" ADD CONSTRAINT "library_items_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "library_chunks" ADD CONSTRAINT "library_chunks_library_item_id_fkey" FOREIGN KEY ("library_item_id") REFERENCES "library_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;

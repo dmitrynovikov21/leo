@@ -18,9 +18,8 @@ export async function POST(req: Request) {
         if (existingUser) {
             // If user exists but not verified, resend code
             if (!existingUser.emailVerified) {
-                // Generate new verification code (use fixed code in dev mode)
-                const isDev = process.env.NODE_ENV === "development";
-                const code = isDev ? "248293" : Math.floor(100000 + Math.random() * 900000).toString();
+                // Generate verification code (hardcoded for now until email is configured)
+                const code = "123456"; // TODO: enable random code when email is ready
                 const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
                 // Delete old codes and create new one
@@ -36,10 +35,8 @@ export async function POST(req: Request) {
                     },
                 });
 
-                // Send verification email (skip in dev mode)
-                if (!isDev) {
-                    await sendVerificationCode(email, code, existingUser.name || name);
-                }
+                // TODO: enable email sending when configured
+                // await sendVerificationCode(email, code, existingUser.name || name);
 
                 return NextResponse.json(
                     {
@@ -70,9 +67,8 @@ export async function POST(req: Request) {
             },
         });
 
-        // Generate verification code (use fixed code in dev mode)
-        const isDev = process.env.NODE_ENV === "development";
-        const code = isDev ? "248293" : Math.floor(100000 + Math.random() * 900000).toString();
+        // Generate verification code (hardcoded for now until email is configured)
+        const code = "123456"; // TODO: enable random code when email is ready
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
         await prisma.emailVerificationCode.create({
@@ -83,10 +79,8 @@ export async function POST(req: Request) {
             },
         });
 
-        // Send verification email (skip in dev mode)
-        if (!isDev) {
-            await sendVerificationCode(email, code, name);
-        }
+        // TODO: enable email sending when configured
+        // await sendVerificationCode(email, code, name);
 
         return NextResponse.json(
             {

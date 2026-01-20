@@ -249,8 +249,8 @@ ${desc}
                 },
                 body: JSON.stringify({
                     agentName: name,
-                    agentRole: role === 'corporate_bot' ? 'Корпоративный бот' : role,
-                    agentDescription: desc
+                    role: role === 'corporate_bot' ? 'Корпоративный бот' : role,
+                    description: desc
                 }),
             })
 
