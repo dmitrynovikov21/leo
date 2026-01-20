@@ -44,6 +44,7 @@ export const mockDashboardKPIs: DashboardKPI[] = [
         value: '1.2s',
         change: -15.2,
         trend: 'down', // lower is better
+        icon: 'activity',
     },
 ];
 

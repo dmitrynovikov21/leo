@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
         const res = await fetch(`${orchestratorUrl}/api/v1/agents/stats/overview`, {
             headers: {
-                "x-user-id": userId,
+                "x-user-id": userId || "",
                 "Content-Type": "application/json"
             }
         })

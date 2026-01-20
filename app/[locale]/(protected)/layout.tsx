@@ -44,8 +44,8 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
             </div>
 
             {/* Scrollable Content */}
-            <main className="flex-1 overflow-y-auto p-4 xl:px-8 scrollbar-thin">
-              <MaxWidthWrapper className="flex h-full max-w-full flex-col gap-4 px-0 lg:gap-6">
+            <main className="flex-1 overflow-y-auto p-0 scrollbar-thin">
+              <MaxWidthWrapper className="flex h-full max-w-full flex-col px-0">
                 {children}
               </MaxWidthWrapper>
             </main>

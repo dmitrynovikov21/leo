@@ -63,13 +63,13 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
                 setRegisteredPassword(data.password);
                 setStep("verify");
 
-                toast.success("Verification code sent!", {
-                    description: "Check your email for the 6-digit code.",
+                toast.success("Код подтверждения отправлен!", {
+                    description: "Проверьте почту — мы отправили 6-значный код.",
                 });
             }
         } catch (error) {
-            toast.error("Registration failed", {
-                description: error instanceof Error ? error.message : "Please try again.",
+            toast.error("Ошибка регистрации", {
+                description: error instanceof Error ? error.message : "Попробуйте снова.",
             });
         } finally {
             setIsLoading(false);
@@ -93,10 +93,10 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
             <form onSubmit={handleSubmit(onSubmit)}>
                 <div className="grid gap-4">
                     <div className="grid gap-1">
-                        <Label htmlFor="name">Name</Label>
+                        <Label htmlFor="name">Имя</Label>
                         <Input
                             id="name"
-                            placeholder="John Doe"
+                            placeholder="Иван Иванов"
                             type="text"
                             autoCapitalize="words"
                             autoComplete="name"
@@ -128,7 +128,7 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
                         )}
                     </div>
                     <div className="grid gap-1">
-                        <Label htmlFor="password">Password</Label>
+                        <Label htmlFor="password">Пароль</Label>
                         <Input
                             id="password"
                             placeholder="••••••••"
@@ -147,7 +147,7 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
                         {isLoading && (
                             <Icons.spinner className="mr-2 size-4 animate-spin" />
                         )}
-                        Create Account
+                        Создать аккаунт
                     </button>
                 </div>
             </form>
@@ -157,7 +157,7 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                     <span className="bg-background px-2 text-muted-foreground">
-                        Or continue with
+                        Или продолжить с
                     </span>
                 </div>
             </div>

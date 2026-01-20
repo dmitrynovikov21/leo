@@ -65,15 +65,12 @@ export async function DELETE(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const keepCurrent = searchParams.get('keepCurrent') === 'true';
-        const currentSessionId = session.user.sessionId;
-
-        if (keepCurrent && currentSessionId) {
-            // Revoke all sessions except current
+        if (keepCurrent) {
+            // We can't identify current session reliably without sessionId in token
+            // So we'll skip this optimization for now or implement it later
+            // For now, fall back to revoking all to be safe
             await prisma.userSession.updateMany({
-                where: {
-                    userId: session.user.id,
-                    id: { not: currentSessionId }
-                },
+                where: { userId: session.user.id },
                 data: { isRevoked: true }
             });
         } else {

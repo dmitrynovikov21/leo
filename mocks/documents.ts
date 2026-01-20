@@ -3,12 +3,14 @@ export type DocumentStatus = 'ready' | 'processing' | 'error' | 'vectorized';
 export interface Document {
     id: string;
     name: string;
-    type: 'pdf' | 'docx' | 'txt' | 'md' | 'spreadsheet' | 'folder';
+    type: 'pdf' | 'docx' | 'txt' | 'md' | 'spreadsheet' | 'folder' | 'note';
     size: string;
     chunksCount: number;
     tokensUsage: number;
     status: DocumentStatus;
     updatedAt: string;
+    description?: string;
+    content?: string;
     errorMessage?: string;
     parentId?: string | null; // For folder structure
 }
@@ -23,6 +25,7 @@ export const mockDocuments: Document[] = [
         tokensUsage: 0,
         status: 'ready',
         updatedAt: '1 час назад',
+        description: 'Папка с материалами отдела маркетинга',
         parentId: null
     },
     {
@@ -34,6 +37,7 @@ export const mockDocuments: Document[] = [
         tokensUsage: 0,
         status: 'ready',
         updatedAt: '2 дня назад',
+        description: 'Квартальные и годовые финансовые отчёты',
         parentId: null
     },
     {
@@ -44,7 +48,8 @@ export const mockDocuments: Document[] = [
         chunksCount: 148,
         tokensUsage: 45000,
         status: 'ready',
-        updatedAt: '2 hours ago',
+        updatedAt: '2 часа назад',
+        description: 'Корпоративная политика компании на 2024 год. Содержит правила внутреннего распорядка, HR-процедуры и KPI.',
         parentId: null
     },
     {
@@ -55,7 +60,8 @@ export const mockDocuments: Document[] = [
         chunksCount: 0,
         tokensUsage: 0,
         status: 'processing',
-        updatedAt: 'Just now',
+        updatedAt: 'Только что',
+        description: 'Скрипт продаж для Q4. Включает возражения клиентов и шаблоны ответов.',
         parentId: null
     },
     {
@@ -65,9 +71,9 @@ export const mockDocuments: Document[] = [
         size: '15 MB',
         chunksCount: 0,
         tokensUsage: 0,
-        status: 'error',
-        updatedAt: '1 day ago',
-        errorMessage: 'OCR Failed: File resolution too low',
+        status: 'processing',
+        updatedAt: '1 день назад',
+        description: 'Прайс-лист 2023 года. Сканированный документ, требуется OCR.',
         parentId: null
     },
     {
@@ -78,8 +84,9 @@ export const mockDocuments: Document[] = [
         chunksCount: 24,
         tokensUsage: 12050,
         status: 'ready',
-        updatedAt: '3 days ago',
-        parentId: 'f1' // Inside Marketing folder
+        updatedAt: '3 дня назад',
+        description: 'Техническая спецификация API v2. REST endpoints, схемы данных.',
+        parentId: 'f1'
     },
     {
         id: '5',
@@ -89,7 +96,34 @@ export const mockDocuments: Document[] = [
         chunksCount: 12,
         tokensUsage: 4500,
         status: 'ready',
-        updatedAt: '5 hours ago',
-        parentId: 'f2' // Inside Finance folder
+        updatedAt: '5 часов назад',
+        description: 'Финансовый отчет за Q3 2024. P&L, баланс, cash flow.',
+        parentId: 'f2'
     },
+    {
+        id: 'n1',
+        name: 'Ideas for Q1 Campaign',
+        type: 'note',
+        size: '-',
+        chunksCount: 1,
+        tokensUsage: 150,
+        status: 'ready',
+        updatedAt: '2 часа назад',
+        description: 'Brainstorming notes for the upcoming ad campaign.',
+        parentId: null,
+        content: 'Main check for Q1: focus on social media engagement. Key targets: Instagram and LinkedIn.'
+    },
+    {
+        id: 'n2',
+        name: 'Meeting Minutes - Oct 15',
+        type: 'note',
+        size: '-',
+        chunksCount: 1,
+        tokensUsage: 300,
+        status: 'ready',
+        updatedAt: '1 день назад',
+        description: 'Notes from the weekly sync.',
+        parentId: null,
+        content: 'Discussed timeline for new feature rollout. Agreed to push deadline by 1 week.'
+    }
 ];
