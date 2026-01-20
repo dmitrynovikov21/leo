@@ -24,6 +24,8 @@ export async function GET(req: Request) {
                 jobTitle: true,
                 timezone: true,
                 bio: true,
+                stripePriceId: true,
+                stripeSubscriptionId: true,
             },
         })
 

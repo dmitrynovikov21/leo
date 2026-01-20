@@ -2,9 +2,11 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, Check } from "lucide-react"
+import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, Check, Plus, Trash2 } from "lucide-react"
 
-import { mockDocuments } from "@/mocks/documents"
+
+
+import { createLibraryItem, getLibraryItems, deleteLibraryItem, updateLibraryItem, clearLibrary, type LibraryItemWithChunks } from "@/actions/library"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,72 +37,253 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
-export function GlobalKnowledgeView() {
+// Document type for UI display
+interface Document {
+    id: string
+    name: string
+    type: 'pdf' | 'docx' | 'txt' | 'md' | 'spreadsheet' | 'folder' | 'note'
+    size: string
+    chunksCount: number
+    tokensUsage: number
+    status: 'ready' | 'processing' | 'error' | 'vectorized'
+    updatedAt: string
+    errorMessage?: string
+    parentId?: string | null
+    content?: string
+}
+
+// Helper to format bytes
+function formatBytes(bytes: number) {
+    if (!bytes) return '-'
+    if (bytes < 1024) return `${bytes} B`
+    else if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    else return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+// Convert LibraryItem from DB to Document for UI
+function libraryItemToDocument(item: LibraryItemWithChunks): Document {
+    // Determine type from mimeType or item type
+    let docType: Document['type'] = 'txt'
+    if (item.type?.toUpperCase() === 'NOTE') {
+        docType = 'note'
+    } else if (item.mimeType) {
+        if (item.mimeType.includes('pdf')) docType = 'pdf'
+        else if (item.mimeType.includes('word') || item.mimeType.includes('docx')) docType = 'docx'
+        else if (item.mimeType.includes('sheet') || item.mimeType.includes('excel') || item.mimeType.includes('xlsx')) docType = 'spreadsheet'
+        else if (item.mimeType.includes('markdown')) docType = 'md'
+        else if (item.mimeType.includes('text')) docType = 'txt'
+    }
+
+    const size = item.fileSize ? formatBytes(item.fileSize) : (item.content?.length ? formatBytes(item.content.length) : '-')
+
+    // Format date
+    const now = new Date()
+    const created = new Date(item.createdAt)
+    const diffMs = now.getTime() - created.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+
+    let updatedAt = 'Только что'
+    if (diffDays > 0) updatedAt = `${diffDays} дн. назад`
+    else if (diffHours > 0) updatedAt = `${diffHours} ч. назад`
+
+    return {
+        id: item.id,
+        name: item.name,
+        type: docType,
+        size,
+        chunksCount: item._count.chunks,
+        tokensUsage: item._count.chunks * 500, // Approximate
+        status: item._count.chunks > 0 ? 'ready' : 'processing',
+        updatedAt,
+        parentId: null, // No folder structure in current schema
+        content: item.content || undefined
+    }
+}
+
+export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: LibraryItemWithChunks[] }) {
     const t = useTranslations('Knowledge');
 
-    // State for Notes
-    const [notes, setNotes] = React.useState([
-        {
-            id: 1,
-            title: "Глобальная HR Политика",
-            content: "Стандартная политика отпусков обновлена на 2025 год. 28 дней ежегодного отпуска.",
-        },
-        {
-            id: 2,
-            title: "Бренд-бук",
-            content: "Используйте hex #FF5500 для основных действий. Логотип должен иметь отступ 20px.",
-        },
-        {
-            id: 3,
-            title: "API Ключи",
-            content: "Продакшн ключи ротируются ежемесячно. Свяжитесь с DevOps для доступа.",
-        },
-    ])
+    // Real data from database
+    const [documents, setDocuments] = React.useState<Document[]>(
+        initialItems.length > 0 ? initialItems.map(libraryItemToDocument) : []
+    )
 
-    const [editingNote, setEditingNote] = React.useState<any>(null)
+    // Sync state with server props when they change (e.g. after revalidatePath)
+    React.useEffect(() => {
+        setDocuments(initialItems.length > 0 ? initialItems.map(libraryItemToDocument) : [])
+    }, [initialItems])
+
+    const [isLoading, setIsLoading] = React.useState(false)
+    const [error, setError] = React.useState<string | null>(null)
+
+    // Drag & Drop State
+    const [isDraggingGlobal, setIsDraggingGlobal] = React.useState(false)
+    const [droppedFiles, setDroppedFiles] = React.useState<File[]>([])
+    const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
+    const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
+    const [selectedNote, setSelectedNote] = React.useState<Document | null>(null)
+
+    // Load documents on mount
+    React.useEffect(() => {
+        async function loadDocuments() {
+            try {
+                setIsLoading(true)
+                const items = await getLibraryItems()
+
+                if (items.length > 0) {
+                    // Use real data from database
+                    const docs = items.map(libraryItemToDocument)
+                    setDocuments(docs)
+                } else {
+                    // DEV MODE: Use mock data for design testing
+                    const { mockDocuments } = await import("@/mocks/documents")
+                    setDocuments(mockDocuments as Document[])
+                }
+            } catch (err) {
+                console.error('Failed to load documents:', err)
+                // Fallback to mocks on error
+                const { mockDocuments } = await import("@/mocks/documents")
+                setDocuments(mockDocuments as Document[])
+            } finally {
+                setIsLoading(false)
+            }
+        }
+        loadDocuments()
+    }, [])
+
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
     const [isCreateOpen, setIsCreateOpen] = React.useState(false)
     const [isCreateSpaceOpen, setIsCreateSpaceOpen] = React.useState(false)
     const [newSpaceEmoji, setNewSpaceEmoji] = React.useState("📁")
 
-    const handleCreate = (newNote: any) => {
-        setNotes([...notes, { ...newNote, id: Date.now() }])
+    const handleCreateNote = async (noteData: { title: string, content: string }) => {
+        try {
+            const result = await createLibraryItem({
+                name: noteData.title,
+                type: 'NOTE',
+                content: noteData.content,
+                chunks: [{
+                    content: noteData.content,
+                    index: 0,
+                    metadata: { type: 'note_segment' }
+                }]
+            })
+
+            if (result.success && result.item) {
+                // Manually construct the Document object to avoid type issues with _count
+                const createdItem = result.item
+                const newItemForUI: Document = {
+                    id: createdItem.id,
+                    name: createdItem.name,
+                    type: 'note',
+                    size: '-',
+                    chunksCount: 1,
+                    tokensUsage: 0,
+                    status: 'ready',
+                    updatedAt: 'Только что',
+                    parentId: null,
+                    content: createdItem.content || undefined
+                }
+
+                setDocuments(prev => [...prev, newItemForUI])
+                setIsNoteDialogOpen(false)
+                toast.success("Заметка успешно создана")
+            } else {
+                toast.error(result.error || "Ошибка при создании заметки")
+            }
+        } catch (error) {
+            console.error("Failed to create note:", error)
+            toast.error("Ошибка при создании заметки")
+        }
     }
 
-    const handleUpdate = (updatedNote: any) => {
-        setNotes(notes.map(n => n.id === updatedNote.id ? updatedNote : n))
+
+
+    const handleUpdateNote = async (noteData: { id: string, title: string, content: string }) => {
+        try {
+            const result = await updateLibraryItem(noteData.id, {
+                name: noteData.title,
+                content: noteData.content
+            })
+
+            if (result.success && result.item) {
+                // Update local state
+                setDocuments(prev => prev.map(doc => {
+                    if (doc.id === noteData.id) {
+                        return {
+                            ...doc,
+                            name: noteData.title,
+                            content: noteData.content,
+                            // Update size approx
+                            size: formatBytes(noteData.content.length)
+                        }
+                    }
+                    return doc
+                }))
+
+                setIsNoteDialogOpen(false)
+                setSelectedNote(null)
+                toast.success("Заметка обновлена")
+            } else {
+                toast.error("Не удалось обновить заметку")
+            }
+        } catch (e) {
+            console.error(e)
+            toast.error("Ошибка при обновлении")
+        }
     }
 
-    const handleDelete = (id: any) => {
-        setNotes(notes.filter(n => n.id !== id))
+    const handleDeleteNote = async (id: string) => {
+        try {
+            await deleteLibraryItem(id)
+            setDocuments(prev => prev.filter(doc => doc.id !== id))
+            setIsNoteDialogOpen(false)
+            setSelectedNote(null)
+            toast.success("Заметка удалена")
+        } catch (error) {
+            toast.error("Ошибка удаления")
+        }
+    }
+
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteLibraryItem(id)
+            setDocuments(documents.filter(d => d.id !== id))
+        } catch (err) {
+            console.error('Failed to delete:', err)
+        }
     }
 
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
     const [filterType, setFilterType] = React.useState<'all' | 'folder' | 'document' | 'spreadsheet' | 'note'>('all')
 
     // Filter documents based on current folder
-    // In a real app this would be a server action or API call
-    const currentDocuments = mockDocuments.filter(doc => doc.parentId === currentFolderId)
-    // const currentDocuments = mockDocuments // Show all docs for MVP
-    const currentFolder = mockDocuments.find(d => d.id === currentFolderId)
+    const currentDocuments = documents.filter(doc => doc.parentId === currentFolderId)
+    const currentFolder = documents.find(d => d.id === currentFolderId)
 
     // Apply type filter
     const filteredDocuments = currentDocuments.filter(doc => {
         if (filterType === 'all') return true
         if (filterType === 'document') return ['pdf', 'docx', 'txt'].includes(doc.type)
-        if (filterType === 'note') return ['md'].includes(doc.type)
+        if (filterType === 'note') return ['md', 'note'].includes(doc.type)
         return doc.type === filterType
     })
 
-    const handleFileClick = (doc: any) => {
+    const handleFileClick = (doc: Document) => {
         if (doc.type === 'folder') {
             setCurrentFolderId(doc.id)
             return
         }
 
-        if (doc.type === 'spreadsheet') {
+        if (doc.type === 'note') {
+            setSelectedNote(doc)
+            setIsNoteDialogOpen(true)
+        } else if (doc.type === 'spreadsheet') {
             setEditingTable(doc)
         } else {
             setEditingFile(doc)
@@ -111,134 +294,93 @@ export function GlobalKnowledgeView() {
         setCurrentFolderId(null)
     }
 
+    if (isLoading) {
+        return (
+            <div className="h-full flex flex-col space-y-6 p-6">
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-9 w-32" />
+                </div>
+                <div className="space-y-2">
+                    {[1, 2, 3, 4].map(i => (
+                        <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
+    // Global Drag & Drop Handlers
+    const handleGlobalDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+        if (!isDraggingGlobal) setIsDraggingGlobal(true)
+    }
+
+    const handleGlobalDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        // Simple check to avoid flickering when dragging over child elements
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return
+        setIsDraggingGlobal(false)
+    }
+
+    const handleGlobalDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        setIsDraggingGlobal(false)
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files)
+            setDroppedFiles(files)
+            setIsUploadDialogOpen(true)
+        }
+    }
+
+    const notes = documents.filter(doc => doc.type === 'note');
+    const notesCount = notes.length;
+
     return (
-        <div className="h-full flex flex-col space-y-6 p-6">
-            {/* 1. Header: Space Context */}
-            <div className="flex flex-col gap-2 border-b border-zinc-200/50 pb-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        {/* Show specific folder title as the "Space" if deep inside, or default selector */}
-                        {currentFolderId && currentFolder ? (
-                            <div className="flex items-center gap-2">
-                                <Button variant="ghost" size="icon" onClick={handleBack} className="h-8 w-8 -ml-2">
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <span className="text-lg font-semibold">{currentFolder.name}</span>
-                            </div>
-                        ) : (
-                            <SpaceSelector
-                                value={currentFolderId || 'desktop'}
-                                onValueChange={(val) => {
-                                    if (val === 'desktop') setCurrentFolderId(null)
-                                    else setCurrentFolderId(val)
-                                }}
-                            />
-                        )}
-
-                        {!currentFolderId && (
-                            <Dialog open={isCreateSpaceOpen} onOpenChange={setIsCreateSpaceOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-8 rounded-xl bg-white border-dashed border-zinc-300 text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 shadow-sm">
-                                        <Sparkles className="mr-2 h-4 w-4 text-zinc-500" /> Создать пространство
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Создать пространство</DialogTitle>
-                                        <DialogDescription>
-                                            Создайте новое пространство для организации базы знаний.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="grid gap-4 py-4">
-                                        <div className="flex items-center gap-4">
-                                            <EmojiAvatar
-                                                value={newSpaceEmoji}
-                                                onChange={setNewSpaceEmoji}
-                                                editable
-                                                size="lg"
-                                                className="h-16 w-16 text-3xl border-2 border-dashed border-muted-foreground/20 hover:border-muted-foreground/40"
-                                            />
-                                            <div className="grid gap-2 flex-1">
-                                                <Label htmlFor="space-name">Название</Label>
-                                                <Input id="space-name" placeholder="например, HR" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button onClick={() => setIsCreateSpaceOpen(false)}>Создать</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        )}
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
-                    <span>{filteredDocuments.length} Файлов</span>
-                    <span>•</span>
-                    <span>12 Заметок</span>
-                    <span>•</span>
-                    <span>{currentFolderId ? currentFolder?.name : 'Рабочий стол'}</span>
-                </div>
-            </div>
-
-            {/* ... Actions and Notes remain same ... */}
-
-            {/* 4. Main Index - Knowledge Assets */}
-            <div className="space-y-4 pt-2 flex-1 flex flex-col min-h-0">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Все ресурсы</h3>
-                    <div className="flex gap-2">
-                        <div className="relative">
-                            <Input
-                                placeholder="Поиск файлов..."
-                                className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
-                            />
+        <div
+            className="flex flex-col min-h-full w-full relative bg-zinc-50/50"
+            onDragOver={handleGlobalDragOver}
+            onDragLeave={handleGlobalDragLeave}
+            onDrop={handleGlobalDrop}
+        >
+            {/* Drag Overlay - Minimalistic */}
+            {isDraggingGlobal && (
+                <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center pointer-events-none transition-all duration-300">
+                    <div className="bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-200 border border-white/20">
+                        <div className="p-5 rounded-full bg-zinc-900/5 shadow-inner">
+                            <UploadCloud className="h-10 w-10 text-zinc-900 animate-bounce" />
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 shadow-sm">
-                                    <Filter size={14} className="mr-2" /> Фильтр
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[180px]">
-                                <DropdownMenuLabel>Тип содержимого</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setFilterType('all')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'all' ? "opacity-100" : "opacity-0")} />
-                                    Все
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('folder')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'folder' ? "opacity-100" : "opacity-0")} />
-                                    Папки
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('document')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'document' ? "opacity-100" : "opacity-0")} />
-                                    Документы
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('spreadsheet')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'spreadsheet' ? "opacity-100" : "opacity-0")} />
-                                    Таблицы
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setFilterType('note')}>
-                                    <Check className={cn("mr-2 h-4 w-4", filterType === 'note' ? "opacity-100" : "opacity-0")} />
-                                    Заметки
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="text-center space-y-1">
+                            <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Отпустите файлы</h3>
+                            <p className="text-zinc-500 font-medium">для добавления в базу знаний</p>
+                        </div>
                     </div>
                 </div>
+            )}
 
-                <div className="rounded-md border-0 flex-1 overflow-hidden">
-                    <DocumentsTable
-                        docs={filteredDocuments} // Pass filtered docs
-                        onRowClick={handleFileClick}
-                        onInspect={handleFileClick}
-                    />
-                </div>
-            </div>
+            {/* Dialogs */}
+            <UploadDialog
+                open={isUploadDialogOpen}
+                onOpenChange={setIsUploadDialogOpen}
+                externalFiles={droppedFiles}
+            />
 
+            <NoteEditorDialog
+                open={isNoteDialogOpen}
+                onOpenChange={(open) => {
+                    setIsNoteDialogOpen(open)
+                    if (!open) setSelectedNote(null)
+                }}
+                initialNote={selectedNote ? {
+                    id: selectedNote.id,
+                    title: selectedNote.name,
+                    content: selectedNote.content || ''
+                } : undefined}
+                onSave={selectedNote ? handleUpdateNote : handleCreateNote}
+                onDelete={selectedNote ? () => handleDeleteNote(selectedNote.id) : undefined}
+            />
 
-            {/* File Editor Dialog */}
             <FileEditorDialog
                 open={!!editingFile}
                 onOpenChange={(open) => !open && setEditingFile(null)}
@@ -249,7 +391,6 @@ export function GlobalKnowledgeView() {
                 }}
             />
 
-            {/* Table Editor Dialog */}
             <TableEditorDialog
                 open={!!editingTable}
                 onOpenChange={(open) => !open && setEditingTable(null)}
@@ -259,6 +400,120 @@ export function GlobalKnowledgeView() {
                     setEditingTable(null)
                 }}
             />
+
+            {/* Header Section - Sticky */}
+            <div className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-sm flex-none p-6 pb-2 space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">База знаний</h1>
+                        <p className="text-zinc-500 mt-1 flex items-center gap-2 text-sm font-medium">
+                            {documents.length} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Все ресурсы</h3>
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Input
+                                placeholder="Поиск файлов..."
+                                className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
+                            />
+                        </div>
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">
+                            <Filter className="h-4 w-4 mr-2" />
+                            Фильтр
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
+                                    <Plus className="h-4 w-4 mr-1.5" />
+                                    Добавить
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
+                                <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                    Действия
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => { setIsUploadDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-50 focus:bg-zinc-50 focus:text-zinc-900">
+                                    <div className="p-1.5 rounded-md bg-zinc-100 mr-3 text-zinc-500 group-hover:text-zinc-900 transition-colors">
+                                        <UploadCloud className="h-4 w-4" />
+                                    </div>
+                                    <span className="font-medium">Загрузить файлы</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-amber-50 focus:bg-amber-50 focus:text-amber-900">
+                                    <div className="p-1.5 rounded-md bg-amber-100 mr-3 text-amber-600">
+                                        <Sparkles className="h-4 w-4" />
+                                    </div>
+                                    <span className="font-medium text-amber-900">Создать заметку</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                                <DropdownMenuItem
+                                    onClick={async () => {
+                                        if (confirm('Вы уверены? Это удалит ВСЕ файлы и заметки.')) {
+                                            await clearLibrary();
+                                            toast.success('База данных очищена');
+                                        }
+                                    }}
+                                    className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-red-50 focus:bg-red-50 focus:text-red-900"
+                                >
+                                    <div className="p-1.5 rounded-md bg-red-100 mr-3 text-red-600">
+                                        <Trash2 className="h-4 w-4" />
+                                    </div>
+                                    <span className="font-medium text-red-900">Очистить базу</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem disabled className="rounded-lg py-2.5 px-3 opacity-50 cursor-not-allowed">
+                                    <div className="p-1.5 rounded-md bg-zinc-100 mr-3">
+                                        <Zap className="h-4 w-4 text-zinc-400" />
+                                    </div>
+                                    <span>Подключить таблицу</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+            </div>
+
+            {/* Scrollable Content Area */}
+            <div className="flex-1 px-6 pb-20">
+                <div className="space-y-8">
+                    {/* Important Notes Section */}
+                    {
+                        notes.length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4" /> Важные заметки (Высокий приоритет)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {notes.map((note) => (
+                                        <Card
+                                            key={note.id}
+                                            className="rounded-2xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-zinc-300 transition-colors cursor-pointer"
+                                            onClick={() => { setSelectedNote(note); setIsNoteDialogOpen(true) }}
+                                        >
+                                            <CardHeader className="p-4">
+                                                <CardTitle className="text-sm font-semibold text-zinc-900">{note.name}</CardTitle>
+                                                <CardDescription className="text-xs text-zinc-500 line-clamp-2">{note.content}</CardDescription>
+                                            </CardHeader>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* Files Table */}
+                    <div className="pb-10">
+                        <DocumentsTable
+                            docs={filteredDocuments}
+                            onRowClick={handleFileClick}
+                            onDelete={(doc) => handleDelete(doc.id)}
+                        />
+                    </div>
+                </div>
+            </div>
         </div>
     )
 }

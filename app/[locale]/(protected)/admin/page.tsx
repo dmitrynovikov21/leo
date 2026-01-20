@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { getCurrentUser } from "@/lib/session";
 import { DashboardHeader } from "@/components/dashboard/header";
@@ -18,43 +19,57 @@ export default async function AdminPage() {
   return (
     <>
       <DashboardHeader
-        heading="Admin Panel"
-        text="Manage users, settings, and system configuration."
+        heading="Панель администратора"
+        text="Управление пользователями, настройками и системной конфигурацией."
       />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Пользователи</CardTitle>
             <Icons.user className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">—</div>
             <p className="text-xs text-muted-foreground">
-              User management coming soon
+              Управление пользователями (скоро)
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Status</CardTitle>
+            <CardTitle className="text-sm font-medium">Статус системы</CardTitle>
             <Icons.check className="size-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Online</div>
+            <div className="text-2xl font-bold">Онлайн</div>
             <p className="text-xs text-muted-foreground">
-              All systems operational
+              Все системы работают
             </p>
           </CardContent>
         </Card>
+        <Link href="/admin/prompts" className="block">
+          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Системные промпты</CardTitle>
+              <Icons.post className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">AI</div>
+              <p className="text-xs text-muted-foreground">
+                Редактировать промпты для генерации
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Settings</CardTitle>
+            <CardTitle className="text-sm font-medium">Настройки</CardTitle>
             <Icons.settings className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">—</div>
             <p className="text-xs text-muted-foreground">
-              Configure system settings
+              Конфигурация системы
             </p>
           </CardContent>
         </Card>
@@ -62,3 +77,4 @@ export default async function AdminPage() {
     </>
   );
 }
+

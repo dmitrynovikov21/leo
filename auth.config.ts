@@ -23,6 +23,22 @@ export default {
           return null;
         }
 
+        // DEV MODE: Bypass auth for local development
+        const isDev = process.env.NODE_ENV === 'development';
+        const isDevEmail = credentials.email === 'dev@test.com';
+        const isDevPass = credentials.password === 'devtest123';
+        console.log('[AUTH] Dev mode check:', { isDev, isDevEmail, isDevPass, nodeEnv: process.env.NODE_ENV });
+
+        if (isDev && isDevEmail && isDevPass) {
+          console.log('[AUTH] Dev user authenticated!');
+          return {
+            id: 'dev-user-id',
+            email: 'dev@test.com',
+            name: 'Dev User',
+            image: null,
+          };
+        }
+
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });

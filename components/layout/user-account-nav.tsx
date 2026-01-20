@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { LayoutDashboard, Lock, LogOut, Settings, User } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronsUpDown, Languages, LogOut, Moon, Settings, Sun, User } from "lucide-react";
 import { EmojiAvatar } from "@/components/shared/emoji-avatar";
 import { signOut, useSession } from "next-auth/react";
+import { useLocale } from "next-intl";
+import { useTheme } from "next-themes";
 import { Drawer } from "vaul";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -15,19 +17,34 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu";
-import { UserAvatar } from "@/components/shared/user-avatar";
 
 import { useUserPreferences } from "@/components/providers/user-preferences-provider";
+import { useUserData } from "@/components/providers/user-data-provider";
 
 interface UserAccountNavProps {
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
 }
 
+const languages = [
+  { code: "en", label: "English", flag: "🇬🇧" },
+  { code: "ru", label: "Русский", flag: "🇷🇺" },
+];
+
 export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNavProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const locale = useLocale();
+  const { setTheme, theme } = useTheme();
   const { data: session } = useSession();
+  const { userData } = useUserData();
+  const { avatar } = useUserPreferences();
+
   const user = session?.user ? {
     name: session.user.name,
     email: session.user.email,
@@ -35,170 +52,172 @@ export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNa
     image: session.user.image
   } : null;
 
-  const { avatar } = useUserPreferences();
-
   const [open, setOpen] = useState(false);
-  const closeDrawer = () => {
-    setOpen(false);
-  };
+  const closeMenu = () => setOpen(false);
 
   const { isMobile } = useMediaQuery();
+
+  const switchLanguage = (newLocale: string) => {
+    const newPath = pathname.replace(`/${locale}/`, `/${newLocale}/`) || `/${newLocale}`;
+    router.push(newPath);
+    closeMenu();
+  };
+
+  const getPlanLabel = () => {
+    const plan = userData?.profile?.plan;
+    if (plan === 'pro') return 'Pro план';
+    if (plan === 'business') return 'Business план';
+    return 'Free план';
+  };
+
+  const handleLogout = () => {
+    closeMenu();
+    signOut({ callbackUrl: `/${locale}/login` });
+  };
 
   // Mobile View
   if (isMobile) {
     return (
-      <Drawer.Root open={open} onClose={closeDrawer}>
-        <Drawer.Trigger onClick={() => setOpen(true)}>
-          <EmojiAvatar
-            value={avatar}
-            fallbackIcon={User}
-            className="size-9 border"
-          />
+      <Drawer.Root open={open} onOpenChange={setOpen}>
+        <Drawer.Trigger onClick={() => setOpen(true)} className="w-full">
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted w-full cursor-pointer">
+            <EmojiAvatar value={avatar} fallbackIcon={User} className="size-9 border" />
+            <div className="flex-1 text-left">
+              <p className="text-sm font-medium truncate">{user?.name || 'Пользователь'}</p>
+              <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
+            </div>
+            <ChevronsUpDown className="size-4 text-muted-foreground" />
+          </div>
         </Drawer.Trigger>
         <Drawer.Portal>
-          <Drawer.Overlay
-            className="fixed inset-0 z-40 h-full bg-background/80 backdrop-blur-sm"
-            onClick={closeDrawer}
-          />
+          <Drawer.Overlay className="fixed inset-0 z-40 h-full bg-background/80 backdrop-blur-sm" onClick={closeMenu} />
           <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 mt-24 overflow-hidden rounded-t-[10px] border bg-background px-3 text-sm">
             <div className="sticky top-0 z-20 flex w-full items-center justify-center bg-inherit">
               <div className="my-3 h-1.5 w-16 rounded-full bg-muted-foreground/20" />
             </div>
 
-            <div className="flex items-center justify-start gap-2 p-2">
-              <div className="flex flex-col">
-                {user?.name ? <p className="font-medium">{user.name}</p> : <div className="h-4 w-24 bg-muted animate-pulse rounded" />}
-                {user?.email ? (
-                  <p className="w-[200px] truncate text-muted-foreground">
-                    {user.email}
-                  </p>
-                ) : <div className="h-3 w-32 bg-muted animate-pulse rounded mt-1" />}
+            <div className="flex items-center gap-3 p-2">
+              <EmojiAvatar value={avatar} fallbackIcon={User} className="size-10 border" />
+              <div>
+                <p className="font-medium">{user?.name || 'Пользователь'}</p>
+                <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
               </div>
             </div>
 
             <ul role="list" className="mb-14 mt-1 w-full text-muted-foreground">
-              {user?.role === "ADMIN" ? (
-                <li className="rounded-lg text-foreground hover:bg-muted">
-                  <Link
-                    href="/admin"
-                    onClick={closeDrawer}
-                    className="flex w-full items-center gap-3 px-2.5 py-2"
-                  >
-                    <Lock className="size-4" />
-                    <p className="text-sm">Admin</p>
-                  </Link>
-                </li>
-              ) : null}
-
               <li className="rounded-lg text-foreground hover:bg-muted">
-                <Link
-                  href="/dashboard"
-                  onClick={closeDrawer}
-                  className="flex w-full items-center gap-3 px-2.5 py-2"
-                >
-                  <LayoutDashboard className="size-4" />
-                  <p className="text-sm">Dashboard</p>
-                </Link>
-              </li>
-
-              <li className="rounded-lg text-foreground hover:bg-muted">
-                <Link
-                  href="/dashboard/settings"
-                  onClick={closeDrawer}
-                  className="flex w-full items-center gap-3 px-2.5 py-2"
-                >
+                <Link href="/dashboard/settings" onClick={closeMenu} className="flex w-full items-center gap-3 px-2.5 py-2">
                   <Settings className="size-4" />
-                  <p className="text-sm">Settings</p>
+                  <span className="text-sm">Настройки</span>
                 </Link>
               </li>
 
-              <li
-                className="rounded-lg text-foreground hover:bg-muted"
-                onClick={(event) => {
-                  event.preventDefault();
-                  signOut({
-                    redirect: false,
-                  }).then(() => router.push("/"));
-                }}
-              >
+              <li className="rounded-lg text-foreground hover:bg-muted cursor-pointer" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                <div className="flex w-full items-center gap-3 px-2.5 py-2">
+                  <Sun className="size-4" />
+                  <span className="text-sm">Тема</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{theme === 'dark' ? 'Тёмная' : 'Светлая'}</span>
+                </div>
+              </li>
+
+              <li className="rounded-lg text-foreground hover:bg-muted cursor-pointer" onClick={() => switchLanguage(locale === 'ru' ? 'en' : 'ru')}>
+                <div className="flex w-full items-center gap-3 px-2.5 py-2">
+                  <Languages className="size-4" />
+                  <span className="text-sm">Язык</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{locale === 'ru' ? 'Русский' : 'English'}</span>
+                </div>
+              </li>
+
+              <li className="rounded-lg text-foreground hover:bg-muted cursor-pointer" onClick={handleLogout}>
                 <div className="flex w-full items-center gap-3 px-2.5 py-2">
                   <LogOut className="size-4" />
-                  <p className="text-sm">Log out </p>
+                  <span className="text-sm">Выйти</span>
                 </div>
               </li>
             </ul>
           </Drawer.Content>
-          <Drawer.Overlay />
         </Drawer.Portal>
-      </Drawer.Root >
+      </Drawer.Root>
     );
   }
 
   // Desktop View
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger className="outline-none">
-        <EmojiAvatar
-          value={avatar}
-          fallbackIcon={User}
-          className="size-8"
-        />
+      <DropdownMenuTrigger asChild>
+        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted w-full cursor-pointer">
+          <EmojiAvatar value={avatar} fallbackIcon={User} className="size-8" />
+          <div className="flex-1 text-left min-w-0">
+            <p className="text-sm font-medium truncate">{user?.name || 'Пользователь'}</p>
+            <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
+          </div>
+          <ChevronsUpDown className="size-4 text-muted-foreground shrink-0" />
+        </div>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align} side={side} sideOffset={10}>
-        <div className="flex items-center justify-start gap-2 p-2">
-          <div className="flex flex-col space-y-1 leading-none">
-            {user?.name ? <p className="font-medium">{user.name}</p> : <div className="h-4 w-24 bg-muted animate-pulse rounded" />}
-            {user?.email ? (
-              <p className="w-[200px] truncate text-sm text-muted-foreground">
-                {user.email}
-              </p>
-            ) : <div className="h-3 w-32 bg-muted animate-pulse rounded mt-1" />}
+      <DropdownMenuContent align={align} side={side} sideOffset={10} className="w-56">
+        <div className="flex items-center gap-3 p-2">
+          <EmojiAvatar value={avatar} fallbackIcon={User} className="size-9" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{user?.name || 'Пользователь'}</p>
+            <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
           </div>
         </div>
         <DropdownMenuSeparator />
 
-        {user?.role === "ADMIN" ? (
-          <DropdownMenuItem asChild>
-            <Link href="/admin" className="flex items-center space-x-2.5">
-              <Lock className="size-4" />
-              <p className="text-sm">Админ</p>
-            </Link>
-          </DropdownMenuItem>
-        ) : null}
-
         <DropdownMenuItem asChild>
-          <Link href="/dashboard" className="flex items-center space-x-2.5">
-            <LayoutDashboard className="size-4" />
-            <p className="text-sm">Дашборд</p>
-          </Link>
-        </DropdownMenuItem>
-
-
-        <DropdownMenuItem asChild>
-          <Link
-            href="/dashboard/settings"
-            className="flex items-center space-x-2.5"
-          >
+          <Link href="/dashboard/settings" className="flex items-center gap-2 cursor-pointer">
             <Settings className="size-4" />
-            <p className="text-sm">Настройки</p>
+            <span>Настройки</span>
           </Link>
         </DropdownMenuItem>
+
+        {/* Theme submenu */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="cursor-pointer">
+            <Sun className="size-4 mr-2" />
+            <span>Тема</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onSelect={() => setTheme("light")} className="cursor-pointer">
+                <Sun className="size-4 mr-2" />
+                <span>Светлая</span>
+                {theme === 'light' && <span className="ml-auto">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setTheme("dark")} className="cursor-pointer">
+                <Moon className="size-4 mr-2" />
+                <span>Тёмная</span>
+                {theme === 'dark' && <span className="ml-auto">✓</span>}
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
+        {/* Language submenu */}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="cursor-pointer">
+            <Languages className="size-4 mr-2" />
+            <span>Язык</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              {languages.map((lang) => (
+                <DropdownMenuItem key={lang.code} onSelect={() => switchLanguage(lang.code)} className="cursor-pointer">
+                  <span className="mr-2">{lang.flag}</span>
+                  <span>{lang.label}</span>
+                  {locale === lang.code && <span className="ml-auto">✓</span>}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          className="cursor-pointer"
-          onSelect={(event) => {
-            event.preventDefault();
-            signOut({
-              redirect: false,
-            }).then(() => router.push("/"));
-          }}
-        >
-          <div className="flex items-center space-x-2.5">
-            <LogOut className="size-4" />
-            <p className="text-sm">Выйти</p>
-          </div>
+        <DropdownMenuItem onSelect={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+          <LogOut className="size-4 mr-2" />
+          <span>Выйти</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu >
+    </DropdownMenu>
   );
 }

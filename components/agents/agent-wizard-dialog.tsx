@@ -39,8 +39,8 @@ import { useUserData } from "@/components/providers/user-data-provider"
 
 // Schema
 const agentSchema = z.object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    role: z.string().min(1, "Please select a role"),
+    name: z.string().min(2, "Имя должно быть минимум 2 символа"),
+    role: z.string().min(1, "Выберите роль"),
     description: z.string().min(10, "Описание должно быть не менее 10 символов"),
     systemPrompt: z.string(),
 })
@@ -99,10 +99,20 @@ export function AgentWizardDialog() {
             if (!result) return
         }
 
-        // Step 2 -> Step 3: создаём агента если ещё не создан
-        if (step === 2 && !createdAgentId) {
-            const success = await createAgent()
-            if (!success) return
+        // Step 2 -> Step 3: проверяем инструкцию и создаём агента
+        if (step === 2) {
+            const systemPrompt = form.getValues("systemPrompt")
+            if (!systemPrompt || systemPrompt.trim().length < 10) {
+                toast.error("Необходимо заполнить инструкцию", {
+                    description: "Нажмите 'Авто-генерация' или напишите инструкцию вручную (минимум 10 символов)"
+                })
+                return
+            }
+
+            if (!createdAgentId) {
+                const success = await createAgent()
+                if (!success) return
+            }
         }
 
         // Step 3: нельзя идти дальше если есть несохранённые чанки
@@ -128,13 +138,14 @@ export function AgentWizardDialog() {
                 return true
             }
 
-            const response = await fetch(`${orchestratorUrl}/api/v1/agents`, {
+            // Call local API which proxies to orchestrator
+            const response = await fetch('/api/agents', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    userId: session?.user?.id,
+                    userId: session?.user?.id || "",
                     name: form.getValues('name'),
                     role: form.getValues('role'),
                     description: form.getValues('description'),
@@ -204,49 +215,63 @@ export function AgentWizardDialog() {
 
         setIsGenerating(true)
 
-        try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+        // Helper function to generate mock prompt
+        const generateMockPrompt = () => {
+            const roleName = role === 'corporate_bot' ? 'Корпоративный бот' : role
+            return `Ты — ${name || 'AI-ассистент'}, ${roleName || 'помощник'}.
 
-            if (!gatewayUrl) {
-                // Fallback to mock if no gateway configured
-                const mockPrompt = `Ты — ${name || 'AI-ассистент'}, ${role || 'помощник'}. 
 ${desc}
+
+Основные обязанности:
+- Консультировать по вопросам компании
+- Помогать найти нужную информацию
+- Отвечать на часто задаваемые вопросы
 
 Правила общения:
 - Отвечай вежливо и профессионально
 - Будь кратким, но информативным
 - Если не знаешь ответа — честно признайся
-- Не выходи за рамки своей роли`
-                form.setValue("systemPrompt", mockPrompt)
-                toast.info("Сгенерирован базовый промпт (AI Gateway не настроен)")
-                setIsGenerating(false)
-                return
-            }
+- Не выходи за рамки своей роли
+- Не обсуждай конкурентов и политику
 
-            const response = await fetch(`${gatewayUrl}/api/v1/generate-agent-prompt`, {
+Формат ответов:
+- Используй структурированные ответы с абзацами
+- При необходимости используй списки
+- Всегда предлагай дополнительную помощь`
+        }
+
+        try {
+            // Use local proxy
+            const response = await fetch('/api/ai/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     agentName: name,
-                    role: role,
-                    description: desc,
+                    agentRole: role === 'corporate_bot' ? 'Корпоративный бот' : role,
+                    agentDescription: desc
                 }),
             })
 
             if (!response.ok) {
-                throw new Error('Failed to generate prompt')
+                console.error("Generation failed code:", response.status)
+                throw new Error("Failed to generate")
             }
 
             const data = await response.json()
-            form.setValue("systemPrompt", data.prompt || data.systemPrompt || "")
-            toast.success(t('promptGenerated') || 'Промпт успешно сгенерирован!')
+
+            if (data.systemPrompt || data.prompt) {
+                form.setValue("systemPrompt", data.systemPrompt || data.prompt)
+                toast.success(t('promptGenerated'))
+            } else {
+                throw new Error("No prompt in response")
+            }
+
         } catch (error) {
-            console.error('Error generating persona:', error)
-            toast.error(tCommon('error'), {
-                description: 'Не удалось сгенерировать промпт. Попробуйте позже.'
-            })
+            console.warn("Auto-generation failed, using mock:", error)
+            form.setValue("systemPrompt", generateMockPrompt())
+            toast.info("Сгенерировано по шаблону (AI недоступен)")
         } finally {
             setIsGenerating(false)
         }
@@ -519,10 +544,7 @@ ${desc}
                                                 <SelectValue placeholder={t('selectRole')} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="support">{t('customerSupport')}</SelectItem>
-                                                <SelectItem value="sales">{t('salesRep')}</SelectItem>
-                                                <SelectItem value="hr">{t('hrAssistant')}</SelectItem>
-                                                <SelectItem value="analyst">{t('dataAnalyst')}</SelectItem>
+                                                <SelectItem value="corporate_bot">Корпоративный бот</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         {form.formState.errors.role && (

@@ -273,13 +273,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                             </div>
                         </div>
 
-                        <div className="text-[10px] text-zinc-400 font-medium">
-                            <div className="flex items-center gap-1 mb-1">
-                                <Shield className="h-3 w-3" />
-                                Безопасное соединение
-                            </div>
-                            End-to-end encryption via Telegram API
-                        </div>
+
                     </div>
 
                     {/* Right Side: Form */}
@@ -340,31 +334,40 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                         )}
 
                         {step === "validated" && botInfo && (
-                            <div className="flex flex-col items-center justify-center flex-1 py-4 space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                                <div className="p-6 bg-green-50 border border-green-200 rounded-2xl w-full">
+                            <div className="flex flex-col items-center justify-center flex-1 py-6 space-y-6 animate-in fade-in zoom-in-95 duration-300 w-full max-w-sm mx-auto">
+                                <div className="p-6 bg-green-50/50 border border-green-100 rounded-3xl w-full shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-14 w-14 rounded-full bg-[#0088cc] flex items-center justify-center shadow-lg">
-                                            <BotIcon className="h-7 w-7 text-white" />
+                                        <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-zinc-100 shrink-0">
+                                            <div className="h-10 w-10 rounded-xl bg-[#0088cc] flex items-center justify-center">
+                                                <BotIcon className="h-6 w-6 text-white" />
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-lg font-bold text-zinc-900">{botInfo.first_name}</p>
-                                            <p className="text-sm text-zinc-500">@{botInfo.username}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-lg font-bold text-zinc-900 truncate">{botInfo.first_name}</p>
+                                            <p className="text-sm text-zinc-500 truncate">@{botInfo.username}</p>
                                         </div>
-                                        <CheckCircle2 className="h-6 w-6 text-green-500" />
+                                        <div className="bg-green-100 p-1.5 rounded-full shrink-0">
+                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                        </div>
                                     </div>
                                 </div>
-                                <p className="text-sm text-zinc-500 text-center">Токен проверен успешно. Сохранить подключение?</p>
-                                <div className="flex w-full gap-2">
-                                    <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setStep('input')}>
+
+                                <div className="text-center space-y-1">
+                                    <p className="font-medium text-zinc-900">Бот найден!</p>
+                                    <p className="text-sm text-zinc-500">Сохранить подключение и активировать агента?</p>
+                                </div>
+
+                                <div className="flex w-full gap-3 pt-2">
+                                    <Button variant="outline" className="flex-1 h-11 rounded-xl border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900" onClick={() => setStep('input')}>
                                         Назад
                                     </Button>
                                     <Button
-                                        className="flex-1 rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-md"
+                                        className="flex-1 h-11 rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-200"
                                         onClick={handleConnect}
                                         disabled={loading}
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        {loading ? "Сохранение..." : "Сохранить подключение"}
+                                        {loading ? "Сохранение..." : "Подключить"}
                                     </Button>
                                 </div>
                             </div>
