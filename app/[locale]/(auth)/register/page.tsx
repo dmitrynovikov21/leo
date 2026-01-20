@@ -7,8 +7,8 @@ import { Icons } from "@/components/shared/icons"
 import { UserRegisterForm } from "@/components/forms/user-register-form"
 
 export const metadata = {
-  title: "Create an account",
-  description: "Create an account to get started.",
+  title: "Регистрация",
+  description: "Создайте аккаунт для начала работы.",
 }
 
 export default function RegisterPage() {
@@ -21,7 +21,7 @@ export default function RegisterPage() {
           "absolute right-4 top-4 md:right-8 md:top-8"
         )}
       >
-        Login
+        Войти
       </Link>
       <div className="hidden h-full bg-muted lg:block" />
       <div className="lg:p-8">
@@ -29,29 +29,29 @@ export default function RegisterPage() {
           <div className="flex flex-col space-y-2 text-center">
             <Icons.logo className="mx-auto size-6" />
             <h1 className="text-2xl font-semibold tracking-tight">
-              Create an account
+              Создать аккаунт
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your details below to create your account
+              Введите данные для регистрации
             </p>
           </div>
           <Suspense>
             <UserRegisterForm />
           </Suspense>
           <p className="px-8 text-center text-sm text-muted-foreground">
-            By clicking continue, you agree to our{" "}
+            Нажимая продолжить, вы соглашаетесь с{" "}
             <Link
               href="/terms"
               className="hover:text-brand underline underline-offset-4"
             >
-              Terms of Service
+              Условиями использования
             </Link>{" "}
-            and{" "}
+            и{" "}
             <Link
               href="/privacy"
               className="hover:text-brand underline underline-offset-4"
             >
-              Privacy Policy
+              Политикой конфиденциальности
             </Link>
             .
           </p>
@@ -60,3 +60,4 @@ export default function RegisterPage() {
     </div>
   )
 }
+

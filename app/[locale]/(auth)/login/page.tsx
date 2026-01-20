@@ -8,8 +8,8 @@ import { UserAuthForm } from "@/components/forms/user-auth-form";
 import { Icons } from "@/components/shared/icons";
 
 export const metadata: Metadata = {
-  title: "Login",
-  description: "Login to your account",
+  title: "Вход",
+  description: "Войдите в свой аккаунт",
 };
 
 export default function LoginPage() {
@@ -24,17 +24,17 @@ export default function LoginPage() {
       >
         <>
           <Icons.chevronLeft className="mr-2 size-4" />
-          Back
+          Назад
         </>
       </Link>
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
         <div className="flex flex-col space-y-2 text-center">
           <Icons.logo className="mx-auto size-6" />
           <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back
+            С возвращением
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter your email to sign in to your account
+            Введите email для входа в аккаунт
           </p>
         </div>
         <Suspense>
@@ -45,10 +45,11 @@ export default function LoginPage() {
             href="/register"
             className="hover:text-brand underline underline-offset-4"
           >
-            Don&apos;t have an account? Sign Up
+            Нет аккаунта? Зарегистрируйтесь
           </Link>
         </p>
       </div>
     </div>
   );
 }
+

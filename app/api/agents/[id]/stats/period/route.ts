@@ -38,7 +38,7 @@ export async function GET(
 
         const res = await fetch(upstreamUrl, {
             headers: {
-                "x-user-id": session.user.id,
+                "x-user-id": session.user.id || "",
                 "Content-Type": "application/json"
             }
         })

@@ -51,10 +51,11 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
             <Table>
                 <TableHeader>
                     <TableRow className="hover:bg-transparent border-zinc-100">
-                        <TableHead className="w-[30%] text-zinc-500 font-medium">Название</TableHead>
+                        <TableHead className="w-[25%] text-zinc-500 font-medium">Название</TableHead>
                         <TableHead className="text-zinc-500 font-medium">Тип</TableHead>
                         <TableHead className="text-zinc-500 font-medium">Размер</TableHead>
                         <TableHead className="text-zinc-500 font-medium">Статус</TableHead>
+                        <TableHead className="w-[30%] text-zinc-500 font-medium">Описание</TableHead>
                         <TableHead className="text-right text-zinc-500 font-medium">Действия</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -101,6 +102,11 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
                                 )}>
                                     {(doc.status === 'ready' || doc.status === 'vectorized') ? 'Индексирован' : 'Обработка'}
                                 </Badge>
+                            </TableCell>
+                            <TableCell className="text-zinc-500 text-sm max-w-[250px]">
+                                <span className="line-clamp-2">
+                                    {(doc as any).description || 'Описание будет сгенерировано после обработки'}
+                                </span>
                             </TableCell>
                             <TableCell className="text-right">
                                 <DropdownMenu>

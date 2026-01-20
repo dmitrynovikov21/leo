@@ -64,14 +64,14 @@ export function NoteEditorDialog({
             toast.error("Заголовок обязателен")
             return
         }
-        onSave({ ...note, title, content })
+        // Pass id from activeNote to ensure updates work correctly
+        onSave({ id: activeNote?.id, title, content })
         onOpenChange?.(false)
-        toast.success(mode === 'create' ? "Заметка создана" : "Заметка обновлена")
     }
 
     const handleDelete = () => {
-        if (note?.id) {
-            onDelete?.(note.id)
+        if (activeNote?.id) {
+            onDelete?.(activeNote.id)
             onOpenChange?.(false)
             toast.success("Заметка удалена")
         }
@@ -123,13 +123,13 @@ export function NoteEditorDialog({
                 {/* Footer */}
                 <div className="flex justify-between items-center p-4 border-t bg-background/50 backdrop-blur-sm">
                     <div>
-                        {mode === 'edit' && onDelete && note && (
+                        {mode === 'edit' && onDelete && activeNote && (
                             <Button
                                 type="button"
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => {
-                                    onDelete(note.id)
+                                    onDelete(activeNote.id)
                                     onOpenChange?.(false)
                                 }}
                             >
