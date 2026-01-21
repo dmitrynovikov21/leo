@@ -96,11 +96,11 @@ export function VerificationCodeForm({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Verification failed");
+                throw new Error(data.message || "Ошибка подтверждения");
             }
 
-            toast.success("Email verified!", {
-                description: "Signing you in...",
+            toast.success("Email подтверждён!", {
+                description: "Выполняем вход...",
             });
 
             // Auto sign in after verification
@@ -116,8 +116,8 @@ export function VerificationCodeForm({
                 router.push("/login");
             }
         } catch (error) {
-            toast.error("Verification failed", {
-                description: error instanceof Error ? error.message : "Please try again.",
+            toast.error("Ошибка подтверждения", {
+                description: error instanceof Error ? error.message : "Попробуйте снова.",
             });
             // Clear code on error
             setCode(["", "", "", "", "", ""]);
@@ -140,16 +140,16 @@ export function VerificationCodeForm({
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Failed to resend code");
+                throw new Error(data.message || "Не удалось отправить код");
             }
 
-            toast.success("Code sent!", {
-                description: "Check your email for the new code.",
+            toast.success("Код отправлен!", {
+                description: "Проверьте почту — мы отправили новый код.",
             });
             setCountdown(60); // 60 second cooldown
         } catch (error) {
-            toast.error("Failed to resend code", {
-                description: error instanceof Error ? error.message : "Please try again.",
+            toast.error("Не удалось отправить код", {
+                description: error instanceof Error ? error.message : "Попробуйте снова.",
             });
         } finally {
             setIsResending(false);
@@ -160,10 +160,10 @@ export function VerificationCodeForm({
         <div className={cn("grid gap-6", className)} {...props}>
             <div className="flex flex-col space-y-2 text-center">
                 <h1 className="text-2xl font-semibold tracking-tight">
-                    Verify your email
+                    Подтвердите ваш email
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                    We sent a 6-digit code to <strong>{email}</strong>
+                    Мы отправили 6-значный код на <strong>{email}</strong>
                 </p>
             </div>
 
@@ -199,8 +199,8 @@ export function VerificationCodeForm({
                         <Icons.spinner className="mr-2 size-4 animate-spin" />
                     )}
                     {countdown > 0
-                        ? `Resend code in ${countdown}s`
-                        : "Resend code"
+                        ? `Отправить повторно через ${countdown}с`
+                        : "Отправить код повторно"
                     }
                 </button>
 
@@ -211,7 +211,7 @@ export function VerificationCodeForm({
                         onClick={onBack}
                         disabled={isLoading}
                     >
-                        Back to registration
+                        Назад к регистрации
                     </button>
                 )}
             </div>

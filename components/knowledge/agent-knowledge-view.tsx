@@ -103,6 +103,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [documents, setDocuments] = React.useState<Document[]>([])
     const [notes, setNotes] = React.useState<Note[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
+    const [isSearching, setIsSearching] = React.useState(false)
     const [internalAgentId, setInternalAgentId] = React.useState<string | null>(null) // Real UUID from DB
 
     // Drag & Drop State
@@ -135,7 +136,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     }, [agents, agentId])
 
     // Fetch documents from agent API using real ID or state
-    const fetchDocuments = React.useCallback(async (id?: string) => {
+    const fetchDocuments = React.useCallback(async (id?: string, search?: string) => {
         const targetId = id || internalAgentId
         if (!targetId) return
 
@@ -143,7 +144,13 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
             const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
             if (!gatewayUrl) return
 
-            const response = await fetch(`${gatewayUrl}/api/v1/agents/${targetId}/documents`, {
+            // Build URL with optional search parameter
+            let url = `${gatewayUrl}/api/v1/agents/${targetId}/documents`
+            if (search && search.trim().length > 0) {
+                url += `?filename=${encodeURIComponent(search.trim())}`
+            }
+
+            const response = await fetch(url, {
                 cache: 'no-store',
                 headers: { 'Pragma': 'no-cache' }
             })
@@ -174,6 +181,8 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         } catch (error) {
             console.error('Error fetching documents:', error)
             toast.error("Не удалось загрузить документы")
+        } finally {
+            setIsSearching(false)
         }
     }, [internalAgentId])
 
@@ -196,79 +205,6 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }, [internalAgentId])
 
-    // Search handler
-    const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const query = e.target.value
-        setSearchQuery(query)
-
-        if (query.length < 2) {
-            fetchDocuments() // Reset to full list
-            return
-        }
-
-        try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) return
-            if (!internalAgentId) return
-
-            // Call backend search
-            const response = await fetch(`${gatewayUrl}/api/v1/documents/search`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    agentId: internalAgentId,
-                    query,
-                    limit: 10
-                })
-            })
-
-            if (response.ok) {
-                const data = await response.json()
-                // The search result contains { results: [{ id, ... }] }
-                // We need to map these results back to our document structure or fetch details
-                // Ideally, we filter existing documents or replace the list.
-                // Assuming backend search returns basic doc metadata or we can match by ID.
-
-                // For now, let's trust backend returns list of matches. 
-                // However, search endpoint format in documents.routes.ts was:
-                // { results: [{ document: {...}, score: ... }] } - wait, checking documents.routes.ts
-                // chromaService.searchDocuments returns { id, content, metadata }
-
-                // Let's rely on matching IDs with currently loaded docs for full metadata, 
-                // or just display what we got.
-                // A better approach for UI: filter client side by name OR use backend search IDs.
-
-                // Simple approach: standard clientside filter + backend results
-                // Let's just do client side filter for now as per "simple" search unless user explicitly asked for content search
-                // "ищем по словами - даже если нашли совпадение в самом контент"
-                // Yes, user wants content search.
-
-                // The backend returns chunks. identifying documents from chunks is tricky if we don't store doc ID in metadata.
-                // Agent-documents.routes.ts stores: metadata: { source: filename, ... }
-                // So we can match by `source` (filename).
-
-                if (data.results) {
-                    const matchedFilenames = new Set(data.results.map((r: any) => r.metadata?.source))
-                    setDocuments(prev => prev.filter(d => matchedFilenames.has(d.name) || d.name.toLowerCase().includes(query.toLowerCase())))
-                    // Wait, filter on `prev` will reduce list until empty.
-                    // We need to search against *all* documents. 
-                    // But we don't keep 'allDocuments' in state.
-                    // Let's refetch to reset then filter? No, inefficient.
-
-                    // Okay, I will implement a simpler backend-only search that replaces the list.
-                    // But backend search results might not have all 'Document' fields (status, size etc).
-                    // We need to join.
-                    // For now, let's assume we search ONLY if query > 2 chars.
-                    // And we re-fetch all documents if query cleared.
-                    // And inside search, we do the filtering visually? 
-                    // "filteredDocuments" variable in render.
-                }
-            }
-        } catch (e) {
-            console.error("Search error", e)
-        }
-    }
-
     // Load documents/notes when agent ID becomes available
     React.useEffect(() => {
         const loadData = async () => {
@@ -279,6 +215,18 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
         loadData()
     }, [internalAgentId, fetchDocuments, fetchNotes])
+
+    // Debounced search effect
+    React.useEffect(() => {
+        if (!internalAgentId) return
+
+        const debounceTimer = setTimeout(() => {
+            setIsSearching(true)
+            fetchDocuments(internalAgentId, searchQuery || undefined)
+        }, 300)
+
+        return () => clearTimeout(debounceTimer)
+    }, [searchQuery, internalAgentId, fetchDocuments])
 
     // Note handlers
     const handleSaveNote = async (noteData: { id?: string, title: string, content: string }) => {
@@ -722,7 +670,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                 <div className="flex items-center justify-between">
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+                            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
                                 {agentName ? `agent — ${agentName}` : 'База знаний агента'}
                             </h1>
                             {!internalAgentId && !isLoading && (
@@ -742,7 +690,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                         <Input
                             placeholder="Поиск файлов..."
                             value={searchQuery}
-                            onChange={handleSearch}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
                         />
                         <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">

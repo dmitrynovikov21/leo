@@ -63,15 +63,15 @@ export function PricingCards({ userId, subscriptionPlan }: PricingCardsProps) {
                 )}
               </div>
               <div className="-mb-1 ml-2 text-left text-sm font-medium text-muted-foreground">
-                <div>/month</div>
+                <div>/мес</div>
               </div>
             </div>
           </div>
           {offer.prices.monthly > 0 ? (
             <div className="text-left text-sm text-muted-foreground">
               {isYearly
-                ? `$${offer.prices.yearly} will be charged when annual`
-                : "when charged monthly"}
+                ? `$${offer.prices.yearly} при годовой оплате`
+                : "при месячной оплате"}
             </div>
           ) : null}
         </div>
@@ -109,7 +109,7 @@ export function PricingCards({ userId, subscriptionPlan }: PricingCardsProps) {
                   "w-full",
                 )}
               >
-                Go to dashboard
+                Перейти в панель
               </Link>
             ) : (
               <BillingFormButton
@@ -128,7 +128,7 @@ export function PricingCards({ userId, subscriptionPlan }: PricingCardsProps) {
               rounded="full"
               onClick={() => setShowSignInModal(true)}
             >
-              Sign in
+              Войти
             </Button>
           )}
         </div>
@@ -139,7 +139,7 @@ export function PricingCards({ userId, subscriptionPlan }: PricingCardsProps) {
   return (
     <MaxWidthWrapper>
       <section className="flex flex-col items-center text-center">
-        <HeaderSection label="Pricing" title="Start at full speed !" />
+        <HeaderSection label="Тарифы" title="Начните на полной скорости!" />
 
         <div className="mb-4 mt-10 flex items-center gap-5">
           <ToggleGroup
@@ -155,14 +155,14 @@ export function PricingCards({ userId, subscriptionPlan }: PricingCardsProps) {
               className="rounded-full px-5 data-[state=on]:!bg-primary data-[state=on]:!text-primary-foreground"
               aria-label="Toggle yearly billing"
             >
-              Yearly (-20%)
+              Год (-20%)
             </ToggleGroupItem>
             <ToggleGroupItem
               value="monthly"
               className="rounded-full px-5 data-[state=on]:!bg-primary data-[state=on]:!text-primary-foreground"
               aria-label="Toggle monthly billing"
             >
-              Monthly
+              Месяц
             </ToggleGroupItem>
           </ToggleGroup>
         </div>
@@ -184,7 +184,7 @@ export function PricingCards({ userId, subscriptionPlan }: PricingCardsProps) {
           for to contact our support team.
           <br />
           <strong>
-            You can test the subscriptions and won&apos;t be charged.
+            Вы можете протестировать подписку бесплатно.
           </strong>
         </p>
       </section>

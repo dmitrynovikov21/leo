@@ -119,6 +119,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
 
     const [isLoading, setIsLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [searchQuery, setSearchQuery] = React.useState("")
 
     // Drag & Drop State
     const [isDraggingGlobal, setIsDraggingGlobal] = React.useState(false)
@@ -127,26 +128,26 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
     const [selectedNote, setSelectedNote] = React.useState<Document | null>(null)
 
+    // Load documents function (loads all data once, search is client-side)
+    const loadDocuments = React.useCallback(async () => {
+        try {
+            setIsLoading(true)
+            const items = await getLibraryItems()
+            const docs = items.map(libraryItemToDocument)
+            setDocuments(docs)
+        } catch (err) {
+            console.error('Failed to load documents:', err)
+            setError('Не удалось загрузить документы')
+            setDocuments([])
+        } finally {
+            setIsLoading(false)
+        }
+    }, [])
+
     // Load documents on mount
     React.useEffect(() => {
-        async function loadDocuments() {
-            try {
-                setIsLoading(true)
-                const items = await getLibraryItems()
-
-                // Use real data from database only
-                const docs = items.map(libraryItemToDocument)
-                setDocuments(docs)
-            } catch (err) {
-                console.error('Failed to load documents:', err)
-                setError('Не удалось загрузить документы')
-                setDocuments([])
-            } finally {
-                setIsLoading(false)
-            }
-        }
         loadDocuments()
-    }, [])
+    }, [loadDocuments])
 
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
@@ -259,11 +260,21 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     const currentDocuments = documents.filter(doc => doc.parentId === currentFolderId)
     const currentFolder = documents.find(d => d.id === currentFolderId)
 
-    // Apply type filter
-    const filteredDocuments = currentDocuments.filter(doc => {
+    // Separate notes from other documents
+    const notes = currentDocuments.filter(doc => doc.type === 'note')
+    const nonNoteDocuments = currentDocuments.filter(doc => doc.type !== 'note')
+
+    // Apply search filter to non-note documents only (client-side, by name only)
+    const searchFilteredDocuments = searchQuery.trim()
+        ? nonNoteDocuments.filter(doc =>
+            doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : nonNoteDocuments
+
+    // Apply type filter (excluding notes since they're shown separately)
+    const filteredDocuments = searchFilteredDocuments.filter(doc => {
         if (filterType === 'all') return true
         if (filterType === 'document') return ['pdf', 'docx', 'txt'].includes(doc.type)
-        if (filterType === 'note') return ['md', 'note'].includes(doc.type)
         return doc.type === filterType
     })
 
@@ -327,8 +338,8 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
         }
     }
 
-    const notes = documents.filter(doc => doc.type === 'note');
     const notesCount = notes.length;
+    const filesCount = nonNoteDocuments.length;
 
     return (
         <div
@@ -398,9 +409,9 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
             <div className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-sm flex-none p-6 pb-2 space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">База знаний</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">База знаний</h1>
                         <p className="text-zinc-500 mt-1 flex items-center gap-2 text-sm font-medium">
-                            {documents.length} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
+                            {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
                         </p>
                     </div>
                 </div>
@@ -412,6 +423,8 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                         <div className="relative">
                             <Input
                                 placeholder="Поиск файлов..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
                             />
                         </div>

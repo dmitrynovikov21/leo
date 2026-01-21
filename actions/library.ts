@@ -18,15 +18,26 @@ export interface LibraryItemWithChunks {
     }
 }
 
-export async function getLibraryItems(): Promise<LibraryItemWithChunks[]> {
+export async function getLibraryItems(options?: { search?: string }): Promise<LibraryItemWithChunks[]> {
     const user = await getCurrentUser()
     if (!user) return []
 
     try {
+        const whereClause: any = {
+            userId: user.id
+        }
+
+        // Add search filter if provided
+        if (options?.search && options.search.trim().length > 0) {
+            const searchTerm = options.search.trim()
+            whereClause.OR = [
+                { name: { contains: searchTerm, mode: 'insensitive' } },
+                { content: { contains: searchTerm, mode: 'insensitive' } }
+            ]
+        }
+
         const items = await prisma.libraryItem.findMany({
-            where: {
-                userId: user.id
-            },
+            where: whereClause,
             include: {
                 _count: {
                     select: { chunks: true }

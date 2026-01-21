@@ -110,7 +110,7 @@ export function NavBar({ scroll = false }: NavBarProps) {
                 size="sm"
                 rounded="full"
               >
-                <span>Dashboard</span>
+                <span>Панель</span>
               </Button>
             </Link>
           ) : status === "unauthenticated" ? (

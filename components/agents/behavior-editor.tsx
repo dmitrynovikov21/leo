@@ -602,7 +602,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             </CardHeader>
                             <CardContent className="pb-6">
                                 <Textarea
-                                    className="min-h-[150px] font-mono text-sm leading-relaxed border-transparent bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all rounded-xl resize-none text-zinc-800"
+                                    className="min-h-[450px] font-mono text-sm leading-relaxed border-transparent bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all rounded-xl resize-none text-zinc-800"
                                     {...form.register("systemPrompt")}
                                 />
                             </CardContent>

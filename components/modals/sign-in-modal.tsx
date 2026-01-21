@@ -28,10 +28,9 @@ function SignInModal({
           <a href={siteConfig.url}>
             <Icons.logo className="size-10" />
           </a>
-          <h3 className="font-urban text-2xl font-bold">Sign In</h3>
+          <h3 className="font-urban text-2xl font-bold">Войти</h3>
           <p className="text-sm text-gray-500">
-            This is strictly for demo purposes - only your email and profile
-            picture will be stored.
+            Будут сохранены только ваш email и фото профиля.
           </p>
         </div>
 
@@ -53,7 +52,7 @@ function SignInModal({
             ) : (
               <Icons.google className="mr-2 size-4" />
             )}{" "}
-            Sign In with Google
+            Войти через Google
           </Button>
         </div>
       </div>
