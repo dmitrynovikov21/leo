@@ -343,7 +343,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
 
     return (
         <div
-            className="flex flex-col min-h-full w-full relative bg-zinc-50/50"
+            className="flex flex-1 flex-col gap-6 p-6 relative"
             onDragOver={handleGlobalDragOver}
             onDragLeave={handleGlobalDragLeave}
             onDrop={handleGlobalDrop}
@@ -405,119 +405,113 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 }}
             />
 
-            {/* Header Section - Sticky */}
-            <div className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-sm flex-none p-6 pb-2 space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">База знаний</h1>
-                        <p className="text-zinc-500 mt-1 flex items-center gap-2 text-sm font-medium">
-                            {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Все ресурсы</h3>
-
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Input
-                                placeholder="Поиск файлов..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
-                            />
-                        </div>
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">
-                            <Filter className="h-4 w-4 mr-2" />
-                            Фильтр
-                        </Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
-                                    <Plus className="h-4 w-4 mr-1.5" />
-                                    Добавить
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
-                                <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
-                                    Действия
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => { setIsUploadDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-50 focus:bg-zinc-50 focus:text-zinc-900">
-                                    <div className="p-1.5 rounded-md bg-zinc-100 mr-3 text-zinc-500 group-hover:text-zinc-900 transition-colors">
-                                        <UploadCloud className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Загрузить файлы</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-amber-50 focus:bg-amber-50 focus:text-amber-900">
-                                    <div className="p-1.5 rounded-md bg-amber-100 mr-3 text-amber-600">
-                                        <Sparkles className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium text-amber-900">Создать заметку</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                <DropdownMenuItem
-                                    onClick={async () => {
-                                        if (confirm('Вы уверены? Это удалит ВСЕ файлы и заметки.')) {
-                                            await clearLibrary();
-                                            toast.success('База данных очищена');
-                                        }
-                                    }}
-                                    className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-red-50 focus:bg-red-50 focus:text-red-900"
-                                >
-                                    <div className="p-1.5 rounded-md bg-red-100 mr-3 text-red-600">
-                                        <Trash2 className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium text-red-900">Очистить базу</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem disabled className="rounded-lg py-2.5 px-3 opacity-50 cursor-not-allowed">
-                                    <div className="p-1.5 rounded-md bg-zinc-100 mr-3">
-                                        <Zap className="h-4 w-4 text-zinc-400" />
-                                    </div>
-                                    <span>Подключить таблицу</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+            {/* Header Section */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">База знаний</h1>
+                    <p className="text-sm text-muted-foreground">
+                        {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
+                    </p>
                 </div>
             </div>
 
-            {/* Scrollable Content Area */}
-            <div className="flex-1 px-6 pb-20">
-                <div className="space-y-8">
-                    {/* Important Notes Section */}
-                    {
-                        notes.length > 0 && (
-                            <div className="space-y-3">
-                                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                                    <Sparkles className="h-4 w-4" /> Важные заметки (Высокий приоритет)
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {notes.map((note) => (
-                                        <Card
-                                            key={note.id}
-                                            className="rounded-2xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-zinc-300 transition-colors cursor-pointer"
-                                            onClick={() => { setSelectedNote(note); setIsNoteDialogOpen(true) }}
-                                        >
-                                            <CardHeader className="p-4">
-                                                <CardTitle className="text-sm font-semibold text-zinc-900">{note.name}</CardTitle>
-                                                <CardDescription className="text-xs text-zinc-500 line-clamp-2">{note.content}</CardDescription>
-                                            </CardHeader>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </div>
-                        )
-                    }
+            <div className="flex items-center justify-between gap-4">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Все ресурсы</h3>
 
-                    {/* Files Table */}
-                    <div className="pb-10">
-                        <DocumentsTable
-                            docs={filteredDocuments}
-                            onRowClick={handleFileClick}
-                            onDelete={(doc) => handleDelete(doc.id)}
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Input
+                            placeholder="Поиск файлов..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
                         />
                     </div>
+                    <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">
+                        <Filter className="h-4 w-4 mr-2" />
+                        Фильтр
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
+                                <Plus className="h-4 w-4 mr-1.5" />
+                                Добавить
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
+                            <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                Действия
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => { setIsUploadDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-50 focus:bg-zinc-50 focus:text-zinc-900">
+                                <div className="p-1.5 rounded-md bg-zinc-100 mr-3 text-zinc-500 group-hover:text-zinc-900 transition-colors">
+                                    <UploadCloud className="h-4 w-4" />
+                                </div>
+                                <span className="font-medium">Загрузить файлы</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-amber-50 focus:bg-amber-50 focus:text-amber-900">
+                                <div className="p-1.5 rounded-md bg-amber-100 mr-3 text-amber-600">
+                                    <Sparkles className="h-4 w-4" />
+                                </div>
+                                <span className="font-medium text-amber-900">Создать заметку</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    if (confirm('Вы уверены? Это удалит ВСЕ файлы и заметки.')) {
+                                        await clearLibrary();
+                                        toast.success('База данных очищена');
+                                    }
+                                }}
+                                className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-red-50 focus:bg-red-50 focus:text-red-900"
+                            >
+                                <div className="p-1.5 rounded-md bg-red-100 mr-3 text-red-600">
+                                    <Trash2 className="h-4 w-4" />
+                                </div>
+                                <span className="font-medium text-red-900">Очистить базу</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem disabled className="rounded-lg py-2.5 px-3 opacity-50 cursor-not-allowed">
+                                <div className="p-1.5 rounded-md bg-zinc-100 mr-3">
+                                    <Zap className="h-4 w-4 text-zinc-400" />
+                                </div>
+                                <span>Подключить таблицу</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="space-y-8">
+                {/* Important Notes Section */}
+                {notes.length > 0 && (
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                            <Sparkles className="h-4 w-4" /> Важные заметки (Высокий приоритет)
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {notes.map((note) => (
+                                <Card
+                                    key={note.id}
+                                    className="rounded-2xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-zinc-300 transition-colors cursor-pointer"
+                                    onClick={() => { setSelectedNote(note); setIsNoteDialogOpen(true) }}
+                                >
+                                    <CardHeader className="p-4">
+                                        <CardTitle className="text-sm font-semibold text-zinc-900">{note.name}</CardTitle>
+                                        <CardDescription className="text-xs text-zinc-500 line-clamp-2">{note.content}</CardDescription>
+                                    </CardHeader>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Files Table */}
+                <div className="pb-10">
+                    <DocumentsTable
+                        docs={filteredDocuments}
+                        onRowClick={handleFileClick}
+                        onDelete={(doc) => handleDelete(doc.id)}
+                    />
                 </div>
             </div>
         </div>

@@ -27,7 +27,7 @@ export function InboxLayout() {
 
     return (
         <TooltipProvider delayDuration={0}>
-            <div className="h-[calc(100vh-80px)] overflow-hidden bg-white rounded-2xl border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] m-6">
+            <div className="h-full min-h-[600px] overflow-hidden bg-white rounded-2xl border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
                 <ResizablePanelGroup
                     direction="horizontal"
                     onLayout={(sizes: number[]) => {

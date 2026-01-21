@@ -57,13 +57,15 @@ const SOURCES: SourceCard[] = [
 
 export default function SourcesPage() {
     return (
-        <div className="space-y-6 max-w-5xl p-6">
+        <div className="flex flex-1 flex-col gap-6 p-6">
             {/* Page Header */}
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Источники коммуникации</h2>
-                <p className="text-muted-foreground mt-1">
-                    Управление подключенными каналами для всех ваших агентов.
-                </p>
+            <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Источники коммуникации</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Управление подключенными каналами для всех ваших агентов.
+                    </p>
+                </div>
             </div>
 
             {/* Grid */}

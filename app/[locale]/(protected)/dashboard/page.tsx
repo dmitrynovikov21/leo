@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const t = await getTranslations();
 
   return (
-    <div className="min-h-screen p-6 space-y-6">
+    <div className="flex flex-1 flex-col gap-6 p-6">
       <DashboardHeader
         heading={t('Dashboard.title')}
         text={t('Dashboard.description')}

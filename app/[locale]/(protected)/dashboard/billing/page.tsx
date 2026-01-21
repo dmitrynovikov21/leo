@@ -74,7 +74,7 @@ export default async function BillingPage() {
   const runwayDays = Math.floor(balance / 50);
 
   return (
-    <>
+    <div className="flex flex-1 flex-col gap-6 p-6">
       <DashboardHeader
         heading={t('title')}
         text={t('description')}
@@ -320,6 +320,6 @@ export default async function BillingPage() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </div>
   );
 }
