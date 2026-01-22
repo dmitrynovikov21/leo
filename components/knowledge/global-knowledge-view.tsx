@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, Check, Plus, Trash2 } from "lucide-react"
+import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, ChevronDown, Check, Plus, Trash2, FileText, Image } from "lucide-react"
 
 
 
@@ -254,7 +254,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     }
 
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
-    const [filterType, setFilterType] = React.useState<'all' | 'folder' | 'document' | 'spreadsheet' | 'note'>('all')
+    const [filterType, setFilterType] = React.useState<'all' | 'document' | 'image' | 'note'>('all')
 
     // Filter documents based on current folder
     const currentDocuments = documents.filter(doc => doc.parentId === currentFolderId)
@@ -274,8 +274,10 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     // Apply type filter (excluding notes since they're shown separately)
     const filteredDocuments = searchFilteredDocuments.filter(doc => {
         if (filterType === 'all') return true
-        if (filterType === 'document') return ['pdf', 'docx', 'txt'].includes(doc.type)
-        return doc.type === filterType
+        if (filterType === 'document') return ['pdf', 'docx', 'txt', 'md'].includes(doc.type)
+        if (filterType === 'image') return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type)
+        if (filterType === 'note') return doc.type === 'note'
+        return true
     })
 
     const handleFileClick = (doc: Document) => {
@@ -427,10 +429,56 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                             className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
                         />
                     </div>
-                    <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">
-                        <Filter className="h-4 w-4 mr-2" />
-                        Фильтр
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className={cn(
+                                "h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm",
+                                filterType !== 'all' && "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:border-zinc-800 hover:text-white"
+                            )}>
+                                <Filter className="h-4 w-4 mr-2" />
+                                {filterType === 'all' ? 'Все типы' :
+                                    filterType === 'document' ? 'Документы' :
+                                        filterType === 'image' ? 'Изображения' :
+                                            filterType === 'note' ? 'Заметки' : 'Все типы'}
+                                <ChevronDown className="h-4 w-4 ml-2" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-zinc-100">
+                            <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                Тип контента
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={() => setFilterType('all')}
+                                className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-zinc-100")}
+                            >
+                                <div className="flex items-center gap-3 w-full">
+                                    <Filter className="h-4 w-4 text-zinc-500" />
+                                    <span className="font-medium">Все типы</span>
+                                    {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => setFilterType('document')}
+                                className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-zinc-100")}
+                            >
+                                <div className="flex items-center gap-3 w-full">
+                                    <FileText className="h-4 w-4 text-blue-500" />
+                                    <span className="font-medium">Документы</span>
+                                    {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => setFilterType('image')}
+                                className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-zinc-100")}
+                            >
+                                <div className="flex items-center gap-3 w-full">
+                                    <Image className="h-4 w-4 text-purple-500" />
+                                    <span className="font-medium">Изображения</span>
+                                    {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                </div>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">

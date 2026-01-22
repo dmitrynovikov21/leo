@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { UploadCloud, Zap, Sparkles, Filter, Plus, Trash2, BookOpen } from "lucide-react"
+import { UploadCloud, Zap, Sparkles, Filter, Plus, Trash2, BookOpen, ChevronDown, Check, FileText, Table as TableIcon, Image } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 
@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { useUserData } from "@/components/providers/user-data-provider"
+import { cn } from "@/lib/utils"
 
 // Document type for UI display
 interface Document {
@@ -116,6 +117,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [editingTable, setEditingTable] = React.useState<any>(null)
     const [agentName, setAgentName] = React.useState<string>("")
     const [searchQuery, setSearchQuery] = React.useState("")
+    const [filterType, setFilterType] = React.useState<'all' | 'document' | 'image' | 'note'>('all')
 
     // Library Import State
     const [isLibraryDialogOpen, setIsLibraryDialogOpen] = React.useState(false)
@@ -466,6 +468,17 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }
 
+    // Apply type filter to documents
+    const filteredDocuments = React.useMemo(() => {
+        return documents.filter(doc => {
+            if (filterType === 'all') return true
+            if (filterType === 'document') return ['pdf', 'docx', 'txt', 'md'].includes(doc.type)
+            if (filterType === 'image') return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type)
+            if (filterType === 'note') return doc.type === 'note'
+            return true
+        })
+    }, [documents, filterType])
+
     // File click handler
     const handleFileClick = async (doc: Document) => {
         if (doc.type === 'note') {
@@ -693,10 +706,56 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
                         />
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">
-                            <Filter className="h-4 w-4 mr-2" />
-                            Фильтр
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className={cn(
+                                    "h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm",
+                                    filterType !== 'all' && "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:border-zinc-800 hover:text-white"
+                                )}>
+                                    <Filter className="h-4 w-4 mr-2" />
+                                    {filterType === 'all' ? 'Все типы' :
+                                        filterType === 'document' ? 'Документы' :
+                                            filterType === 'image' ? 'Изображения' :
+                                                filterType === 'note' ? 'Заметки' : 'Все типы'}
+                                    <ChevronDown className="h-4 w-4 ml-2" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-zinc-100">
+                                <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                    Тип контента
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem
+                                    onClick={() => setFilterType('all')}
+                                    className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-zinc-100")}
+                                >
+                                    <div className="flex items-center gap-3 w-full">
+                                        <Filter className="h-4 w-4 text-zinc-500" />
+                                        <span className="font-medium">Все типы</span>
+                                        {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                    </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => setFilterType('document')}
+                                    className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-zinc-100")}
+                                >
+                                    <div className="flex items-center gap-3 w-full">
+                                        <FileText className="h-4 w-4 text-blue-500" />
+                                        <span className="font-medium">Документы</span>
+                                        {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                    </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => setFilterType('image')}
+                                    className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-zinc-100")}
+                                >
+                                    <div className="flex items-center gap-3 w-full">
+                                        <Image className="h-4 w-4 text-purple-500" />
+                                        <span className="font-medium">Изображения</span>
+                                        {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                    </div>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
@@ -762,7 +821,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                     {/* Documents Table */}
                     <div className="pb-10">
                         <DocumentsTable
-                            docs={documents}
+                            docs={filteredDocuments}
                             onRowClick={handleFileClick}
                             onDelete={(doc) => handleDeleteDocument(doc.id)}
                         />

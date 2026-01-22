@@ -178,6 +178,21 @@ export function AgentWizardDialog() {
                 }
             }
 
+            // Initialize behavior with displayName = agent name
+            const agentName = form.getValues('name')
+            try {
+                await fetch(`${orchestratorUrl}/api/v1/agents/${data.id}/behavior`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        displayName: agentName,
+                        avatarEmoji: '🤖',  // Default emoji
+                    }),
+                })
+            } catch (behaviorErr) {
+                console.error('Failed to initialize behavior:', behaviorErr)
+            }
+
             await refreshAgents() // Refresh list
             toast.success('Агент успешно создан!')
             return true

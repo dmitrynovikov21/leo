@@ -182,7 +182,7 @@ export default function TestingPage() {
     }, [testCases])
 
     return (
-        <div className="h-[calc(100vh-3.5rem)] bg-background p-2 overflow-hidden">
+        <div className="h-full bg-background p-2 overflow-hidden">
             <div className="h-full bg-white rounded-[24px] border border-zinc-200/60 shadow-sm overflow-hidden flex flex-col">
                 <ResizablePanelGroup direction="horizontal" className="flex-1">
                     {/* LEFT PANEL: Test Runner */}
@@ -190,9 +190,9 @@ export default function TestingPage() {
                         <div className="h-full flex flex-col p-4">
                             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                                 <div className="flex items-center justify-between mb-2 px-1">
-                                    <div className="mb-2">
-                                        <h2 className="text-xl font-semibold tracking-tight text-zinc-950">{t('qaLab')}</h2>
-                                        <p className="text-xs text-zinc-500 mt-0.5">{t('testDebugCertify')}</p>
+                                    <div>
+                                        <h2 className="text-lg font-semibold tracking-tight text-zinc-950">{t('qaLab')}</h2>
+                                        <p className="text-xs text-zinc-500">{t('testDebugCertify')}</p>
                                     </div>
                                     <TabsList className="bg-zinc-100/80 p-0.5 rounded-full inline-flex self-start scale-90 origin-right">
                                         <TabsTrigger value="manual" className="rounded-full px-3 py-1 text-xs data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-sm text-zinc-500 font-medium transition-all">{t('manualTest')}</TabsTrigger>
@@ -200,7 +200,7 @@ export default function TestingPage() {
                                     </TabsList>
                                 </div>
 
-                                <div className="flex-1 overflow-hidden relative rounded-2xl border-0 bg-white mt-4">
+                                <div className="flex-1 overflow-hidden relative rounded-2xl border-0 bg-white mt-2">
                                     <TabsContent value="manual" className="h-full m-0 border-0 p-0">
                                         <ManualTestInterface onFeedbackSubmit={handleFeedbackSubmit} />
                                     </TabsContent>

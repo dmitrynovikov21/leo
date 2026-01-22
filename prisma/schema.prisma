@@ -178,6 +178,7 @@ model Agent {
   promptVersions  SystemPromptVersion[]
   notes           AgentNote[]
   testCases       AgentTestCase[]
+  chatTestHistory ChatTestHistory[]
   
   @@index([userId])
   @@map("agents")
@@ -194,6 +195,22 @@ model AgentTestCase {
   
   @@index([agentId])
   @@map("agent_test_cases")
+}
+
+// Chat Test History - stores completed test sessions
+model ChatTestHistory {
+  id           String   @id @default(cuid())
+  agentId      String   @map("agent_id")
+  sessionId    String?  @map("session_id")
+  messages     Json     // Array of {role, text, timestamp}
+  messageCount Int      @default(0) @map("message_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  agent        Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  @@index([agentId])
+  @@index([createdAt])
+  @@map("chat_test_history")
 }
 
 model SystemPromptVersion {
