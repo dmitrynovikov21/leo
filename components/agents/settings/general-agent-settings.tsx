@@ -298,24 +298,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                         </div>
                     </DialogContent>
                 </Dialog>
-                {/* Danger Zone - THIRD */}
-                <div className="pt-8 border-t border-zinc-100">
-                    <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wider mb-4">Опасная зона</h3>
-                    <div className="flex items-center justify-between p-4 rounded-2xl border border-red-100 bg-red-50/30">
-                        <div>
-                            <h4 className="font-medium text-zinc-900">Удалить агента</h4>
-                            <p className="text-sm text-zinc-500">
-                                Это действие необратимо. Все данные агента будут удалены.
-                            </p>
-                        </div>
-                        <Button
-                            variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors"
-                        >
-                            Удалить агента
-                        </Button>
-                    </div>
-                </div>
+
             </div >
         )
     }

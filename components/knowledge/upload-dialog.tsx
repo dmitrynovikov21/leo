@@ -118,9 +118,26 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
             })
 
             if (!vectorizeResponse.ok) throw new Error('Failed to vectorize')
+
+            // Trigger AI metadata generation in background
+            const vectorizeData = await vectorizeResponse.json()
+            const documentId = vectorizeData.documentId || vectorizeData.id
+
+            if (documentId && content) {
+                // Fire and forget - don't block upload
+                fetch('/api/ai/generate-metadata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        documentId,
+                        filename: file.name,
+                        textContent: content,
+                    }),
+                }).catch(err => console.warn('AI metadata generation failed:', err))
+            }
         } else {
             // Save to global library
-            await createLibraryItem({
+            const result = await createLibraryItem({
                 name: file.name,
                 type: 'FILE',
                 content: content,
@@ -128,6 +145,24 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                 mimeType: file.type || 'application/octet-stream',
                 chunks
             })
+
+            // Trigger AI metadata generation for library item and wait for it
+            if (result.success && result.item?.id && content) {
+                try {
+                    await fetch('/api/ai/generate-metadata', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            documentId: result.item.id,
+                            filename: file.name,
+                            textContent: content,
+                            isLibraryItem: true,
+                        }),
+                    })
+                } catch (err) {
+                    console.warn('AI metadata generation failed:', err)
+                }
+            }
         }
     }
 

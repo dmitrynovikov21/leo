@@ -179,6 +179,7 @@ model Agent {
   notes           AgentNote[]
   testCases       AgentTestCase[]
   chatTestHistory ChatTestHistory[]
+  fileQaQuestions FileQaQuestion[]
   
   @@index([userId])
   @@map("agents")
@@ -213,6 +214,28 @@ model ChatTestHistory {
   @@map("chat_test_history")
 }
 
+// Auto-generated QA questions for files and instructions
+model FileQaQuestion {
+  id               String   @id @default(cuid())
+  question         String   @db.Text
+  expectedReasoning String? @map("expected_reasoning") @db.Text // Why is this test tricky?
+  
+  sourceType       String   @map("source_type") // 'FILE' or 'INSTRUCTION'
+  
+  // Relations
+  libraryItemId    String?  @map("library_item_id")
+  libraryItem      LibraryItem? @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+  
+  agentId          String?  @map("agent_id")
+  agent            Agent?   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  @@index([libraryItemId])
+  @@index([agentId])
+  @@map("file_qa_questions")
+}
+
 model SystemPromptVersion {
   id           String   @id @default(cuid())
   agentId      String   @map(name: "agent_id")
@@ -236,6 +259,7 @@ model KnowledgeBase {
   mimeType            String
   status              KnowledgeStatus  @default(PENDING)
   chromaCollectionId  String?          @map(name: "chroma_collection_id")
+  aiMetadata          Json?            @map("ai_metadata") // AI-generated file passport
   createdAt           DateTime         @default(now()) @map(name: "created_at")
   updatedAt           DateTime         @updatedAt @map(name: "updated_at")
   
@@ -359,10 +383,12 @@ model LibraryItem {
   fileUrl   String?  @map("file_url") // for files
   fileSize  Int?     @map("file_size")
   mimeType  String?  @map("mime_type")
+  aiMetadata Json?   @map("ai_metadata") // AI-generated file passport
   createdAt DateTime @default(now()) @map("created_at")
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   chunks    LibraryChunk[]
+  qaQuestions FileQaQuestion[]
 
   @@index([userId])
   @@map("library_items")

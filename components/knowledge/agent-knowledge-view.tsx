@@ -175,7 +175,8 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                         chunksCount: d.chunks_count || 0,
                         tokensUsage: (d.chunks_count || 0) * 500,
                         updatedAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Только что',
-                        status: d.status || 'ready'
+                        status: d.status || 'ready',
+                        aiMetadata: d.ai_metadata || d.aiMetadata || null
                     }
                 })
                 setDocuments(normalizedDocs)

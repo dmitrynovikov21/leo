@@ -12,6 +12,13 @@ export interface LibraryItemWithChunks {
     fileUrl: string | null
     fileSize: number | null
     mimeType: string | null
+    aiMetadata: {
+        ai_title?: string
+        category?: string
+        summary?: string
+        utility?: string
+        topics?: string[]
+    } | null
     createdAt: Date
     _count: {
         chunks: number
@@ -48,7 +55,10 @@ export async function getLibraryItems(options?: { search?: string }): Promise<Li
             }
         })
 
-        return items as LibraryItemWithChunks[]
+        return items.map((item: any) => ({
+            ...item,
+            aiMetadata: item.aiMetadata ?? null
+        })) as LibraryItemWithChunks[]
     } catch (error) {
         console.error('[getLibraryItems] Database error:', error)
 

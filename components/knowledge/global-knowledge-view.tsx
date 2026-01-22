@@ -39,21 +39,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-
-// Document type for UI display
-interface Document {
-    id: string
-    name: string
-    type: 'pdf' | 'docx' | 'txt' | 'md' | 'spreadsheet' | 'folder' | 'note'
-    size: string
-    chunksCount: number
-    tokensUsage: number
-    status: 'ready' | 'processing' | 'error' | 'vectorized'
-    updatedAt: string
-    errorMessage?: string
-    parentId?: string | null
-    content?: string
-}
+import type { Document } from "@/mocks/documents"
 
 // Helper to format bytes
 function formatBytes(bytes: number) {
@@ -100,7 +86,8 @@ function libraryItemToDocument(item: LibraryItemWithChunks): Document {
         status: item._count.chunks > 0 ? 'ready' : 'processing',
         updatedAt,
         parentId: null, // No folder structure in current schema
-        content: item.content || undefined
+        content: item.content || undefined,
+        aiMetadata: (item.aiMetadata as Document['aiMetadata']) || null
     }
 }
 
