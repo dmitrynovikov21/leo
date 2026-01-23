@@ -1,0 +1,291 @@
+"use client"
+
+import * as React from "react"
+import { useTranslations } from "next-intl"
+import { AlertTriangle, FileText, Check, EyeOff, ExternalLink, Loader2, RefreshCw, Edit } from "lucide-react"
+import { toast } from "sonner"
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { FileEditorDialog } from "@/components/knowledge/file-editor-dialog"
+
+interface ConflictFile {
+    file_id: string
+    file_name: string
+    value_found: string
+}
+
+interface KnowledgeConflict {
+    id: string
+    agentId: string | null
+    chatId: string | null
+    topic: string
+    details: ConflictFile[]
+    status: "new" | "resolved" | "ignored"
+    detectedAt: string
+    resolvedAt: string | null
+}
+
+interface KnowledgeConflictsPageProps {
+    agentId: string
+}
+
+export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps) {
+    const t = useTranslations("Conflicts")
+    const [conflicts, setConflicts] = React.useState<KnowledgeConflict[]>([])
+    const [isLoading, setIsLoading] = React.useState(true)
+    const [updatingId, setUpdatingId] = React.useState<string | null>(null)
+    const [activeTab, setActiveTab] = React.useState("new")
+    const [editingFile, setEditingFile] = React.useState<any>(null)
+    const [loadingFileId, setLoadingFileId] = React.useState<string | null>(null)
+
+    const fetchConflicts = React.useCallback(async () => {
+        setIsLoading(true)
+        try {
+            const params = new URLSearchParams()
+            if (agentId) params.set("agentId", agentId)
+            if (activeTab !== "all") params.set("status", activeTab) // already lowercase
+
+            const res = await fetch(`/api/v1/conflicts?${params}`)
+            if (res.ok) {
+                const data = await res.json()
+                setConflicts(data.conflicts || [])
+            }
+        } catch (error) {
+            console.error("Failed to fetch conflicts:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [agentId, activeTab])
+
+    React.useEffect(() => {
+        fetchConflicts()
+    }, [fetchConflicts])
+
+    const updateStatus = async (id: string, status: "resolved" | "ignored") => {
+        setUpdatingId(id)
+        try {
+            const res = await fetch(`/api/v1/conflicts/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status }),
+            })
+
+            if (res.ok) {
+                setConflicts(prev => prev.filter(c => c.id !== id))
+                toast.success(status === "resolved" ? t("conflictResolved") : t("conflictIgnored"))
+            } else {
+                throw new Error("Failed to update")
+            }
+        } catch (error) {
+            console.error("Failed to update conflict:", error)
+            toast.error(t("updateFailed"))
+        } finally {
+            setUpdatingId(null)
+        }
+    }
+
+    const handleOpenFile = async (fileId: string, fileName: string) => {
+        setLoadingFileId(fileId)
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+            if (!gatewayUrl) {
+                toast.error("Gateway URL not configured")
+                return
+            }
+
+            const response = await fetch(`${gatewayUrl}/api/v1/agents/${agentId}/documents/${fileId}`)
+            if (response.ok) {
+                const data = await response.json()
+                const chunks = (data.chunks || []).map((c: any, index: number) => ({
+                    id: c.id || `chunk-${index}`,
+                    content: c.text || c.content || '',
+                    chunkIndex: index
+                }))
+
+                setEditingFile({
+                    id: fileId,
+                    name: fileName,
+                    chunks,
+                    chunksCount: chunks.length,
+                    isAgentDocument: true
+                })
+            } else {
+                toast.error("Не удалось загрузить файл")
+            }
+        } catch (error) {
+            console.error("Failed to load file:", error)
+            toast.error("Ошибка загрузки файла")
+        } finally {
+            setLoadingFileId(null)
+        }
+    }
+
+    const renderConflictCard = (conflict: KnowledgeConflict) => (
+        <Card key={conflict.id} className="border border-zinc-200/50 shadow-sm">
+            <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500" />
+                            {conflict.topic}
+                        </CardTitle>
+                        <CardDescription className="text-xs mt-1">
+                            {new Date(conflict.detectedAt).toLocaleDateString("ru-RU", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                            })}
+                        </CardDescription>
+                    </div>
+                    <Badge
+                        variant="outline"
+                        className={
+                            conflict.status === "new" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                conflict.status === "resolved" ? "bg-green-50 text-green-700 border-green-200" :
+                                    "bg-zinc-50 text-zinc-500 border-zinc-200"
+                        }
+                    >
+                        {conflict.status === "new" ? t("statusNew") :
+                            conflict.status === "resolved" ? t("statusResolved") :
+                                t("statusIgnored")}
+                    </Badge>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {/* Conflicting files */}
+                <div className="space-y-2">
+                    {conflict.details.map((file, idx) => (
+                        <div
+                            key={file.file_id}
+                            className="flex items-center gap-3 bg-zinc-50 rounded-lg p-3"
+                        >
+                            <FileText className="h-5 w-5 text-zinc-400 shrink-0" />
+                            <div className="flex-1 min-w-0 flex items-center gap-2">
+                                <span className="font-medium text-sm text-zinc-700 block truncate">
+                                    {file.file_name}
+                                </span>
+                                {file.file_id && (
+                                    <button
+                                        onClick={() => handleOpenFile(file.file_id, file.file_name)}
+                                        disabled={loadingFileId === file.file_id}
+                                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 disabled:opacity-50 shrink-0"
+                                        title="Редактировать файл"
+                                    >
+                                        {loadingFileId === file.file_id ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                            <Edit className="h-3.5 w-3.5" />
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-zinc-400">→</span>
+                                <span className="text-zinc-900 font-mono text-sm bg-white px-3 py-1.5 rounded-lg border">
+                                    {file.value_found}
+                                </span>
+                            </div>
+                            {idx < conflict.details.length - 1 && (
+                                <span className="text-amber-600 font-bold text-sm">VS</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Actions */}
+                {conflict.status === "new" && (
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateStatus(conflict.id, "resolved")}
+                            disabled={updatingId === conflict.id}
+                        >
+                            {updatingId === conflict.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                                <Check className="h-4 w-4 mr-2" />
+                            )}
+                            {t("resolve")}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => updateStatus(conflict.id, "ignored")}
+                            disabled={updatingId === conflict.id}
+                        >
+                            <EyeOff className="h-4 w-4 mr-2" />
+                            {t("ignore")}
+                        </Button>
+                        {conflict.details[0]?.file_id && (
+                            <a
+                                href={`/dashboard/agents/${agentId}/knowledge?file=${conflict.details[0].file_id}`}
+                                className="ml-auto inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+                            >
+                                <ExternalLink className="h-4 w-4" />
+                                {t("goToFile")}
+                            </a>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h2>
+                    <p className="text-muted-foreground">{t("pageDescription")}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchConflicts} disabled={isLoading}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+                    {t("refresh")}
+                </Button>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                    <TabsTrigger value="new">{t("tabNew")}</TabsTrigger>
+                    <TabsTrigger value="resolved">{t("tabResolved")}</TabsTrigger>
+                    <TabsTrigger value="ignored">{t("tabIgnored")}</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value={activeTab} className="mt-6">
+                    {isLoading ? (
+                        <div className="space-y-4">
+                            <Skeleton className="h-32 w-full" />
+                            <Skeleton className="h-32 w-full" />
+                        </div>
+                    ) : conflicts.length === 0 ? (
+                        <Card className="border-dashed">
+                            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                                <AlertTriangle className="h-12 w-12 text-zinc-300 mb-4" />
+                                <h3 className="font-medium text-zinc-700">{t("noConflicts")}</h3>
+                                <p className="text-sm text-zinc-500 mt-1">{t("noConflictsDesc")}</p>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="space-y-4">
+                            {conflicts.map(renderConflictCard)}
+                        </div>
+                    )}
+                </TabsContent>
+            </Tabs>
+
+            <FileEditorDialog
+                open={!!editingFile}
+                onOpenChange={(open) => !open && setEditingFile(null)}
+                file={editingFile}
+                agentId={agentId}
+            />
+        </div>
+    )
+}

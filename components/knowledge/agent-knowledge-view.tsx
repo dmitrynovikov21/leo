@@ -629,6 +629,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                 onOpenChange={(open) => !open && setEditingFile(null)}
                 file={editingFile}
                 onSave={handleSaveFile}
+                agentId={internalAgentId || undefined}
             />
 
             <TableEditorDialog

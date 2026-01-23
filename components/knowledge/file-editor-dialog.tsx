@@ -36,13 +36,15 @@ interface FileEditorDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     onSave?: (fileId: string, newContent: string) => void
+    agentId?: string // For agent documents - needed to call Gateway API
 }
 
 export function FileEditorDialog({
     file,
     open,
     onOpenChange,
-    onSave
+    onSave,
+    agentId
 }: FileEditorDialogProps) {
     const [chunks, setChunks] = React.useState<Chunk[]>([])
     const [isLoading, setIsLoading] = React.useState(false)
@@ -90,24 +92,70 @@ export function FileEditorDialog({
     }
 
     const saveChunk = async () => {
-        if (!editingChunkId) return
+        if (!editingChunkId || !file) return
 
         setIsSaving(true)
         try {
-            const result = await updateLibraryChunk(editingChunkId, editedContent)
+            // For agent documents, use Gateway API
+            if (file.isAgentDocument && agentId) {
+                const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+                if (!gatewayUrl) {
+                    toast.error("Gateway URL not configured")
+                    return
+                }
 
-            if (result.success) {
-                // Update local state
-                setChunks(prev => prev.map(c =>
-                    c.id === editingChunkId
-                        ? { ...c, content: editedContent }
-                        : c
-                ))
-                setEditingChunkId(null)
-                setEditedContent("")
-                toast.success("Чанк сохранён")
+                // Find the chunk being edited
+                const chunk = chunks.find(c => c.id === editingChunkId)
+                if (!chunk) {
+                    toast.error("Чанк не найден")
+                    return
+                }
+
+                // Check if this is a real chunk ID (not temporary like "chunk-0")
+                if (editingChunkId.startsWith('chunk-')) {
+                    toast.error("Невозможно сохранить: чанк не имеет ID в базе")
+                    return
+                }
+
+                // Call Gateway PATCH endpoint for specific chunk
+                const response = await fetch(
+                    `${gatewayUrl}/api/v1/agents/${agentId}/documents/${file.id}/chunks/${editingChunkId}`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: editedContent })
+                    }
+                )
+
+                if (response.ok) {
+                    setChunks(prev => prev.map(c =>
+                        c.id === editingChunkId
+                            ? { ...c, content: editedContent }
+                            : c
+                    ))
+                    setEditingChunkId(null)
+                    setEditedContent("")
+                    toast.success("Чанк сохранён")
+                } else {
+                    const errorData = await response.json().catch(() => ({}))
+                    toast.error(errorData.error || "Ошибка сохранения")
+                }
             } else {
-                toast.error(result.error || "Ошибка сохранения")
+                // For library items, use local Prisma action
+                const result = await updateLibraryChunk(editingChunkId, editedContent)
+
+                if (result.success) {
+                    setChunks(prev => prev.map(c =>
+                        c.id === editingChunkId
+                            ? { ...c, content: editedContent }
+                            : c
+                    ))
+                    setEditingChunkId(null)
+                    setEditedContent("")
+                    toast.success("Чанк сохранён")
+                } else {
+                    toast.error(result.error || "Ошибка сохранения")
+                }
             }
         } catch (err) {
             console.error("Failed to save chunk:", err)

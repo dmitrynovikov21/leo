@@ -81,12 +81,14 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
 
     const toneOptions = [
+        { value: "official", label: t('official') },
         { value: "friendly", label: t('friendly') },
         { value: "professional", label: t('professional') },
         { value: "concise", label: t('concise') },
         { value: "humorous", label: t('humorous') },
         { value: "empathetic", label: t('empathetic') },
         { value: "formal", label: t('formal') },
+        { value: "casual", label: t('casual') },
     ]
 
     const [isLoading, setIsLoading] = React.useState(true)

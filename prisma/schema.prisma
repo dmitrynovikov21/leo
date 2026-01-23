@@ -83,6 +83,7 @@ model User {
   userSessions UserSession[]
   libraryItems LibraryItem[]
   emailVerificationCodes EmailVerificationCode[]
+  knowledgeConflicts KnowledgeConflict[]
 
   @@map(name: "users")
 }
@@ -421,4 +422,30 @@ model GlobalSystemPrompt {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("global_system_prompts")
+}
+
+// Knowledge Conflicts - detected by AI agents during RAG retrieval
+enum ConflictStatus {
+  NEW
+  RESOLVED
+  IGNORED
+}
+
+model KnowledgeConflict {
+  id          String         @id @default(cuid())
+  userId      String         @map("user_id")
+  agentId     String?        @map("agent_id")
+  chatId      String?        @map("chat_id")
+  topic       String         // e.g. "Цена услуги", "Адрес офиса"
+  details     Json           // Array of { file_id, file_name, value_found }
+  status      ConflictStatus @default(NEW)
+  detectedAt  DateTime       @default(now()) @map("detected_at")
+  resolvedAt  DateTime?      @map("resolved_at")
+  
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([detectedAt])
+  @@map("knowledge_conflicts")
 }

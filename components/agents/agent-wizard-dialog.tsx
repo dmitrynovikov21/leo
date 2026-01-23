@@ -36,6 +36,8 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 // Import User Data Provider
 import { useUserData } from "@/components/providers/user-data-provider"
+// Import Smart Quiz Step
+import { SmartQuizStep, initialQuizAnswers, type QuizAnswers } from "./smart-quiz-step"
 
 // Schema
 const agentSchema = z.object({
@@ -72,6 +74,9 @@ export function AgentWizardDialog() {
     const [chunksSaved, setChunksSaved] = React.useState(false)
     const [createdAgentId, setCreatedAgentId] = React.useState<string | null>(null)
     const [isCreatingAgent, setIsCreatingAgent] = React.useState(false)
+    // Smart Quiz State
+    const [quizAnswers, setQuizAnswers] = React.useState<QuizAnswers>(initialQuizAnswers)
+    const [isGeneratingPrompt, setIsGeneratingPrompt] = React.useState(false)
 
     const form = useForm<AgentFormData>({
         resolver: zodResolver(agentSchema),
@@ -90,6 +95,7 @@ export function AgentWizardDialog() {
         setChunks([])
         setChunksSaved(false)
         setCreatedAgentId(null)
+        setQuizAnswers(initialQuizAnswers)
         setOpen(false)
     }
 
@@ -99,14 +105,56 @@ export function AgentWizardDialog() {
             if (!result) return
         }
 
-        // Step 2 -> Step 3: проверяем инструкцию и создаём агента
+        // Step 2 -> Step 3: генерируем промпт из quiz и создаём агента
         if (step === 2) {
-            const systemPrompt = form.getValues("systemPrompt")
-            if (!systemPrompt || systemPrompt.trim().length < 10) {
-                toast.error("Необходимо заполнить инструкцию", {
-                    description: "Нажмите 'Авто-генерация' или напишите инструкцию вручную (минимум 10 символов)"
-                })
+            // Validate quiz is filled
+            if (!quizAnswers.role) {
+                toast.error("Выберите роль агента")
                 return
+            }
+
+            // Generate prompt from quiz if not yet generated
+            let systemPrompt = form.getValues("systemPrompt")
+            if (!systemPrompt || systemPrompt.trim().length < 10) {
+                setIsGeneratingPrompt(true)
+                try {
+                    // Filter out empty string values from quizAnswers
+                    const filteredQuizAnswers = Object.fromEntries(
+                        Object.entries(quizAnswers).filter(([, value]) => {
+                            if (Array.isArray(value)) return value.length > 0
+                            if (typeof value === 'string') return value !== ''
+                            return value !== undefined && value !== null
+                        })
+                    )
+
+                    const response = await fetch('/api/ai/generate-agent-prompt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            agentName: form.getValues('name'),
+                            agentDescription: form.getValues('description'),
+                            quizAnswers: filteredQuizAnswers,
+                        }),
+                    })
+
+                    if (!response.ok) throw new Error('Failed to generate')
+
+                    const data = await response.json()
+                    if (data.systemPrompt || data.prompt) {
+                        systemPrompt = data.systemPrompt || data.prompt
+                        form.setValue('systemPrompt', systemPrompt)
+                        toast.success('Инструкция сгенерирована!')
+                    } else {
+                        throw new Error('No prompt in response')
+                    }
+                } catch (error) {
+                    console.error('Failed to generate prompt:', error)
+                    toast.error('Не удалось сгенерировать инструкцию')
+                    setIsGeneratingPrompt(false)
+                    return
+                } finally {
+                    setIsGeneratingPrompt(false)
+                }
             }
 
             if (!createdAgentId) {
@@ -178,8 +226,29 @@ export function AgentWizardDialog() {
                 }
             }
 
-            // Initialize behavior with displayName = agent name
+            // Initialize behavior with displayName, constraints, and tone from quiz
             const agentName = form.getValues('name')
+
+            // Map constraint IDs to Russian labels
+            const constraintLabels: Record<string, string> = {
+                no_swearing: "Не материться",
+                no_prices: "Не называть цены",
+                no_competitors: "Не обсуждать конкурентов",
+                no_hallucination: "Не галлюцинировать",
+            }
+
+            // Build guardrails array from quiz constraints (format: { rule: string })
+            const guardrails = [
+                ...quizAnswers.constraints.map(id => constraintLabels[id] || id),
+                ...quizAnswers.customConstraints
+            ].filter(Boolean).map(constraint => ({ rule: constraint }))
+
+            // Get tone of voice value as array
+            const toneValue = quizAnswers.toneOfVoice === 'custom'
+                ? quizAnswers.toneOfVoiceCustom
+                : quizAnswers.toneOfVoice
+            const toneArray = toneValue ? [toneValue] : ['friendly']
+
             try {
                 await fetch(`${orchestratorUrl}/api/v1/agents/${data.id}/behavior`, {
                     method: 'PATCH',
@@ -187,6 +256,8 @@ export function AgentWizardDialog() {
                     body: JSON.stringify({
                         displayName: agentName,
                         avatarEmoji: '🤖',  // Default emoji
+                        tone: toneArray,
+                        guardrails: guardrails,
                     }),
                 })
             } catch (behaviorErr) {
@@ -209,7 +280,7 @@ export function AgentWizardDialog() {
 
     // Проверка можно ли нажать Далее
     const canProceed = () => {
-        if (isParsing || isSavingChunks || isCreatingAgent) return false
+        if (isParsing || isSavingChunks || isCreatingAgent || isGeneratingPrompt) return false
         if (step === 3 && chunks.length > 0 && !chunksSaved) return false
         return true
     }
@@ -590,29 +661,11 @@ ${desc}
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-6"
                             >
-                                <div className="rounded-lg border bg-muted/50 p-4">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <Label className="text-base">{t('systemPersona')}</Label>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleGeneratePersona}
-                                            disabled={isGenerating}
-                                        >
-                                            {isGenerating ? (
-                                                <>{t('generating')}</>
-                                            ) : (
-                                                <><Wand2 className="mr-2 h-4 w-4" /> {t('autoGenerate')}</>
-                                            )}
-                                        </Button>
-                                    </div>
-                                    <Textarea
-                                        value={form.watch("systemPrompt")}
-                                        onChange={(e) => form.setValue("systemPrompt", e.target.value)}
-                                        placeholder={t('personaPlaceholder')}
-                                        className="min-h-[250px] font-mono text-sm leading-relaxed"
-                                    />
-                                </div>
+                                <SmartQuizStep
+                                    answers={quizAnswers}
+                                    onChange={setQuizAnswers}
+                                    isGenerating={isGeneratingPrompt}
+                                />
                             </motion.div>
                         )}
 
