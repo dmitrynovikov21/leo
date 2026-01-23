@@ -84,6 +84,7 @@ model User {
   libraryItems LibraryItem[]
   emailVerificationCodes EmailVerificationCode[]
   knowledgeConflicts KnowledgeConflict[]
+  autoTestRuns AutoTestRun[]
 
   @@map(name: "users")
 }
@@ -181,6 +182,7 @@ model Agent {
   testCases       AgentTestCase[]
   chatTestHistory ChatTestHistory[]
   fileQaQuestions FileQaQuestion[]
+  autoTestRuns    AutoTestRun[]
   
   @@index([userId])
   @@map("agents")
@@ -219,6 +221,7 @@ model ChatTestHistory {
 model FileQaQuestion {
   id               String   @id @default(cuid())
   question         String   @db.Text
+  expectedAnswer   String?  @map("expected_answer") @db.Text
   expectedReasoning String? @map("expected_reasoning") @db.Text // Why is this test tricky?
   
   sourceType       String   @map("source_type") // 'FILE' or 'INSTRUCTION'
@@ -226,6 +229,9 @@ model FileQaQuestion {
   // Relations
   libraryItemId    String?  @map("library_item_id")
   libraryItem      LibraryItem? @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+
+  knowledgeBaseId  String?  @map("knowledge_base_id")
+  knowledgeBase    KnowledgeBase? @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
   
   agentId          String?  @map("agent_id")
   agent            Agent?   @relation(fields: [agentId], references: [id], onDelete: Cascade)
@@ -266,6 +272,7 @@ model KnowledgeBase {
   
   agent               Agent            @relation(fields: [agentId], references: [id], onDelete: Cascade)
   chunks              DocumentChunk[]
+  qaQuestions         FileQaQuestion[]
   
   @@index([agentId])
   @@map("knowledge_bases")
@@ -448,4 +455,39 @@ model KnowledgeConflict {
   @@index([status])
   @@index([detectedAt])
   @@map("knowledge_conflicts")
+}
+
+// Auto-Testing Models
+
+
+
+model AutoTestRun {
+  id        String   @id @default(cuid())
+  agentId   String   @map("agent_id")
+  userId    String   @map("user_id")
+  status    String   // 'RUNNING', 'COMPLETED', 'FAILED'
+  score     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  results   AutoTestRunResult[]
+
+  @@index([agentId])
+  @@map("auto_test_runs")
+}
+
+model AutoTestRunResult {
+  id              String      @id @default(cuid())
+  runId           String      @map("run_id")
+  question        String      @db.Text
+  expectedAnswer  String      @db.Text @map("expected_answer")
+  actualAnswer    String      @db.Text @map("actual_answer")
+  passed          Boolean
+  matchPercentage Int         @map("match_percentage")
+  
+  run             AutoTestRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@map("auto_test_run_results")
 }
