@@ -183,39 +183,39 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                     </div>
                 ) : (
                     <ScrollArea className="h-full pb-20">
-                        <div className="p-4 space-y-3">
+                        <div className="p-2 space-y-2">
                             {testCases.map((item, idx) => (
                                 <Card
                                     key={item.id}
                                     onClick={() => openEdit(item)}
-                                    className="p-3 bg-white border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] rounded-xl group hover:border-zinc-200 transition-all cursor-pointer hover:shadow-md relative"
+                                    className="p-2 bg-white border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] rounded-lg group hover:border-zinc-200 transition-all cursor-pointer hover:shadow-md relative"
                                 >
-                                    <div className="flex items-start gap-3">
+                                    <div className="flex items-start gap-2.5">
                                         <div className="mt-0.5">
                                             {getStatusIcon(item.status)}
                                         </div>
-                                        <div className="flex-1 space-y-1 min-w-0">
-                                            <div className="flex items-center gap-2">
+                                        <div className="flex-1 space-y-0.5 min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
                                                 <span className="text-[10px] font-mono text-zinc-400">#{idx + 1}</span>
                                                 {getStatusBadge(item)}
                                             </div>
-                                            <p className="text-sm text-zinc-700 leading-snug font-medium truncate">{item.question}</p>
+                                            <p className="text-sm text-zinc-800 leading-snug font-medium truncate">{item.question}</p>
                                             <p className="text-[11px] text-zinc-400 truncate">Ожидается: {item.expectedAnswer}</p>
                                             {item.actualAnswer && (
-                                                <p className="text-[11px] text-zinc-500 truncate mt-1 pt-1 border-t border-zinc-100">
+                                                <p className="text-[11px] text-zinc-500 truncate mt-1 pt-1 border-t border-zinc-50">
                                                     Ответ: {item.actualAnswer}
                                                 </p>
                                             )}
                                         </div>
 
-                                        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                        <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-6 w-6 text-zinc-300 hover:text-red-500"
+                                                className="h-5 w-5 text-zinc-300 hover:text-red-500"
                                                 onClick={(e) => { e.stopPropagation(); handleRemoveTestCase(item.id); }}
                                             >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                                <Trash2 className="h-3 w-3" />
                                             </Button>
                                         </div>
                                     </div>
@@ -225,7 +225,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-full text-xs text-zinc-400 hover:text-zinc-900 border border-dashed border-zinc-200 hover:border-zinc-300 h-9 font-normal rounded-xl hover:bg-zinc-50"
+                                className="w-full text-xs text-zinc-400 hover:text-zinc-900 border border-dashed border-zinc-200 hover:border-zinc-300 h-8 font-normal rounded-lg hover:bg-zinc-50"
                                 onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
                             >
                                 <Plus className="h-3 w-3 mr-2" /> Добавить тест-кейс

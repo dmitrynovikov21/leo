@@ -43,17 +43,16 @@ import { SmartQuizStep, initialQuizAnswers, type QuizAnswers } from "./smart-qui
 const agentSchema = z.object({
     name: z.string().min(2, "Имя должно быть минимум 2 символа"),
     role: z.string().min(1, "Выберите роль"),
-    description: z.string().min(10, "Описание должно быть не менее 10 символов"),
+    description: z.string().min(1, "Описание обязательно"), // Removed min 10
     systemPrompt: z.string(),
 })
 
 type AgentFormData = z.infer<typeof agentSchema>
 
 const steps = [
-    { id: 1, title: "Basics" },
-    { id: 2, title: "Persona" },
-    { id: 3, title: "Knowledge" },
-    { id: 4, title: "Review" },
+    { id: 1, title: "Persona" },
+    { id: 2, title: "Knowledge" },
+    { id: 3, title: "Review" },
 ]
 
 export function AgentWizardDialog() {
@@ -100,18 +99,46 @@ export function AgentWizardDialog() {
     }
 
     const nextStep = async () => {
+        // Step 1: Persona -> Step 2: Knowledge
+        // генерируем промпт из quiz и создаём агента
         if (step === 1) {
-            const result = await form.trigger(["name", "role", "description"])
-            if (!result) return
-        }
-
-        // Step 2 -> Step 3: генерируем промпт из quiz и создаём агента
-        if (step === 2) {
             // Validate quiz is filled
             if (!quizAnswers.role) {
                 toast.error("Выберите роль агента")
                 return
             }
+
+            // Validation for Corporate Bot
+            if (quizAnswers.role === 'corporate_bot') {
+                const missingFields: string[] = []
+                if (!quizAnswers.identityName) missingFields.push("Имя ассистента")
+                if (!quizAnswers.identityPosition) missingFields.push("Должность")
+                if (!quizAnswers.audience) missingFields.push("Аудитория")
+                if (!quizAnswers.strictness) missingFields.push("Источник знаний")
+                if (!quizAnswers.citations) missingFields.push("Ссылки")
+                if (!quizAnswers.conflicts) missingFields.push("Противоречия")
+                if (!quizAnswers.answerDepth) missingFields.push("Глубина")
+                if (!quizAnswers.format) missingFields.push("Оформление")
+                if (!quizAnswers.fallback) missingFields.push("Fallback")
+                if (!quizAnswers.fewShot) missingFields.push("Пример")
+
+                if (missingFields.length > 0) {
+                    toast.error("Заполните все поля квиза", {
+                        description: `Не заполнено: ${missingFields.join(", ")}`
+                    })
+                    return
+                }
+
+                if (quizAnswers.identityName.length < 2) {
+                    toast.error("Имя ассистента должно быть минимум 2 символа")
+                    return
+                }
+            }
+
+            // Sync quiz answers to form data
+            form.setValue("name", quizAnswers.identityName)
+            form.setValue("description", quizAnswers.identityPosition)
+            form.setValue("role", quizAnswers.role)
 
             // Generate prompt from quiz if not yet generated
             let systemPrompt = form.getValues("systemPrompt")
@@ -158,13 +185,23 @@ export function AgentWizardDialog() {
             }
 
             if (!createdAgentId) {
-                const success = await createAgent()
-                if (!success) return
+                const newAgentId = await createAgent()
+                if (newAgentId) {
+                    toast.success("Агент создан! Переходим к загрузке знаний...", {
+                        duration: 2000
+                    })
+                    // Don't close dialog, move to next step (Knowledge)
+                    // setOpen(false) 
+                    // router.push... NO, we continue wizard
+                } else {
+                    return // stay on step if failed
+                }
             }
         }
 
-        // Step 3: нельзя идти дальше если есть несохранённые чанки
-        if (step === 3 && chunks.length > 0 && !chunksSaved) {
+        // Step 2: Knowledge -> Step 3: Review
+        // нельзя идти дальше если есть несохранённые чанки
+        if (step === 2 && chunks.length > 0 && !chunksSaved) {
             toast.error('Сохраните чанки перед тем как продолжить')
             return
         }
@@ -172,7 +209,7 @@ export function AgentWizardDialog() {
     }
 
     // Создание агента через API
-    const createAgent = async (): Promise<boolean> => {
+    const createAgent = async (): Promise<string | null> => {
         setIsCreatingAgent(true)
 
         try {
@@ -183,7 +220,7 @@ export function AgentWizardDialog() {
                 const mockId = 'mock_agent_' + Date.now()
                 setCreatedAgentId(mockId)
                 toast.info('Агент создан (mock)')
-                return true
+                return mockId
             }
 
             // Call local API which proxies to orchestrator
@@ -265,14 +302,13 @@ export function AgentWizardDialog() {
             }
 
             await refreshAgents() // Refresh list
-            toast.success('Агент успешно создан!')
-            return true
+            return data.id
         } catch (error) {
             console.error('Error creating agent:', error)
             toast.error(tCommon('error'), {
                 description: 'Не удалось создать агента'
             })
-            return false
+            return null
         } finally {
             setIsCreatingAgent(false)
         }
@@ -281,7 +317,7 @@ export function AgentWizardDialog() {
     // Проверка можно ли нажать Далее
     const canProceed = () => {
         if (isParsing || isSavingChunks || isCreatingAgent || isGeneratingPrompt) return false
-        if (step === 3 && chunks.length > 0 && !chunksSaved) return false
+        if (step === 2 && chunks.length > 0 && !chunksSaved) return false
         return true
     }
 
@@ -489,62 +525,15 @@ ${desc}
 
         setIsStarting(true)
         try {
-            // 1. Start Agent
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) {
-                // Mock start
-                await new Promise(resolve => setTimeout(resolve, 2000))
-                toast.success("Агент успешно запущен (Mock)!", {
-                    description: "Статус: RUNNING"
-                })
-                setOpen(false)
-                router.refresh()
-                return
-            }
-
-            const startRes = await fetch(`${orchestratorUrl}/api/v1/agents/${createdAgentId}/start`, {
-                method: 'POST'
+            // Updated logic: Redirect to Behavior page after creation
+            toast.success(tCommon('success'), {
+                description: "Агент создан! Переходим к настройкам..."
             })
-
-            if (!startRes.ok) {
-                throw new Error("Failed to start agent")
-            }
-
-            const startData = await startRes.json()
-
-            // 2. Poll Status if not running immediately
-            let status = startData.status
-            if (status !== 'RUNNING') {
-                // Simple poll: check 3 times with 2s interval
-                for (let i = 0; i < 3; i++) {
-                    await new Promise(r => setTimeout(r, 2000))
-                    const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${createdAgentId}/status`)
-                    if (statusRes.ok) {
-                        const statusData = await statusRes.json()
-                        status = statusData.agent?.status || statusData.status
-                        if (status === 'RUNNING') break
-                    }
-                }
-            }
-
-            if (status === 'RUNNING') {
-                toast.success(tCommon('success'), {
-                    description: "Агент успешно запущен и готов к работе!"
-                })
-                setOpen(false)
-                router.refresh()
-            } else {
-                toast.warning("Агент запущен, но статус неизвестен", {
-                    description: `Текущий статус: ${status}`
-                })
-                setOpen(false)
-            }
-
+            setOpen(false)
+            router.push(`/dashboard/agents/${createdAgentId}/behavior`)
         } catch (error) {
             console.error(error)
-            toast.error(tCommon('error'), {
-                description: "Не удалось запустить агента. Попробуйте вручную из списка."
-            })
+            toast.error(tCommon('error'))
         } finally {
             setIsStarting(false)
         }
@@ -586,76 +575,16 @@ ${desc}
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Progress Bar (Skip for Step 0) */}
-                {step > 0 && (
-                    <div className="mb-4 space-y-2">
-                        <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                            <span>{t('stepOf', { step: step })}</span>
-                            <span>{t('progress', { percent: Math.round((step / 4) * 100) })}</span>
-                        </div>
-                        <Progress value={(step / 4) * 100} className="h-2" />
-                    </div>
-                )}
+                {/* Progress Bar */}
+                <div className="mb-4 space-y-2">
+                    <Progress value={(step / 3) * 100} className="h-2" />
+                </div>
 
                 <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4">
                     <AnimatePresence mode="wait">
-
                         {step === 1 && (
                             <motion.div
                                 key="step1"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="space-y-6"
-                            >
-                                <div className="space-y-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="name">{t('agentNameLabel')}</Label>
-                                        <Input
-                                            id="name"
-                                            placeholder={t('agentNamePlaceholder')}
-                                            {...form.register("name")}
-                                        />
-                                        {form.formState.errors.name && (
-                                            <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-                                        )}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="role">{t('roleLabel')}</Label>
-                                        <Select
-                                            onValueChange={(val) => form.setValue("role", val)}
-                                            defaultValue={form.getValues("role")}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder={t('selectRole')} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="corporate_bot">Корпоративный бот</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        {form.formState.errors.role && (
-                                            <p className="text-sm text-destructive">{form.formState.errors.role.message}</p>
-                                        )}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="desc">{t('descriptionLabel')}</Label>
-                                        <Textarea
-                                            id="desc"
-                                            placeholder={t('descriptionPlaceholder')}
-                                            className="min-h-[100px]"
-                                            {...form.register("description")}
-                                        />
-                                        {form.formState.errors.description && (
-                                            <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
-                                        )}
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {step === 2 && (
-                            <motion.div
-                                key="step2"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -669,9 +598,9 @@ ${desc}
                             </motion.div>
                         )}
 
-                        {step === 3 && (
+                        {step === 2 && (
                             <motion.div
-                                key="step3"
+                                key="step2"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -768,9 +697,9 @@ ${desc}
                             </motion.div>
                         )}
 
-                        {step === 4 && (
+                        {step === 3 && (
                             <motion.div
-                                key="step4"
+                                key="step3"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -830,7 +759,7 @@ ${desc}
                                 <ChevronLeft className="mr-2 h-4 w-4" />
                                 {t('back')}
                             </Button>
-                            {step < 4 ? (
+                            {step < 3 ? (
                                 <Button onClick={nextStep} disabled={!canProceed()}>
                                     {isParsing ? 'Обработка...' : t('next')}
                                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -848,8 +777,8 @@ ${desc}
                                         </>
                                     ) : (
                                         <>
-                                            {t('startAgent')}
-                                            <Power className="ml-2 h-4 w-4" />
+                                            {t('configureAgent') || 'Настроить агента'}
+                                            <ChevronRight className="ml-2 h-4 w-4" />
                                         </>
                                     )}
                                 </Button>

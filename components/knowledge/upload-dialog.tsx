@@ -121,19 +121,29 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
 
             // Trigger AI metadata generation in background
             const vectorizeData = await vectorizeResponse.json()
-            const documentId = vectorizeData.documentId || vectorizeData.id
+            console.log('[UploadDialog] Vectorize response:', vectorizeData)
+
+            // Gateway returns knowledgeBaseId for agent documents
+            const documentId = vectorizeData.documentId || vectorizeData.id || vectorizeData.document_id || vectorizeData.knowledgeBaseId
 
             if (documentId && content) {
-                // Fire and forget - don't block upload
-                fetch('/api/ai/generate-metadata', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        documentId,
-                        filename: file.name,
-                        textContent: content,
-                    }),
-                }).catch(err => console.warn('AI metadata generation failed:', err))
+                try {
+                    console.log('[UploadDialog] Generating metadata for:', documentId)
+                    await fetch('/api/ai/generate-metadata', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            documentId,
+                            filename: file.name,
+                            textContent: content,
+                            isLibraryItem: false,
+                        }),
+                    })
+                } catch (err) {
+                    console.warn('AI metadata generation failed:', err)
+                }
+            } else {
+                console.warn('[UploadDialog] Metadata generation skipped. Missing ID or content.', { documentId, contentLength: content?.length, vectorizeData })
             }
         } else {
             // Save to global library

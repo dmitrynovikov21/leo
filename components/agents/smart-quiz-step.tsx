@@ -3,61 +3,70 @@
 import * as React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-    ShoppingCart,
-    UserCheck,
-    HeadphonesIcon,
-    BookOpen,
+    TrendingUp,
+    Filter,
+    MessageSquare,
+    FileText,
     Plus,
-    Loader2
+    Loader2,
+    Check
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { DynamicQuestionBuilder } from "./dynamic-question-builder"
 
 // Types
-export type AgentRole = "sales" | "lead_qualification" | "support" | "info_consultant"
+export type AgentRole = "corporate_bot" | "sales" | "lead_qualification" | "support"
 
 export interface QuizAnswers {
     // Step 1 - Role
     role: AgentRole | ""
 
-    // Sales-specific
-    salesCta: string
-    salesCtaCustom: string
-    salesPersistence: string
-    salesPersistenceCustom: string
-
-    // Lead Qualification-specific
-    leadFilter: string
-    leadFilterCustom: string
-    leadStrategy: string
-    leadStrategyCustom: string
-    surveyQuestions: string[]
-
-    // Support-specific
-    supportEmpathy: string
-    supportEmpathyCustom: string
-    supportLanguage: string
-    supportLanguageCustom: string
-
-    // Info Consultant-specific
-    infoInterpretation: string
-    infoInterpretationCustom: string
-    infoOfftopic: string
-    infoOfftopicCustom: string
-
-    // Global settings
-    toneOfVoice: string
-    toneOfVoiceCustom: string
-    responseLength: string
-    responseLengthCustom: string
+    // Corporate Bot Details (New)
+    identityName: string
+    identityPosition: string
+    audience: string
+    audienceCustom: string
+    strictness: string
+    strictnessCustom: string
+    citations: string
+    citationsCustom: string
+    conflicts: string
+    conflictsCustom: string
+    answerDepth: string
+    answerDepthCustom: string
+    format: string
+    formatCustom: string
     fallback: string
     fallbackCustom: string
+    fewShot: string
+
+    // Legacy / Other Roles (Optional/Reserved)
+    salesCta?: string
+    salesCtaCustom?: string
+    salesPersistence?: string
+    salesPersistenceCustom?: string
+    leadFilter?: string
+    leadFilterCustom?: string
+    leadStrategy?: string
+    leadStrategyCustom?: string
+    surveyQuestions?: string[]
+    supportEmpathy?: string
+    supportEmpathyCustom?: string
+    supportLanguage?: string
+    supportLanguageCustom?: string
+    infoInterpretation?: string
+    infoInterpretationCustom?: string
+    infoOfftopic?: string
+    infoOfftopicCustom?: string
+    toneOfVoice?: string
+    toneOfVoiceCustom?: string
+    responseLength?: string
+    responseLengthCustom?: string
 
     // Constraints (taboo)
     constraints: string[]
@@ -65,40 +74,36 @@ export interface QuizAnswers {
 }
 
 export const initialQuizAnswers: QuizAnswers = {
-    role: "",
-    salesCta: "",
-    salesCtaCustom: "",
-    salesPersistence: "",
-    salesPersistenceCustom: "",
-    leadFilter: "",
-    leadFilterCustom: "",
-    leadStrategy: "",
-    leadStrategyCustom: "",
-    surveyQuestions: [],
-    supportEmpathy: "",
-    supportEmpathyCustom: "",
-    supportLanguage: "",
-    supportLanguageCustom: "",
-    infoInterpretation: "",
-    infoInterpretationCustom: "",
-    infoOfftopic: "",
-    infoOfftopicCustom: "",
-    toneOfVoice: "",
-    toneOfVoiceCustom: "",
-    responseLength: "",
-    responseLengthCustom: "",
+    role: "corporate_bot", // Default to Corporate Bot
+    identityName: "",
+    identityPosition: "",
+    audience: "",
+    audienceCustom: "",
+    strictness: "",
+    strictnessCustom: "",
+    citations: "",
+    citationsCustom: "",
+    conflicts: "",
+    conflictsCustom: "",
+    answerDepth: "",
+    answerDepthCustom: "",
+    format: "",
+    formatCustom: "",
     fallback: "",
     fallbackCustom: "",
+    fewShot: "",
+
+    // Legacy
     constraints: [],
     customConstraints: [],
 }
 
 // Role cards data
 const roles = [
-    { id: "sales", icon: ShoppingCart, title: "Активные продажи", desc: "Закрытие сделок, дожим клиентов" },
-    { id: "lead_qualification", icon: UserCheck, title: "Квалификация лида", desc: "Сбор данных, фильтрация" },
-    { id: "support", icon: HeadphonesIcon, title: "Техподдержка", desc: "Решение проблем, помощь" },
-    { id: "info_consultant", icon: BookOpen, title: "Инфо-консультант", desc: "Ответы по базе знаний" },
+    { id: "sales", icon: TrendingUp, title: "Активные продажи", desc: "Закрытие сделок, дожим клиентов" },
+    { id: "lead_qualification", icon: Filter, title: "Квалификация лида", desc: "Сбор данных, фильтрация" },
+    { id: "support", icon: MessageSquare, title: "Техподдержка", desc: "Решение проблем, помощь" },
+    { id: "info_consultant", icon: FileText, title: "Инфо-консультант", desc: "Ответы по базе знаний" },
 ] as const
 
 // Option component with custom input
@@ -116,23 +121,45 @@ function OptionWithCustom({ label, value, options, customValue, onChange, onCust
 
     return (
         <div className="space-y-3">
-            <Label className="text-sm font-medium">{label}</Label>
-            <RadioGroup value={value} onValueChange={onChange} className="space-y-2">
-                {options.map((opt) => (
-                    <div key={opt.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={opt.value} id={`${label}-${opt.value}`} />
-                        <Label htmlFor={`${label}-${opt.value}`} className="text-sm font-normal cursor-pointer">
-                            {opt.label}
-                        </Label>
+            <Label className="text-sm font-medium text-foreground">{label}</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {options.map((opt) => {
+                    const isActive = value === opt.value
+                    return (
+                        <div
+                            key={opt.value}
+                            onClick={() => onChange(opt.value)}
+                            className={cn(
+                                "cursor-pointer rounded-lg border p-3 transition-all hover:bg-accent hover:text-accent-foreground",
+                                isActive
+                                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                    : "bg-card"
+                            )}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">{opt.label}</span>
+                                {isActive && <Check className="h-4 w-4 text-primary" />}
+                            </div>
+                        </div>
+                    )
+                })}
+
+                {/* Custom Option Card */}
+                <div
+                    onClick={() => onChange("custom")}
+                    className={cn(
+                        "cursor-pointer rounded-lg border p-3 transition-all hover:bg-accent hover:text-accent-foreground",
+                        isCustom
+                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                            : "bg-card"
+                    )}
+                >
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">+ Свой вариант</span>
+                        {isCustom && <Check className="h-4 w-4 text-primary" />}
                     </div>
-                ))}
-                <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="custom" id={`${label}-custom`} />
-                    <Label htmlFor={`${label}-custom`} className="text-sm font-normal cursor-pointer">
-                        + Свой вариант
-                    </Label>
                 </div>
-            </RadioGroup>
+            </div>
 
             <AnimatePresence>
                 {isCustom && (
@@ -140,12 +167,14 @@ function OptionWithCustom({ label, value, options, customValue, onChange, onCust
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
                     >
                         <Input
                             value={customValue}
                             onChange={(e) => onCustomChange(e.target.value)}
                             placeholder="Введите свой вариант..."
                             className="mt-2"
+                            autoFocus
                         />
                     </motion.div>
                 )}
@@ -200,301 +229,206 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
             <div className="space-y-4">
                 <Label className="text-base font-semibold">Выберите роль агента</Label>
                 <div className="grid grid-cols-2 gap-3">
-                    {roles.map((role) => (
+                    {/* Active Corporate Bot Role */}
+                    <div
+                        onClick={() => updateAnswer("role", "corporate_bot")}
+                        className={cn(
+                            "relative flex cursor-pointer flex-col gap-2 rounded-xl border p-4 transition-all hover:border-primary/50",
+                            answers.role === "corporate_bot"
+                                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                : "bg-card"
+                        )}
+                    >
+                        <div className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                            answers.role === "corporate_bot"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground"
+                        )}>
+                            <FileText className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h4 className="font-medium text-sm">Корпоративный бот</h4>
+                            <p className="text-xs text-muted-foreground">База знаний, онбординг, инструкции</p>
+                        </div>
+                    </div>
+
+                    {/* Disabled Roles */}
+                    {[
+                        { id: "sales", icon: TrendingUp, title: "Активные продажи", desc: "Закрытие сделок" },
+                        { id: "lead_qualification", icon: Filter, title: "Квалификация", desc: "Сбор лидов" },
+                        { id: "support", icon: MessageSquare, title: "Техподдержка", desc: "Решение проблем" },
+                    ].map((role) => (
                         <div
                             key={role.id}
-                            onClick={() => updateAnswer("role", role.id as AgentRole)}
-                            className={cn(
-                                "relative flex cursor-pointer flex-col gap-2 rounded-xl border p-4 transition-all hover:border-primary/50",
-                                answers.role === role.id && "border-primary bg-primary/5 ring-1 ring-primary"
-                            )}
+                            className="relative flex flex-col gap-2 rounded-xl border p-4 opacity-50 cursor-not-allowed bg-muted/20"
                         >
-                            <div className={cn(
-                                "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                                answers.role === role.id
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-muted-foreground"
-                            )}>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                                 <role.icon className="h-5 w-5" />
                             </div>
                             <div>
                                 <h4 className="font-medium text-sm">{role.title}</h4>
                                 <p className="text-xs text-muted-foreground">{role.desc}</p>
                             </div>
+                            <div className="absolute top-2 right-2 rounded bg-muted px-2 py-0.5 text-[10px] uppercase font-medium text-muted-foreground">
+                                Soon
+                            </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* Role-specific questions */}
+            {/* Questions for Corporate Bot */}
             <AnimatePresence mode="wait">
-                {answers.role === "sales" && (
+                {answers.role === "corporate_bot" && (
                     <motion.div
-                        key="sales"
+                        key="corporate"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6 rounded-lg border bg-muted/30 p-4"
+                        className="space-y-8 rounded-lg border bg-muted/10 p-6"
                     >
-                        <h4 className="font-medium flex items-center gap-2">
-                            <ShoppingCart className="h-4 w-4" /> Настройки продаж
-                        </h4>
+                        {/* 1. Identity */}
+                        <div className="space-y-4">
+                            <h4 className="font-medium flex items-center gap-2 text-primary">
+                                <FileText className="h-4 w-4" /> 1. Личность (Identity)
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Имя ассистента</Label>
+                                    <Input
+                                        placeholder="Например: Олег"
+                                        value={answers.identityName}
+                                        onChange={(e) => updateAnswer("identityName", e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Должность</Label>
+                                    <Input
+                                        placeholder="Например: Менеджер знаний"
+                                        value={answers.identityPosition}
+                                        onChange={(e) => updateAnswer("identityPosition", e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
+                        {/* 2. Audience */}
                         <OptionWithCustom
-                            label="Целевое действие (CTA)"
-                            value={answers.salesCta}
-                            customValue={answers.salesCtaCustom}
-                            onChange={(v) => updateAnswer("salesCta", v)}
-                            onCustomChange={(v) => updateAnswer("salesCtaCustom", v)}
+                            label="2. Целевая аудитория (Audience)"
+                            value={answers.audience}
+                            customValue={answers.audienceCustom}
+                            onChange={(v) => updateAnswer("audience", v)}
+                            onCustomChange={(v) => updateAnswer("audienceCustom", v)}
                             options={[
-                                { value: "meeting", label: "Запись на встречу" },
-                                { value: "payment", label: "Оплата / Ссылка на чек" },
-                                { value: "phone", label: "Сбор телефона" },
+                                { value: "clients", label: "Клиенты (внешние)" },
+                                { value: "employees", label: "Сотрудники (внутренние)" },
+                                { value: "management", label: "Руководство" },
                             ]}
                         />
 
+                        {/* 3. Strictness */}
                         <OptionWithCustom
-                            label="Уровень настойчивости"
-                            value={answers.salesPersistence}
-                            customValue={answers.salesPersistenceCustom}
-                            onChange={(v) => updateAnswer("salesPersistence", v)}
-                            onCustomChange={(v) => updateAnswer("salesPersistenceCustom", v)}
+                            label="3. Источник знаний (Strictness)"
+                            value={answers.strictness}
+                            customValue={answers.strictnessCustom}
+                            onChange={(v) => updateAnswer("strictness", v)}
+                            onCustomChange={(v) => updateAnswer("strictnessCustom", v)}
                             options={[
-                                { value: "aggressive", label: "Агрессивный дожим" },
-                                { value: "consultative", label: "Консультативный (мягко)" },
-                                { value: "passive", label: "Пассивный (только ответы)" },
-                            ]}
-                        />
-                    </motion.div>
-                )}
-
-                {answers.role === "lead_qualification" && (
-                    <motion.div
-                        key="lead"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6 rounded-lg border bg-muted/30 p-4"
-                    >
-                        <h4 className="font-medium flex items-center gap-2">
-                            <UserCheck className="h-4 w-4" /> Настройки квалификации
-                        </h4>
-
-                        <OptionWithCustom
-                            label="Жесткость фильтра"
-                            value={answers.leadFilter}
-                            customValue={answers.leadFilterCustom}
-                            onChange={(v) => updateAnswer("leadFilter", v)}
-                            onCustomChange={(v) => updateAnswer("leadFilterCustom", v)}
-                            options={[
-                                { value: "vacuum", label: "Пылесос (собирать всех)" },
-                                { value: "sniper", label: "Снайпер (отсеивать нецелевых)" },
+                                { value: "strict_files", label: "Только из файлов (Strict)" },
+                                { value: "hybrid", label: "Файлы + знания модели" },
                             ]}
                         />
 
+                        {/* 4. Citations */}
                         <OptionWithCustom
-                            label="Стиль сбора данных"
-                            value={answers.leadStrategy}
-                            customValue={answers.leadStrategyCustom}
-                            onChange={(v) => updateAnswer("leadStrategy", v)}
-                            onCustomChange={(v) => updateAnswer("leadStrategyCustom", v)}
+                            label="4. Ссылки на источники (Citations)"
+                            value={answers.citations}
+                            customValue={answers.citationsCustom}
+                            onChange={(v) => updateAnswer("citations", v)}
+                            onCustomChange={(v) => updateAnswer("citationsCustom", v)}
                             options={[
-                                { value: "native", label: "Нативная беседа" },
-                                { value: "survey", label: "Анкетирование (строго по списку)" },
+                                { value: "always", label: "Обязательно в каждом ответе" },
+                                { value: "on_request", label: "Только если попросят" },
+                                { value: "hidden", label: "Скрыто" },
                             ]}
                         />
 
-                        {answers.leadStrategy === "survey" && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                            >
-                                <DynamicQuestionBuilder
-                                    questions={answers.surveyQuestions}
-                                    onChange={(q) => updateAnswer("surveyQuestions", q)}
-                                />
-                            </motion.div>
-                        )}
-                    </motion.div>
-                )}
-
-                {answers.role === "support" && (
-                    <motion.div
-                        key="support"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6 rounded-lg border bg-muted/30 p-4"
-                    >
-                        <h4 className="font-medium flex items-center gap-2">
-                            <HeadphonesIcon className="h-4 w-4" /> Настройки поддержки
-                        </h4>
-
+                        {/* 5. Conflicts */}
                         <OptionWithCustom
-                            label="Уровень эмпатии"
-                            value={answers.supportEmpathy}
-                            customValue={answers.supportEmpathyCustom}
-                            onChange={(v) => updateAnswer("supportEmpathy", v)}
-                            onCustomChange={(v) => updateAnswer("supportEmpathyCustom", v)}
+                            label="5. Противоречия в данных (Conflicts)"
+                            value={answers.conflicts}
+                            customValue={answers.conflictsCustom}
+                            onChange={(v) => updateAnswer("conflicts", v)}
+                            onCustomChange={(v) => updateAnswer("conflictsCustom", v)}
                             options={[
-                                { value: "maximum", label: "Максимальная забота (психолог)" },
-                                { value: "professional", label: "Сухой профи (только факты)" },
+                                { value: "latest", label: "Верить самому свежему файлу" },
+                                { value: "detailed", label: "Верить самому подробному" },
+                                { value: "report", label: "Сообщить о конфликте" },
                             ]}
                         />
 
+                        {/* 6. Answer Depth */}
                         <OptionWithCustom
-                            label="Сложность языка"
-                            value={answers.supportLanguage}
-                            customValue={answers.supportLanguageCustom}
-                            onChange={(v) => updateAnswer("supportLanguage", v)}
-                            onCustomChange={(v) => updateAnswer("supportLanguageCustom", v)}
+                            label="6. Глубина ответа (Depth)"
+                            value={answers.answerDepth}
+                            customValue={answers.answerDepthCustom}
+                            onChange={(v) => updateAnswer("answerDepth", v)}
+                            onCustomChange={(v) => updateAnswer("answerDepthCustom", v)}
                             options={[
-                                { value: "beginner", label: 'Для новичков ("на пальцах")' },
-                                { value: "expert", label: "Для профи (термины)" },
-                            ]}
-                        />
-                    </motion.div>
-                )}
-
-                {answers.role === "info_consultant" && (
-                    <motion.div
-                        key="info"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="space-y-6 rounded-lg border bg-muted/30 p-4"
-                    >
-                        <h4 className="font-medium flex items-center gap-2">
-                            <BookOpen className="h-4 w-4" /> Настройки консультанта
-                        </h4>
-
-                        <OptionWithCustom
-                            label="Интерпретация информации"
-                            value={answers.infoInterpretation}
-                            customValue={answers.infoInterpretationCustom}
-                            onChange={(v) => updateAnswer("infoInterpretation", v)}
-                            onCustomChange={(v) => updateAnswer("infoInterpretationCustom", v)}
-                            options={[
-                                { value: "strict", label: "Строгий цитатник (только база)" },
-                                { value: "analyst", label: "Аналитик (обобщение и выводы)" },
+                                { value: "concise", label: "Лаконичный" },
+                                { value: "step_by_step", label: "Пошаговый инструктор" },
+                                { value: "expert", label: "Собеседник-эксперт" },
                             ]}
                         />
 
+                        {/* 7. Format */}
                         <OptionWithCustom
-                            label="Реакция на офтоп"
-                            value={answers.infoOfftopic}
-                            customValue={answers.infoOfftopicCustom}
-                            onChange={(v) => updateAnswer("infoOfftopic", v)}
-                            onCustomChange={(v) => updateAnswer("infoOfftopicCustom", v)}
+                            label="7. Стиль оформления (Format)"
+                            value={answers.format}
+                            customValue={answers.formatCustom}
+                            onChange={(v) => updateAnswer("format", v)}
+                            onCustomChange={(v) => updateAnswer("formatCustom", v)}
                             options={[
-                                { value: "ignore", label: "Игнорировать" },
-                                { value: "polite", label: "Поддержать беседу вежливо" },
+                                { value: "rich", label: "Списки и жирный шрифт" },
+                                { value: "plain", label: "Простой текст" },
                             ]}
                         />
+
+                        {/* 8. Fallback */}
+                        <OptionWithCustom
+                            label="8. Если нет ответа (Fallback)"
+                            value={answers.fallback}
+                            customValue={answers.fallbackCustom}
+                            onChange={(v) => updateAnswer("fallback", v)}
+                            onCustomChange={(v) => updateAnswer("fallbackCustom", v)}
+                            options={[
+                                { value: "contact", label: "Попросить контакт для связи" },
+                                { value: "manager", label: "Перевести на менеджера" },
+                                { value: "no_info", label: 'Сказать "Информации нет"' },
+                            ]}
+                        />
+
+                        {/* 9. Few-shot */}
+                        <div className="space-y-3">
+                            <Label className="text-sm font-medium text-foreground">9. Эталонный пример (Few-shot)</Label>
+                            <p className="text-xs text-muted-foreground">
+                                Приведите пример идеального диалога. Формат: "Вопрос — Ответ".
+                            </p>
+                            <textarea
+                                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="User: Как оформить отпуск?
+Agent: Для оформления отпуска нужно:
+1. Зайти на портал...
+2. Заполнить форму..."
+                                value={answers.fewShot}
+                                onChange={(e) => updateAnswer("fewShot", e.target.value)}
+                            />
+                        </div>
+
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* Global Settings - show only when role is selected */}
-            {answers.role && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="space-y-6"
-                >
-                    <h4 className="font-semibold text-base border-t pt-6">Глобальные настройки</h4>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <OptionWithCustom
-                            label="Tone of Voice"
-                            value={answers.toneOfVoice}
-                            customValue={answers.toneOfVoiceCustom}
-                            onChange={(v) => updateAnswer("toneOfVoice", v)}
-                            onCustomChange={(v) => updateAnswer("toneOfVoiceCustom", v)}
-                            options={[
-                                { value: "official", label: "Официальный" },
-                                { value: "friendly", label: "Дружелюбный" },
-                                { value: "casual", label: "Свой в доску" },
-                            ]}
-                        />
-
-                        <OptionWithCustom
-                            label="Длина ответов"
-                            value={answers.responseLength}
-                            customValue={answers.responseLengthCustom}
-                            onChange={(v) => updateAnswer("responseLength", v)}
-                            onCustomChange={(v) => updateAnswer("responseLengthCustom", v)}
-                            options={[
-                                { value: "concise", label: "Лаконично" },
-                                { value: "balanced", label: "Сбалансировано" },
-                                { value: "detailed", label: "Детально" },
-                            ]}
-                        />
-                    </div>
-
-                    <OptionWithCustom
-                        label="Если нет информации (Fallback)"
-                        value={answers.fallback}
-                        customValue={answers.fallbackCustom}
-                        onChange={(v) => updateAnswer("fallback", v)}
-                        onCustomChange={(v) => updateAnswer("fallbackCustom", v)}
-                        options={[
-                            { value: "admit", label: 'Сказать "Не знаю"' },
-                            { value: "contact", label: "Взять контакт для связи" },
-                            { value: "guess", label: "Додумать (осторожно!)" },
-                        ]}
-                    />
-
-                    {/* Constraints / Taboo */}
-                    <div className="space-y-4">
-                        <Label className="text-sm font-medium">Табу (ограничения)</Label>
-                        <div className="space-y-3">
-                            {defaultConstraints.map((constraint) => (
-                                <div key={constraint.id} className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id={constraint.id}
-                                        checked={answers.constraints.includes(constraint.id)}
-                                        onCheckedChange={() => toggleConstraint(constraint.id)}
-                                    />
-                                    <Label htmlFor={constraint.id} className="text-sm font-normal cursor-pointer">
-                                        {constraint.label}
-                                    </Label>
-                                </div>
-                            ))}
-
-                            {/* Custom constraints */}
-                            {answers.customConstraints.map((constraint, i) => (
-                                <div key={`custom-${i}`} className="flex items-center space-x-2">
-                                    <Checkbox checked disabled />
-                                    <span className="text-sm flex-1">{constraint}</span>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 p-0"
-                                        onClick={() => removeCustomConstraint(i)}
-                                    >
-                                        ×
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex gap-2">
-                            <Input
-                                value={customConstraintInput}
-                                onChange={(e) => setCustomConstraintInput(e.target.value)}
-                                placeholder="Добавить своё ограничение..."
-                                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomConstraint())}
-                            />
-                            <Button type="button" variant="outline" size="icon" onClick={addCustomConstraint}>
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
 
             {isGenerating && (
                 <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">

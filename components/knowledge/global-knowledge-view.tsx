@@ -4,8 +4,6 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, ChevronDown, Check, Plus, Trash2, FileText, Image } from "lucide-react"
 
-
-
 import { createLibraryItem, getLibraryItems, deleteLibraryItem, updateLibraryItem, clearLibrary, type LibraryItemWithChunks } from "@/actions/library"
 
 import { Button } from "@/components/ui/button"
@@ -14,6 +12,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmojiAvatar } from "@/components/shared/emoji-avatar"
 import { SpaceSelector } from "@/components/knowledge/space-selector"
+import { FolderSelector } from "@/components/knowledge/folder-selector"
+import { AgentKnowledgeView } from "@/components/knowledge/agent-knowledge-view"
+import { useUserData } from "@/components/providers/user-data-provider"
+
 import { DocumentsTable } from "@/components/knowledge/documents-table"
 import { UploadDialog } from "@/components/knowledge/upload-dialog"
 import { NoteEditorDialog } from "@/components/knowledge/note-editor-dialog"
@@ -98,6 +100,10 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     const [documents, setDocuments] = React.useState<Document[]>(
         initialItems.length > 0 ? initialItems.map(libraryItemToDocument) : []
     )
+
+    // Folder Switcher State
+    const { agents } = useUserData()
+    const [selectedSpace, setSelectedSpace] = React.useState<string>('global')
 
     // Sync state with server props when they change (e.g. after revalidatePath)
     React.useEffect(() => {
@@ -330,6 +336,26 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     const notesCount = notes.length;
     const filesCount = nonNoteDocuments.length;
 
+    // Render Agent View if selected
+    if (selectedSpace !== 'global') {
+        return (
+            <div className="flex flex-col h-full bg-background relative">
+                <div className="flex-none px-6 pt-6 pb-0 z-10 w-full">
+                    <div className="flex items-center gap-2">
+                        <FolderSelector
+                            value={selectedSpace}
+                            onValueChange={setSelectedSpace}
+                            agents={agents}
+                        />
+                    </div>
+                </div>
+                <div className="flex-1 min-h-0">
+                    <AgentKnowledgeView agentId={selectedSpace} />
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div
             className="flex flex-1 flex-col gap-6 p-6 relative"
@@ -395,12 +421,21 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
             />
 
             {/* Header Section */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">База знаний</h1>
+                        <p className="text-sm text-muted-foreground">
+                            {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
+                        </p>
+                    </div>
+                </div>
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">База знаний</h1>
-                    <p className="text-sm text-muted-foreground">
-                        {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
-                    </p>
+                    <FolderSelector
+                        value={selectedSpace}
+                        onValueChange={setSelectedSpace}
+                        agents={agents}
+                    />
                 </div>
             </div>
 

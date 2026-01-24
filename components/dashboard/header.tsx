@@ -3,8 +3,8 @@
 import { useTranslations } from "next-intl";
 
 interface DashboardHeaderProps {
-  heading: string;
-  text?: string;
+  heading: string | React.ReactNode;
+  text?: string | React.ReactNode;
   children?: React.ReactNode;
 }
 

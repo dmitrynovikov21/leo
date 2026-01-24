@@ -310,7 +310,7 @@ export function AutoTestRunner() {
 
     return (
         <ResizablePanelGroup direction="horizontal" className="h-full items-stretch">
-            <ResizablePanel defaultSize={60} minSize={30}>
+            <ResizablePanel defaultSize={75} minSize={30}>
                 <Tabs defaultValue="runner" className="h-full flex flex-col p-6">
                     <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
                         <TabsTrigger value="runner">Автотест</TabsTrigger>
@@ -418,7 +418,7 @@ export function AutoTestRunner() {
 
             <ResizableHandle withHandle className="bg-zinc-100" />
 
-            <ResizablePanel defaultSize={40} minSize={25} maxSize={50}>
+            <ResizablePanel defaultSize={25} minSize={25} maxSize={50}>
                 <FeedbackPanel
                     testCases={testCases}
                     setTestCases={setTestCases}

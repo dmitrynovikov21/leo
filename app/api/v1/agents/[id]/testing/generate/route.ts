@@ -35,7 +35,7 @@ export async function POST(
         const knowledgeItems = agent.knowledgeBases;
 
         if (knowledgeItems.length === 0) {
-            return NextResponse.json({ message: "No analyzed documents found (status VECTORIZED). Please upload files first.", generatedCount: 0 });
+            return NextResponse.json({ message: "Не найдены документы для анализа (статус VECTORIZED). Пожалуйста, загрузите файлы.", generatedCount: 0 });
         }
 
         let totalGenerated = 0;

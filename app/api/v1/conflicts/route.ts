@@ -12,13 +12,26 @@ export async function GET(req: Request) {
         }
 
         const { searchParams } = new URL(req.url);
-        const status = searchParams.get("status"); // "new", "resolved", "ignored"
+        const statusParam = searchParams.get("status"); // "new", "resolved", "ignored"
         const agentId = searchParams.get("agentId");
+
+        let statusFilter: "NEW" | "RESOLVED" | "IGNORED" | undefined;
+        if (statusParam) {
+            const upperStatus = statusParam.toUpperCase();
+            if (["NEW", "RESOLVED", "IGNORED"].includes(upperStatus)) {
+                statusFilter = upperStatus as "NEW" | "RESOLVED" | "IGNORED";
+            } else {
+                // Warn but don't crash, or ignore
+                console.warn(`[API Conflicts] Invalid status param: ${statusParam}`);
+            }
+        }
+
+        console.log(`[API Conflicts] Fetching for userId=${session.user.id}, agentId=${agentId}, status=${statusFilter}`);
 
         const conflicts = await prisma.knowledgeConflict.findMany({
             where: {
                 userId: session.user.id,
-                ...(status && { status: status.toUpperCase() as "NEW" | "RESOLVED" | "IGNORED" }),
+                ...(statusFilter && { status: statusFilter }),
                 ...(agentId && { agentId }),
             },
             orderBy: { detectedAt: "desc" },

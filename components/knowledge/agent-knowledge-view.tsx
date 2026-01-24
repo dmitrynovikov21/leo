@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 
 import { getLibraryItems, getLibraryItemChunks, type LibraryItemWithChunks } from "@/actions/library"
+import { getAgentDocuments } from "@/actions/agent-knowledge"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +17,7 @@ import { UploadDialog } from "@/components/knowledge/upload-dialog"
 import { NoteEditorDialog } from "@/components/knowledge/note-editor-dialog"
 import { FileEditorDialog } from "@/components/knowledge/file-editor-dialog"
 import { TableEditorDialog } from "@/components/knowledge/table-editor-dialog"
+import { ConflictResolverDialog, type KnowledgeConflict } from "@/components/knowledge/conflict-resolver-dialog"
 import {
     Dialog,
     DialogContent,
@@ -125,6 +127,13 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [isLoadingLibrary, setIsLoadingLibrary] = React.useState(false)
     const [importingItem, setImportingItem] = React.useState<string | null>(null)
 
+
+    // Audit & Conflicts State
+    const [conflicts, setConflicts] = React.useState<KnowledgeConflict[]>([])
+    const [isAuditRunning, setIsAuditRunning] = React.useState(false)
+    const [selectedConflict, setSelectedConflict] = React.useState<KnowledgeConflict | null>(null)
+    const [isConflictDialogOpen, setIsConflictDialogOpen] = React.useState(false)
+
     // Get agent from shared context (same as layout)
     const { agents } = useUserData()
 
@@ -143,44 +152,40 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         if (!targetId) return
 
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) return
+            // Use server action to get documents from local DB (including AI metadata)
+            const result = await getAgentDocuments(targetId)
 
-            // Build URL with optional search parameter
-            let url = `${gatewayUrl}/api/v1/agents/${targetId}/documents`
+            // Filter by search if provided
+            let data = result
             if (search && search.trim().length > 0) {
-                url += `?filename=${encodeURIComponent(search.trim())}`
+                const q = search.trim().toLowerCase()
+                data = data.filter((d: any) =>
+                    d.name.toLowerCase().includes(q)
+                )
             }
 
-            const response = await fetch(url, {
-                cache: 'no-store',
-                headers: { 'Pragma': 'no-cache' }
+            // Filter out notes (filename starts with note_) - they are shown separately
+            const filteredData = data.filter((d: any) => {
+                const filename = d.name || ''
+                return !filename.startsWith('note_')
             })
 
-            if (response.ok) {
-                const data = await response.json()
-                // Filter out notes (filename starts with note_) - they are shown separately
-                const filteredData = data.filter((d: any) => {
-                    const filename = d.filename || d.name || ''
-                    return !filename.startsWith('note_')
-                })
-                const normalizedDocs = filteredData.map((d: any) => {
-                    const filename = d.filename || d.name || ''
-                    const rawMimeType = d.mime_type || d.mimeType || d.type || ''
-                    return {
-                        id: d.id,
-                        name: filename,
-                        type: mimeTypeToLabel(rawMimeType, filename),
-                        size: d.size || 'Unknown',
-                        chunksCount: d.chunks_count || 0,
-                        tokensUsage: (d.chunks_count || 0) * 500,
-                        updatedAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Только что',
-                        status: d.status || 'ready',
-                        aiMetadata: d.ai_metadata || d.aiMetadata || null
-                    }
-                })
-                setDocuments(normalizedDocs)
-            }
+            const normalizedDocs = filteredData.map((d: any) => {
+                const filename = d.name || ''
+                const rawMimeType = d.type || ''
+                return {
+                    id: d.id,
+                    name: filename,
+                    type: mimeTypeToLabel(rawMimeType, filename),
+                    size: typeof d.size === 'number' ? d.size : '0', // Action returns number or string from DB? DB is Int.
+                    chunksCount: d.chunksCount || 0,
+                    tokensUsage: (d.chunksCount || 0) * 500,
+                    updatedAt: d.updatedAt ? new Date(d.updatedAt).toLocaleDateString() : 'Только что',
+                    status: (d.status || 'ready') as any,
+                    aiMetadata: d.aiMetadata || null
+                }
+            })
+            setDocuments(normalizedDocs as Document[])
         } catch (error) {
             console.error('Error fetching documents:', error)
             toast.error("Не удалось загрузить документы")
@@ -208,16 +213,72 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }, [internalAgentId])
 
+    // Fetch conflicts
+    const fetchConflicts = React.useCallback(async (id?: string) => {
+        const targetId = id || internalAgentId
+        if (!targetId) return
+
+        try {
+            const response = await fetch(`/api/v1/agents/${targetId}/kb/conflicts`)
+            if (response.ok) {
+                const data = await response.json()
+                setConflicts(data || [])
+            }
+        } catch (error) {
+            console.error('Error fetching conflicts:', error)
+        }
+    }, [internalAgentId])
+
     // Load documents/notes when agent ID becomes available
     React.useEffect(() => {
         const loadData = async () => {
             if (!internalAgentId) return
             setIsLoading(true)
-            await Promise.all([fetchDocuments(internalAgentId), fetchNotes(internalAgentId)])
+            await Promise.all([
+                fetchDocuments(internalAgentId || undefined),
+                fetchNotes(internalAgentId || undefined),
+                fetchConflicts(internalAgentId || undefined)
+            ])
             setIsLoading(false)
         }
         loadData()
-    }, [internalAgentId, fetchDocuments, fetchNotes])
+    }, [internalAgentId, fetchDocuments, fetchNotes, fetchConflicts])
+
+    const handleRunAudit = async () => {
+        if (!internalAgentId) return
+        setIsAuditRunning(true)
+        toast.info("Запущен семантический аудит...", { description: "Это может занять некоторое время" })
+
+        try {
+            const response = await fetch(`/api/v1/agents/${internalAgentId}/kb/audit`, {
+                method: 'POST'
+            })
+
+            if (!response.ok) {
+                const err = await response.json()
+                throw new Error(err.message || "Audit failed")
+            }
+
+            const data = await response.json()
+            if (data.conflictsFound > 0) {
+                toast.warning(`Обнаружено ${data.conflictsFound} противоречий`)
+            } else {
+                toast.success("Противоречий не найдено")
+            }
+            fetchConflicts(internalAgentId || undefined)
+
+        } catch (error) {
+            toast.error("Ошибка аудита")
+            console.error(error)
+        } finally {
+            setIsAuditRunning(false)
+        }
+    }
+
+    const handleResolveConflict = (conflictId: string) => {
+        setConflicts(prev => prev.filter(c => c.id !== conflictId))
+        fetchDocuments(internalAgentId || undefined) // Refresh docs to show updated content
+    }
 
     // Debounced search effect
     React.useEffect(() => {
@@ -549,6 +610,23 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }
 
+    const noteDocs = notes.map(n => ({
+        id: n.id,
+        name: n.title,
+        type: 'note' as const,
+        size: '-',
+        chunksCount: 1,
+        tokensUsage: 0,
+        status: 'ready' as const,
+        updatedAt: 'Только что',
+        content: n.content
+    }))
+
+    // Filter conflicts: Only show KB contradictions (audit) in this view
+    const kbConflicts = React.useMemo(() => {
+        return conflicts.filter(c => !Array.isArray(c.details))
+    }, [conflicts])
+
     // Loading state
     if (isLoading) {
         return (
@@ -566,18 +644,6 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         )
     }
 
-    const noteDocs = notes.map(n => ({
-        id: n.id,
-        name: n.title,
-        type: 'note' as const,
-        size: '-',
-        chunksCount: 1,
-        tokensUsage: 0,
-        status: 'ready' as const,
-        updatedAt: 'Только что',
-        content: n.content
-    }))
-
     return (
         <div
             className="flex flex-col min-h-full w-full relative bg-background"
@@ -585,6 +651,8 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
             onDragLeave={handleGlobalDragLeave}
             onDrop={handleGlobalDrop}
         >
+
+
             {/* Drag Overlay */}
             {isDraggingGlobal && (
                 <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center pointer-events-none transition-all duration-300">
@@ -637,6 +705,17 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                 onOpenChange={(open) => !open && setEditingTable(null)}
                 file={editingTable}
                 onSave={(id, data) => setEditingTable(null)}
+            />
+
+            <ConflictResolverDialog
+                open={isConflictDialogOpen}
+                onOpenChange={(open) => {
+                    setIsConflictDialogOpen(open)
+                    if (!open) setSelectedConflict(null)
+                }}
+                conflict={selectedConflict}
+                onResolve={handleResolveConflict}
+                agentId={internalAgentId || ''}
             />
 
             {/* Library Import Dialog */}
@@ -792,8 +871,35 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                         </DropdownMenu>
                     </div>
                 </div>
+                {kbConflicts.length > 0 && (
+                    <div className="flex gap-2">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-9 rounded-xl shadow-sm animate-in fade-in zoom-in"
+                            onClick={() => {
+                                setSelectedConflict(kbConflicts[0])
+                                setIsConflictDialogOpen(true)
+                            }}
+                        >
+                            <Zap className="h-4 w-4 mr-2" />
+                            {kbConflicts.length} Проблем
+                        </Button>
+                    </div>
+                )}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 text-zinc-500 hover:text-zinc-900"
+                    onClick={handleRunAudit}
+                    disabled={isAuditRunning}
+                >
+                    {isAuditRunning ? <Sparkles className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                    Аудит
+                </Button>
             </div>
 
+            {/* Content Area */}
             {/* Content Area */}
             <div className="flex-1 px-6 pb-20">
                 <div className="space-y-8">
@@ -830,6 +936,6 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     )
 }

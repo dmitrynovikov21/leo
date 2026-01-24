@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileEditorDialog } from "@/components/knowledge/file-editor-dialog"
+import { ConflictValueEditor } from "@/components/knowledge/conflict-value-editor"
+import { resolveConflictByUpdatingContent, updateConflictStatus } from "@/actions/conflicts"
 
 interface ConflictFile {
     file_id: string
@@ -64,6 +66,11 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
     React.useEffect(() => {
         fetchConflicts()
     }, [fetchConflicts])
+
+    // Filter out Audit conflicts (they are handled in Knowledge Base view)
+    const agentConflicts = React.useMemo(() => {
+        return conflicts.filter(c => Array.isArray(c.details))
+    }, [conflicts])
 
     const updateStatus = async (id: string, status: "resolved" | "ignored") => {
         setUpdatingId(id)
@@ -159,81 +166,108 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* Conflicting files */}
+
                 <div className="space-y-2">
-                    {conflict.details.map((file, idx) => (
+                    {(Array.isArray(conflict.details) ? conflict.details : []).map((file, idx) => (
                         <div
                             key={file.file_id}
-                            className="flex items-center gap-3 bg-zinc-50 rounded-lg p-3"
+                            className="flex items-start gap-3 bg-zinc-50 rounded-lg p-3"
                         >
-                            <FileText className="h-5 w-5 text-zinc-400 shrink-0" />
-                            <div className="flex-1 min-w-0 flex items-center gap-2">
-                                <span className="font-medium text-sm text-zinc-700 block truncate">
-                                    {file.file_name}
-                                </span>
-                                {file.file_id && (
-                                    <button
-                                        onClick={() => handleOpenFile(file.file_id, file.file_name)}
-                                        disabled={loadingFileId === file.file_id}
-                                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 disabled:opacity-50 shrink-0"
-                                        title="Редактировать файл"
-                                    >
-                                        {loadingFileId === file.file_id ? (
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                        ) : (
-                                            <Edit className="h-3.5 w-3.5" />
-                                        )}
-                                    </button>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-zinc-400">→</span>
-                                <span className="text-zinc-900 font-mono text-sm bg-white px-3 py-1.5 rounded-lg border">
-                                    {file.value_found}
-                                </span>
+                            <FileText className="h-5 w-5 text-zinc-400 shrink-0 mt-1" />
+                            <div className="flex-1 min-w-0 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm text-zinc-700 block truncate">
+                                        {file.file_name}
+                                    </span>
+                                    {file.file_id && (
+                                        <button
+                                            onClick={() => handleOpenFile(file.file_id, file.file_name)}
+                                            disabled={loadingFileId === file.file_id}
+                                            className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 disabled:opacity-50 shrink-0"
+                                            title="Редактировать файл полностью"
+                                        >
+                                            {loadingFileId === file.file_id ? (
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            ) : (
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <textarea
+                                        readOnly
+                                        value={file.value_found}
+                                        className="min-h-[60px] w-full max-w-[400px] resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-mono text-zinc-800 focus:outline-none focus:ring-0"
+                                    />
+                                </div>
                             </div>
                             {idx < conflict.details.length - 1 && (
-                                <span className="text-amber-600 font-bold text-sm">VS</span>
+                                <div className="self-center px-1">
+                                    <span className="text-amber-600 font-bold text-xs bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">VS</span>
+                                </div>
                             )}
                         </div>
                     ))}
                 </div>
 
                 {/* Actions */}
-                {conflict.status === "new" && (
-                    <div className="flex items-center gap-2 pt-2 border-t">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateStatus(conflict.id, "resolved")}
-                            disabled={updatingId === conflict.id}
-                        >
-                            {updatingId === conflict.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : (
-                                <Check className="h-4 w-4 mr-2" />
-                            )}
-                            {t("resolve")}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => updateStatus(conflict.id, "ignored")}
-                            disabled={updatingId === conflict.id}
-                        >
-                            <EyeOff className="h-4 w-4 mr-2" />
-                            {t("ignore")}
-                        </Button>
-                        {conflict.details[0]?.file_id && (
-                            <a
-                                href={`/dashboard/agents/${agentId}/knowledge?file=${conflict.details[0].file_id}`}
-                                className="ml-auto inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
+                {
+                    conflict.status === "new" && (
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-green-700 hover:text-green-800 hover:bg-green-50 border-green-200"
+                                onClick={async () => {
+                                    setUpdatingId(conflict.id)
+                                    try {
+                                        const res = await updateConflictStatus(conflict.id, "RESOLVED")
+                                        if (res.success) {
+                                            setConflicts(prev => prev.filter(c => c.id !== conflict.id))
+                                            toast.success("Конфликт разрешен (оставлены оба варианта)")
+                                        } else {
+                                            toast.error("Ошибка обновления")
+                                        }
+                                    } finally {
+                                        setUpdatingId(null)
+                                    }
+                                }}
+                                disabled={updatingId === conflict.id}
                             >
-                                <ExternalLink className="h-4 w-4" />
-                                {t("goToFile")}
-                            </a>
-                        )}
-                    </div>
-                )}
+                                {updatingId === conflict.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                    <Check className="h-4 w-4 mr-2" />
+                                )}
+                                Оставить оба
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-zinc-500 hover:text-zinc-900"
+                                onClick={async () => {
+                                    setUpdatingId(conflict.id)
+                                    try {
+                                        const res = await updateConflictStatus(conflict.id, "IGNORED")
+                                        if (res.success) {
+                                            setConflicts(prev => prev.filter(c => c.id !== conflict.id))
+                                            toast.success("Конфликт игнорирован")
+                                        } else {
+                                            toast.error("Ошибка обновления")
+                                        }
+                                    } finally {
+                                        setUpdatingId(null)
+                                    }
+                                }}
+                                disabled={updatingId === conflict.id}
+                            >
+                                <EyeOff className="h-4 w-4 mr-2" />
+                                Игнорировать
+                            </Button>
+                        </div>
+                    )
+                }
             </CardContent>
         </Card>
     )
@@ -264,7 +298,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                             <Skeleton className="h-32 w-full" />
                             <Skeleton className="h-32 w-full" />
                         </div>
-                    ) : conflicts.length === 0 ? (
+                    ) : agentConflicts.length === 0 ? (
                         <Card className="border-dashed">
                             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                                 <AlertTriangle className="h-12 w-12 text-zinc-300 mb-4" />
@@ -274,7 +308,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                         </Card>
                     ) : (
                         <div className="space-y-4">
-                            {conflicts.map(renderConflictCard)}
+                            {agentConflicts.map(renderConflictCard)}
                         </div>
                     )}
                 </TabsContent>
