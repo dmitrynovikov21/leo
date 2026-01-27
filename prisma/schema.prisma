@@ -423,6 +423,7 @@ model GlobalSystemPrompt {
   key         String   @unique // e.g. "agent_creation_template", "test_generation", "analysis_prompt"
   name        String   // Display name: "Шаблон создания агента"
   description String?  @db.Text // Description of what this prompt is for
+  usedIn      String?  @db.Text @map("used_in") // Where this prompt is used (file path or API endpoint)
   content     String   @db.Text // The actual prompt content
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")

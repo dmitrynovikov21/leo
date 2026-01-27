@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { getActivePromptContent } from "@/actions/system-prompts";
 
 // POST /api/v1/agents/[agentId]/testing/generate
 export async function POST(
@@ -35,7 +36,7 @@ export async function POST(
         const knowledgeItems = agent.knowledgeBases;
 
         if (knowledgeItems.length === 0) {
-            return NextResponse.json({ message: "Не найдены документы для анализа (статус VECTORIZED). Пожалуйста, загрузите файлы.", generatedCount: 0 });
+            return NextResponse.json({ message: "Не найдены документы для анализа", generatedCount: 0 });
         }
 
         let totalGenerated = 0;
@@ -77,9 +78,8 @@ export async function POST(
             debugLogs.push(`Generating for ${item.filename}...`);
 
             try {
-                // Call OpenAI/Gateway
-                const prompt = `
-Ты опытный QA Lead. Твоя задача - придумать 3 сложных вопроса к нижеприведенному тексту, где ИИ может ошибиться.
+                // Get prompts from DB (with fallback to hardcoded)
+                const qaPromptTemplate = await getActivePromptContent("qa_questions_generation") || `Ты опытный QA Lead. Твоя задача - придумать 3 сложных вопроса к нижеприведенному тексту, где ИИ может ошибиться.
 Проверь цифры, условия, логику.
 Верни ответ СТРОГО в формате JSON списка объектов:
 [
@@ -91,8 +91,10 @@ export async function POST(
 ]
 
 Текст для анализа:
-${contextText}
-                `;
+{contextText}`;
+
+                // Replace placeholder with actual context
+                const prompt = qaPromptTemplate.replace("{contextText}", contextText);
 
                 // Using specific model/provider via Gateway if possible
                 const completionResponse = await fetch(`${gatewayUrl}/api/v1/chat/completions`, {
@@ -104,12 +106,10 @@ ${contextText}
                     },
                     body: JSON.stringify({
                         userId: session.user.id,
-                        model: "gpt-4o", // High intel
+                        model: "gpt-4o",
                         messages: [
-                            { role: "system", content: "You are a helpful assistant that generates QA tests in JSON." },
                             { role: "user", content: prompt }
                         ],
-                        // response_format: { type: "json_object" }
                     })
                 });
 

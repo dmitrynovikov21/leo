@@ -224,7 +224,7 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 relative">
             {/* Role Selection */}
             <div className="space-y-4">
                 <Label className="text-base font-semibold">Выберите роль агента</Label>
@@ -430,12 +430,7 @@ Agent: Для оформления отпуска нужно:
                 )}
             </AnimatePresence>
 
-            {isGenerating && (
-                <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Генерация инструкции с помощью Claude...</span>
-                </div>
-            )}
+
         </div>
     )
 }

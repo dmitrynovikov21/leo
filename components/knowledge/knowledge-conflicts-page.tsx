@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileEditorDialog } from "@/components/knowledge/file-editor-dialog"
 import { ConflictValueEditor } from "@/components/knowledge/conflict-value-editor"
-import { resolveConflictByUpdatingContent, updateConflictStatus } from "@/actions/conflicts"
+import { updateConflictStatus } from "@/actions/conflicts"
 
 interface ConflictFile {
     file_id: string
@@ -43,6 +43,8 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
     const [activeTab, setActiveTab] = React.useState("new")
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [loadingFileId, setLoadingFileId] = React.useState<string | null>(null)
+
+    const [editingFileHighlight, setEditingFileHighlight] = React.useState<string | undefined>(undefined)
 
     const fetchConflicts = React.useCallback(async () => {
         setIsLoading(true)
@@ -95,7 +97,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
         }
     }
 
-    const handleOpenFile = async (fileId: string, fileName: string) => {
+    const handleOpenFile = async (fileId: string, fileName: string, highlightText?: string) => {
         setLoadingFileId(fileId)
         try {
             const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
@@ -120,6 +122,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                     chunksCount: chunks.length,
                     isAgentDocument: true
                 })
+                setEditingFileHighlight(highlightText)
             } else {
                 toast.error("Не удалось загрузить файл")
             }
@@ -181,7 +184,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                                     </span>
                                     {file.file_id && (
                                         <button
-                                            onClick={() => handleOpenFile(file.file_id, file.file_name)}
+                                            onClick={() => handleOpenFile(file.file_id, file.file_name, file.value_found)}
                                             disabled={loadingFileId === file.file_id}
                                             className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 disabled:opacity-50 shrink-0"
                                             title="Редактировать файл полностью"
@@ -316,9 +319,15 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
 
             <FileEditorDialog
                 open={!!editingFile}
-                onOpenChange={(open) => !open && setEditingFile(null)}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setEditingFile(null)
+                        setEditingFileHighlight(undefined)
+                    }
+                }}
                 file={editingFile}
                 agentId={agentId}
+                highlightText={editingFileHighlight}
             />
         </div>
     )

@@ -91,7 +91,7 @@ export function AutoTestRunner() {
     const handleGenerateQuestions = async () => {
         setStatus("generating")
         try {
-            toast.info("Analyzing knowledge base...", { duration: 2000 })
+            toast.info("Анализ базы знаний...", { duration: 2000 })
             const res = await fetch(`/api/v1/agents/${agentId}/testing/generate`, {
                 method: 'POST',
                 cache: 'no-store'
@@ -134,7 +134,7 @@ export function AutoTestRunner() {
         setProgress(0)
         setLogs([])
         setResults([])
-        addLog("Starting auto-tests...")
+        addLog("Запуск автотестов...")
 
         const testResults: TestResult[] = []
         let currentSessionId = sessionId
@@ -149,7 +149,7 @@ export function AutoTestRunner() {
             setTestCases(prev => prev.map(tc => tc.id === testCase.id ? { ...tc, status: 'running' } : tc))
 
             setProgress(Math.round(((i + 1) / testCases.length) * 100))
-            addLog(`[${i + 1}/${testCases.length}] Testing: "${testCase.question}"`)
+            addLog(`[${i + 1}/${testCases.length}] Тестирование: "${testCase.question}"`)
 
             try {
                 const requestBody: any = {
@@ -172,7 +172,10 @@ export function AutoTestRunner() {
                     setSessionId(data.sessionId)
                 }
 
-                const actualAnswer = data.response || data.message || ''
+                let actualAnswer = data.response || data.message || ''
+                if (actualAnswer === 'no response after tools') {
+                    actualAnswer = 'Нет ответа после выполнения инструментов'
+                }
                 // Using imported calculateSimilarity if possible, or define local
                 const matchPercentage = calculateSimilarity(testCase.expectedAnswer, actualAnswer)
                 const passed = matchPercentage >= 50 // Threshold
@@ -250,7 +253,7 @@ export function AutoTestRunner() {
                 question: r.question,
                 answer: r.actualAnswer,
                 passed: r.passed,
-                reasoning: `Expected: "${r.expectedAnswer}"\nMatch: ${r.matchPercentage}%`,
+                reasoning: `Ожидалось: "${r.expectedAnswer}"\nСовпадение: ${r.matchPercentage}%`,
             }))
         }
     }, [results])
@@ -311,13 +314,15 @@ export function AutoTestRunner() {
     return (
         <ResizablePanelGroup direction="horizontal" className="h-full items-stretch">
             <ResizablePanel defaultSize={75} minSize={30}>
-                <Tabs defaultValue="runner" className="h-full flex flex-col p-6">
-                    <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
-                        <TabsTrigger value="runner">Автотест</TabsTrigger>
-                        <TabsTrigger value="history">История ({history.length})</TabsTrigger>
-                    </TabsList>
+                <Tabs defaultValue="runner" className="h-full flex flex-col pt-4 px-6">
+                    <div className="flex justify-end mb-4">
+                        <TabsList className="bg-zinc-100/80 h-9">
+                            <TabsTrigger value="runner" className="text-xs px-3">Автотест</TabsTrigger>
+                            <TabsTrigger value="history" className="text-xs px-3">История ({history.length})</TabsTrigger>
+                        </TabsList>
+                    </div>
 
-                    <div className="flex-1 overflow-y-auto pr-2">
+                    <div className="flex-1 overflow-y-auto pr-2 pb-6">
                         <TabsContent value="runner" className="space-y-8 mt-0">
                             {status === "idle" || status === "generating" ? (
                                 <div className="text-center space-y-4 py-12">
@@ -449,7 +454,7 @@ export function AutoTestRunner() {
                                             question: r.question,
                                             answer: r.actualAnswer,
                                             passed: r.passed,
-                                            reasoning: `Expected: "${r.expectedAnswer}"\nMatch: ${r.matchPercentage}%`
+                                            reasoning: `Ожидалось: "${r.expectedAnswer}"\nСовпадение: ${r.matchPercentage}%`
                                         }))
                                     }}
                                 />

@@ -79,16 +79,18 @@ export default function SourcesPage() {
                         )}
                     >
                         <CardHeader className="pb-3 p-4">
-                            <div className={cn(
-                                "h-10 w-10 rounded-lg flex items-center justify-center mb-3 transition-colors",
-                                "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
-                            )}>
-                                <source.icon className={cn("h-5 w-5", source.color)} />
+                            <div className="flex items-center gap-3 mb-1">
+                                <div className={cn(
+                                    "h-8 w-8 rounded-lg flex items-center justify-center transition-colors shrink-0",
+                                    "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
+                                )}>
+                                    <source.icon className={cn("h-4 w-4", source.color)} />
+                                </div>
+                                <CardTitle className="text-base font-bold text-zinc-900 leading-tight">
+                                    {source.title}
+                                </CardTitle>
                             </div>
-                            <CardTitle className="text-base font-bold text-zinc-900">
-                                {source.title}
-                            </CardTitle>
-                            <CardDescription className="text-xs text-zinc-500 mt-1.5 leading-relaxed">
+                            <CardDescription className="text-xs text-zinc-500 leading-relaxed">
                                 {source.description}
                             </CardDescription>
                         </CardHeader>

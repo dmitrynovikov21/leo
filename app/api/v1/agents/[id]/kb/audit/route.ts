@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { getActivePromptContent } from "@/actions/system-prompts";
 
 // POST /api/v1/agents/[id]/kb/audit
 export async function POST(
@@ -42,12 +43,12 @@ export async function POST(
             text: c.content.slice(0, 500) // Truncate slightly to save tokens if needed
         }));
 
-        const prompt = `
-Role: Logic Auditor.
+        // Get prompts from DB (with fallback)
+        const auditPromptTemplate = await getActivePromptContent("kb_audit_prompt") || `Role: Logic Auditor.
 Task: Analyze the provided text snippets from a corporate knowledge base for FACTUAL CONTRADICTIONS.
 
 Snippets:
-${JSON.stringify(chunksData, null, 2)}
+{chunksData}
 
 Instructions:
 1. Identify authoritative contradictions (e.g. Price is 100 vs Price is 200). Ignore minor phrasing differences.
@@ -61,9 +62,9 @@ Strict Output Format (JSON):
       "conflict_summary": "Short summary in Russian",
       "description": "Explanation in Russian",
       "chunks_involved": [
-         { 
-           "chunk_id": "MUST_MATCH_EXACT_ID_FROM_INPUT", 
-           "text_snippet": "Quote causing the conflict" 
+         {
+           "chunk_id": "MUST_MATCH_EXACT_ID_FROM_INPUT",
+           "text_snippet": "Quote causing the conflict"
          }
       ]
     }
@@ -74,8 +75,10 @@ CRITICAL RULES:
 - "chunks_involved" MUST contain at least 2 items.
 - "chunk_id" MUST match the "id" field from the provided snippets exactly.
 - If you cannot identify the specific chunk IDs, DO NOT report a conflict.
-- Return { "conflicts": [] } if no contradictions found.
-`;
+- Return { "conflicts": [] } if no contradictions found.`;
+
+        // Replace placeholder with actual data
+        const prompt = auditPromptTemplate.replace("{chunksData}", JSON.stringify(chunksData, null, 2));
 
         const gatewayUrl = process.env.AI_GATEWAY_URL;
 
@@ -89,9 +92,8 @@ CRITICAL RULES:
             },
             body: JSON.stringify({
                 userId: session.user.id,
-                model: "gpt-4o", // Switch to gpt-4o as authentic model
+                model: "gpt-4o",
                 messages: [
-                    { role: "system", content: "You are a precise logic auditor." },
                     { role: "user", content: prompt }
                 ]
             })

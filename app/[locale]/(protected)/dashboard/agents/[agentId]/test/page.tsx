@@ -12,27 +12,24 @@ export default function TestingPage() {
     const [activeTab, setActiveTab] = React.useState("manual")
 
     return (
-        <div className="h-full flex flex-col space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col space-y-4">
             <div className="flex items-center justify-between shrink-0">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">{t('qaLab')}</h2>
                     <p className="text-muted-foreground">{t('testDebugCertify')}</p>
                 </div>
-            </div>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col space-y-4 overflow-hidden">
-                <TabsList className="shrink-0">
+                <TabsList className="shrink-0 bg-zinc-100/80">
                     <TabsTrigger value="manual">{t('manualTest')}</TabsTrigger>
                     <TabsTrigger value="auto">{t('autoStressTest')}</TabsTrigger>
                 </TabsList>
+            </div>
 
-                <TabsContent value="manual" className="flex-1 mt-6 border-0 p-0 overflow-hidden">
-                    <ManualTestInterface onFeedbackSubmit={() => { }} />
-                </TabsContent>
-                <TabsContent value="auto" className="flex-1 mt-6 border-0 p-0 overflow-y-auto">
-                    <AutoTestRunner />
-                </TabsContent>
-            </Tabs>
-        </div>
+            <TabsContent value="manual" className="flex-1 border-0 p-0 overflow-hidden mt-0 data-[state=active]:flex flex-col">
+                <ManualTestInterface onFeedbackSubmit={() => { }} />
+            </TabsContent>
+            <TabsContent value="auto" className="flex-1 border-0 p-0 overflow-y-auto mt-0">
+                <AutoTestRunner />
+            </TabsContent>
+        </Tabs>
     )
 }

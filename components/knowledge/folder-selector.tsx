@@ -64,7 +64,9 @@ export function FolderSelector({ value, onValueChange, agents }: FolderSelectorP
                         <CommandEmpty>Папка не найдена.</CommandEmpty>
                         <CommandGroup heading="Основное">
                             <CommandItem
-                                value="global"
+                                value="global kb general"
+                                disabled={false}
+                                className="data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
                                 onSelect={() => {
                                     onValueChange("global")
                                     setOpen(false)
@@ -87,9 +89,12 @@ export function FolderSelector({ value, onValueChange, agents }: FolderSelectorP
                             {agents.map((agent) => (
                                 <CommandItem
                                     key={agent.id}
-                                    value={agent.id}
+                                    value={`${agent.name} ${agent.id}`}
                                     keywords={[agent.name]}
+                                    disabled={false}
+                                    className="data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
                                     onSelect={() => {
+                                        console.log("Selected agent:", agent.id)
                                         onValueChange(agent.id)
                                         setOpen(false)
                                     }}
@@ -103,7 +108,7 @@ export function FolderSelector({ value, onValueChange, agents }: FolderSelectorP
                                     <div className="mr-2 flex h-6 w-6 items-center justify-center rounded bg-violet-50 text-violet-500">
                                         <Bot className="h-4 w-4" />
                                     </div>
-                                    {agent.name}
+                                    <span className="truncate">{agent.name}</span>
                                 </CommandItem>
                             ))}
                             {agents.length === 0 && (

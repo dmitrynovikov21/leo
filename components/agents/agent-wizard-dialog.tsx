@@ -64,7 +64,6 @@ export function AgentWizardDialog() {
 
     const [open, setOpen] = React.useState(false)
     const [step, setStep] = React.useState(1)
-    const [isGenerating, setIsGenerating] = React.useState(false)
     const [uploadedFiles, setUploadedFiles] = React.useState<{ name: string, file: File }[]>([])
     const [chunks, setChunks] = React.useState<{ id: string, content: string }[]>([])
     const [isParsing, setIsParsing] = React.useState(false)
@@ -325,80 +324,6 @@ export function AgentWizardDialog() {
         setStep((prev) => Math.max(prev - 1, 1))
     }
 
-    const handleGeneratePersona = async () => {
-        const name = form.getValues("name")
-        const role = form.getValues("role")
-        const desc = form.getValues("description")
-
-        if (!desc) {
-            toast.error(tCommon('error'), { description: t('enterDescFirst') })
-            return
-        }
-
-        setIsGenerating(true)
-
-        // Helper function to generate mock prompt
-        const generateMockPrompt = () => {
-            const roleName = role === 'corporate_bot' ? 'Корпоративный бот' : role
-            return `Ты — ${name || 'AI-ассистент'}, ${roleName || 'помощник'}.
-
-${desc}
-
-Основные обязанности:
-- Консультировать по вопросам компании
-- Помогать найти нужную информацию
-- Отвечать на часто задаваемые вопросы
-
-Правила общения:
-- Отвечай вежливо и профессионально
-- Будь кратким, но информативным
-- Если не знаешь ответа — честно признайся
-- Не выходи за рамки своей роли
-- Не обсуждай конкурентов и политику
-
-Формат ответов:
-- Используй структурированные ответы с абзацами
-- При необходимости используй списки
-- Всегда предлагай дополнительную помощь`
-        }
-
-        try {
-            // Use local proxy
-            const response = await fetch('/api/ai/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    agentName: name,
-                    role: role === 'corporate_bot' ? 'Корпоративный бот' : role,
-                    description: desc
-                }),
-            })
-
-            if (!response.ok) {
-                console.error("Generation failed code:", response.status)
-                throw new Error("Failed to generate")
-            }
-
-            const data = await response.json()
-
-            if (data.systemPrompt || data.prompt) {
-                form.setValue("systemPrompt", data.systemPrompt || data.prompt)
-                toast.success(t('promptGenerated'))
-            } else {
-                throw new Error("No prompt in response")
-            }
-
-        } catch (error) {
-            console.warn("Auto-generation failed, using mock:", error)
-            form.setValue("systemPrompt", generateMockPrompt())
-            toast.info("Сгенерировано по шаблону (AI недоступен)")
-        } finally {
-            setIsGenerating(false)
-        }
-    }
-
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -580,7 +505,7 @@ ${desc}
                     <Progress value={(step / 3) * 100} className="h-2" />
                 </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4">
+                <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4 relative">
                     <AnimatePresence mode="wait">
                         {step === 1 && (
                             <motion.div
@@ -750,6 +675,7 @@ ${desc}
                             </motion.div>
                         )}
                     </AnimatePresence>
+
                 </div>
 
                 <DialogFooter className="flex items-center justify-between sm:justify-between px-1">
@@ -790,6 +716,16 @@ ${desc}
                         </div>
                     )}
                 </DialogFooter>
+
+                {/* Loader Overlay - Global for Dialog */}
+                {isGeneratingPrompt && (
+                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm transition-all duration-300">
+                        <div className="flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <span className="text-lg font-medium">Генерируем инструкцию</span>
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     )

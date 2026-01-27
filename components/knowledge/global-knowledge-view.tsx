@@ -104,6 +104,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     // Folder Switcher State
     const { agents } = useUserData()
     const [selectedSpace, setSelectedSpace] = React.useState<string>('global')
+    const [agentLastUpdated, setAgentLastUpdated] = React.useState<number>(Date.now())
 
     // Sync state with server props when they change (e.g. after revalidatePath)
     React.useEffect(() => {
@@ -116,6 +117,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
 
     // Drag & Drop State
     const [isDraggingGlobal, setIsDraggingGlobal] = React.useState(false)
+    const dragCounter = React.useRef(0)
     const [droppedFiles, setDroppedFiles] = React.useState<File[]>([])
     const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
     const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
@@ -144,9 +146,6 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
 
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
-    const [isCreateOpen, setIsCreateOpen] = React.useState(false)
-    const [isCreateSpaceOpen, setIsCreateSpaceOpen] = React.useState(false)
-    const [newSpaceEmoji, setNewSpaceEmoji] = React.useState("📁")
 
     const handleCreateNote = async (noteData: { title: string, content: string }) => {
         try {
@@ -188,8 +187,6 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
             toast.error("Ошибка при создании заметки")
         }
     }
-
-
 
     const handleUpdateNote = async (noteData: { id: string, title: string, content: string }) => {
         try {
@@ -293,6 +290,51 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
         setCurrentFolderId(null)
     }
 
+    const handleGlobalDragEnter = (e: React.DragEvent) => {
+        e.preventDefault()
+        dragCounter.current++
+        if (dragCounter.current === 1) setIsDraggingGlobal(true)
+    }
+
+    const handleGlobalDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+    }
+
+    const handleGlobalDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        dragCounter.current--
+        if (dragCounter.current <= 0) {
+            dragCounter.current = 0
+            setIsDraggingGlobal(false)
+        }
+    }
+
+    const handleGlobalDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        dragCounter.current = 0
+        setIsDraggingGlobal(false)
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files)
+            setDroppedFiles(files)
+            setIsUploadDialogOpen(true)
+        }
+    }
+
+    // Reset dragging state on special conditions
+    React.useEffect(() => {
+        const resetDragging = () => {
+            dragCounter.current = 0
+            setIsDraggingGlobal(false)
+        }
+        window.addEventListener('dragend', resetDragging)
+        window.addEventListener('blur', resetDragging)
+        return () => {
+            window.removeEventListener('dragend', resetDragging)
+            window.removeEventListener('blur', resetDragging)
+        }
+    }, [])
+
     if (isLoading) {
         return (
             <div className="h-full flex flex-col space-y-6 p-6">
@@ -309,56 +351,13 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
         )
     }
 
-    // Global Drag & Drop Handlers
-    const handleGlobalDragOver = (e: React.DragEvent) => {
-        e.preventDefault()
-        if (!isDraggingGlobal) setIsDraggingGlobal(true)
-    }
-
-    const handleGlobalDragLeave = (e: React.DragEvent) => {
-        e.preventDefault()
-        // Simple check to avoid flickering when dragging over child elements
-        if (e.currentTarget.contains(e.relatedTarget as Node)) return
-        setIsDraggingGlobal(false)
-    }
-
-    const handleGlobalDrop = (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDraggingGlobal(false)
-
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files)
-            setDroppedFiles(files)
-            setIsUploadDialogOpen(true)
-        }
-    }
-
     const notesCount = notes.length;
     const filesCount = nonNoteDocuments.length;
-
-    // Render Agent View if selected
-    if (selectedSpace !== 'global') {
-        return (
-            <div className="flex flex-col h-full bg-background relative">
-                <div className="flex-none px-6 pt-6 pb-0 z-10 w-full">
-                    <div className="flex items-center gap-2">
-                        <FolderSelector
-                            value={selectedSpace}
-                            onValueChange={setSelectedSpace}
-                            agents={agents}
-                        />
-                    </div>
-                </div>
-                <div className="flex-1 min-h-0">
-                    <AgentKnowledgeView agentId={selectedSpace} />
-                </div>
-            </div>
-        )
-    }
 
     return (
         <div
             className="flex flex-1 flex-col gap-6 p-6 relative"
+            onDragEnter={handleGlobalDragEnter}
             onDragOver={handleGlobalDragOver}
             onDragLeave={handleGlobalDragLeave}
             onDrop={handleGlobalDrop}
@@ -383,6 +382,11 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 open={isUploadDialogOpen}
                 onOpenChange={setIsUploadDialogOpen}
                 externalFiles={droppedFiles}
+                agentId={selectedSpace !== 'global' ? selectedSpace : undefined}
+                onUploadComplete={() => {
+                    loadDocuments()
+                    setAgentLastUpdated(Date.now())
+                }}
             />
 
             <NoteEditorDialog
@@ -424,10 +428,14 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
             <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">База знаний</h1>
-                        <p className="text-sm text-muted-foreground">
-                            {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
-                        </p>
+                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+                            {selectedSpace === 'global' ? 'База знаний' : `agent — ${agents.find(a => a.id === selectedSpace)?.name || 'Агент'}`}
+                        </h1>
+                        {selectedSpace === 'global' && (
+                            <p className="text-sm text-muted-foreground">
+                                {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
+                            </p>
+                        )}
                     </div>
                 </div>
                 <div>
@@ -439,6 +447,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 </div>
             </div>
 
+            {/* Controls Section (always visible) */}
             <div className="flex items-center justify-between gap-4">
                 <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Все ресурсы</h3>
 
@@ -550,40 +559,55 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="space-y-8">
-                {/* Important Notes Section */}
-                {notes.length > 0 && (
-                    <div className="space-y-3">
-                        <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                            <Sparkles className="h-4 w-4" /> Важные заметки (Высокий приоритет)
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {notes.map((note) => (
-                                <Card
-                                    key={note.id}
-                                    className="rounded-2xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-zinc-300 transition-colors cursor-pointer"
-                                    onClick={() => { setSelectedNote(note); setIsNoteDialogOpen(true) }}
-                                >
-                                    <CardHeader className="p-4">
-                                        <CardTitle className="text-sm font-semibold text-zinc-900">{note.name}</CardTitle>
-                                        <CardDescription className="text-xs text-zinc-500 line-clamp-2">{note.content}</CardDescription>
-                                    </CardHeader>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Files Table */}
-                <div className="pb-10">
-                    <DocumentsTable
-                        docs={filteredDocuments}
-                        onRowClick={handleFileClick}
-                        onDelete={(doc) => handleDelete(doc.id)}
+            {selectedSpace !== 'global' ? (
+                <div className="flex-1 -mx-6">
+                    <AgentKnowledgeView
+                        key={selectedSpace}
+                        agentId={selectedSpace}
+                        hideHeader
+                        searchQuery={searchQuery}
+                        filterType={filterType}
+                        lastUpdated={agentLastUpdated}
                     />
                 </div>
-            </div>
+            ) : (
+                <>
+                    {/* Content Area for Global */}
+                    <div className="space-y-8">
+                        {/* Important Notes Section */}
+                        {notes.length > 0 && (
+                            <div className="space-y-3">
+                                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4" /> Важные заметки (Высокий приоритет)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {notes.map((note) => (
+                                        <Card
+                                            key={note.id}
+                                            className="rounded-2xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-zinc-300 transition-colors cursor-pointer"
+                                            onClick={() => { setSelectedNote(note); setIsNoteDialogOpen(true) }}
+                                        >
+                                            <CardHeader className="p-4">
+                                                <CardTitle className="text-sm font-semibold text-zinc-900">{note.name}</CardTitle>
+                                                <CardDescription className="text-xs text-zinc-500 line-clamp-2">{note.content}</CardDescription>
+                                            </CardHeader>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Files Table */}
+                        <div className="pb-10">
+                            <DocumentsTable
+                                docs={filteredDocuments}
+                                onRowClick={handleFileClick}
+                                onDelete={(doc) => handleDelete(doc.id)}
+                            />
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     )
 }

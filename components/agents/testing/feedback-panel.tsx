@@ -182,8 +182,8 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                         </p>
                     </div>
                 ) : (
-                    <ScrollArea className="h-full pb-20">
-                        <div className="p-2 space-y-2">
+                    <ScrollArea className="h-full">
+                        <div className="p-2 space-y-2 pb-24">
                             {testCases.map((item, idx) => (
                                 <Card
                                     key={item.id}
@@ -199,10 +199,10 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                                                 <span className="text-[10px] font-mono text-zinc-400">#{idx + 1}</span>
                                                 {getStatusBadge(item)}
                                             </div>
-                                            <p className="text-sm text-zinc-800 leading-snug font-medium truncate">{item.question}</p>
-                                            <p className="text-[11px] text-zinc-400 truncate">Ожидается: {item.expectedAnswer}</p>
+                                            <p className="text-sm text-zinc-800 leading-snug font-medium break-words whitespace-normal">{item.question}</p>
+                                            <p className="text-[11px] text-zinc-400 break-words whitespace-normal">Ожидается: {item.expectedAnswer}</p>
                                             {item.actualAnswer && (
-                                                <p className="text-[11px] text-zinc-500 truncate mt-1 pt-1 border-t border-zinc-50">
+                                                <p className="text-[11px] text-zinc-500 break-words whitespace-normal mt-1 pt-1 border-t border-zinc-50">
                                                     Ответ: {item.actualAnswer}
                                                 </p>
                                             )}

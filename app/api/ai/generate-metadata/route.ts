@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { getActivePromptContent } from "@/actions/system-prompts";
 
 // AI Metadata generation types
 interface AIMetadata {
@@ -21,8 +22,8 @@ function extractTextSnippet(text: string): string {
     return `${first}\n\n[...]\n\n${last}`;
 }
 
-// System prompt for metadata generation
-const SYSTEM_PROMPT = `Role: Expert Data Analyst.
+// Fallback system prompt for metadata generation
+const FALLBACK_SYSTEM_PROMPT = `Role: Expert Data Analyst.
 Task: Analyze the provided text snippet and generate a structured JSON summary.
 
 Output Format (JSON Only, no markdown):
@@ -78,6 +79,9 @@ ${textSnippet}`;
 
         console.log(`[AI Metadata] Generating metadata for document ${documentId} (isLibraryItem: ${isLibraryItem})`);
 
+        // Get prompt from DB (with fallback)
+        const systemPrompt = await getActivePromptContent("metadata_generation") || FALLBACK_SYSTEM_PROMPT;
+
         // Call LLM via Gateway
         const response = await fetch(`${gatewayUrl}/api/v1/chat/completions`, {
             method: 'POST',
@@ -87,7 +91,7 @@ ${textSnippet}`;
             body: JSON.stringify({
                 userId: session.user.id,
                 messages: [
-                    { role: "system", content: SYSTEM_PROMPT },
+                    { role: "system", content: systemPrompt },
                     { role: "user", content: userMessage }
                 ],
                 model: "gpt-4o-mini", // Fast and cost-effective

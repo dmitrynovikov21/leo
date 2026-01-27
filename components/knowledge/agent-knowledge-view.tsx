@@ -64,6 +64,10 @@ interface Note {
 
 interface AgentKnowledgeViewProps {
     agentId: string
+    hideHeader?: boolean
+    searchQuery?: string
+    filterType?: 'all' | 'document' | 'image' | 'note'
+    lastUpdated?: number
 }
 
 // Helper to format bytes
@@ -98,7 +102,7 @@ function mimeTypeToLabel(mimeType: string, filename?: string): string {
     return 'Файл'
 }
 
-export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
+export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = "", filterType = "all", lastUpdated = 0 }: AgentKnowledgeViewProps) {
     const t = useTranslations('Knowledge')
     const { data: session } = useSession()
 
@@ -109,6 +113,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [isSearching, setIsSearching] = React.useState(false)
     const [internalAgentId, setInternalAgentId] = React.useState<string | null>(null) // Real UUID from DB
 
+
     // Drag & Drop State
     const [isDraggingGlobal, setIsDraggingGlobal] = React.useState(false)
     const [droppedFiles, setDroppedFiles] = React.useState<File[]>([])
@@ -118,8 +123,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
     const [agentName, setAgentName] = React.useState<string>("")
-    const [searchQuery, setSearchQuery] = React.useState("")
-    const [filterType, setFilterType] = React.useState<'all' | 'document' | 'image' | 'note'>('all')
+
 
     // Library Import State
     const [isLibraryDialogOpen, setIsLibraryDialogOpen] = React.useState(false)
@@ -137,14 +141,22 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     // Get agent from shared context (same as layout)
     const { agents } = useUserData()
 
-    // Find agent on mount - use context instead of API call
     React.useEffect(() => {
         const agent = agents.find(a => a.id === agentId)
         if (agent) {
             setInternalAgentId(agent.id)
             setAgentName(agent.name)
+
+            setIsLoading(true)
+            Promise.all([
+                fetchDocuments(agent.id),
+                fetchNotes(agent.id),
+                fetchConflicts(agent.id)
+            ]).finally(() => {
+                setIsLoading(false)
+            })
         }
-    }, [agents, agentId])
+    }, [agents, agentId, lastUpdated])
 
     // Fetch documents from agent API using real ID or state
     const fetchDocuments = React.useCallback(async (id?: string, search?: string) => {
@@ -229,20 +241,12 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }, [internalAgentId])
 
-    // Load documents/notes when agent ID becomes available
+    // Load documents/notes when agent ID becomes available - consolidated with the main effect above or handled by fetch calls
+    // But we need to handle initial load carefully
     React.useEffect(() => {
-        const loadData = async () => {
-            if (!internalAgentId) return
-            setIsLoading(true)
-            await Promise.all([
-                fetchDocuments(internalAgentId || undefined),
-                fetchNotes(internalAgentId || undefined),
-                fetchConflicts(internalAgentId || undefined)
-            ])
-            setIsLoading(false)
-        }
-        loadData()
-    }, [internalAgentId, fetchDocuments, fetchNotes, fetchConflicts])
+        if (!internalAgentId) return
+        // No need to setIsLoading(true) here as it might cause flickering on typing
+    }, [internalAgentId])
 
     const handleRunAudit = async () => {
         if (!internalAgentId) return
@@ -760,146 +764,145 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
             </Dialog>
 
             {/* Header Section */}
-            <div className="relative bg-background flex-none p-6 pb-2 space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-                                {agentName ? `agent — ${agentName}` : 'База знаний агента'}
-                            </h1>
-                            {!internalAgentId && !isLoading && (
-                                <Badge variant="destructive" className="animate-pulse">
-                                    Ошибка подключения
-                                </Badge>
-                            )}
+            {!hideHeader && (
+                <div className="relative bg-background flex-none p-6 pb-2 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+                                    {agentName ? `agent — ${agentName}` : 'База знаний агента'}
+                                </h1>
+                                {!internalAgentId && !isLoading && (
+                                    <Badge variant="destructive" className="animate-pulse">
+                                        Ошибка подключения
+                                    </Badge>
+                                )}
+                            </div>
+                            <p className="text-zinc-500 mt-2">
+                                Управляйте документами и заметками, которые формируют знания вашего агента.
+                            </p>
                         </div>
-                        <p className="text-zinc-500 mt-2">
-                            Управляйте документами и заметками, которые формируют знания вашего агента.
-                        </p>
                     </div>
-                </div>
 
-                <div className="flex items-center justify-end gap-4">
-                    <div className="flex items-center gap-3">
-                        <Input
-                            placeholder="Поиск файлов..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
-                        />
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className={cn(
-                                    "h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm",
-                                    filterType !== 'all' && "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:border-zinc-800 hover:text-white"
-                                )}>
-                                    <Filter className="h-4 w-4 mr-2" />
-                                    {filterType === 'all' ? 'Все типы' :
-                                        filterType === 'document' ? 'Документы' :
-                                            filterType === 'image' ? 'Изображения' :
-                                                filterType === 'note' ? 'Заметки' : 'Все типы'}
-                                    <ChevronDown className="h-4 w-4 ml-2" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-zinc-100">
-                                <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
-                                    Тип контента
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem
-                                    onClick={() => setFilterType('all')}
-                                    className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-zinc-100")}
-                                >
-                                    <div className="flex items-center gap-3 w-full">
-                                        <Filter className="h-4 w-4 text-zinc-500" />
-                                        <span className="font-medium">Все типы</span>
-                                        {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
-                                    </div>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => setFilterType('document')}
-                                    className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-zinc-100")}
-                                >
-                                    <div className="flex items-center gap-3 w-full">
-                                        <FileText className="h-4 w-4 text-blue-500" />
-                                        <span className="font-medium">Документы</span>
-                                        {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
-                                    </div>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={() => setFilterType('image')}
-                                    className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-zinc-100")}
-                                >
-                                    <div className="flex items-center gap-3 w-full">
-                                        <Image className="h-4 w-4 text-purple-500" />
-                                        <span className="font-medium">Изображения</span>
-                                        {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
-                                    </div>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
-                                    <Plus className="h-4 w-4 mr-1.5" />
-                                    Добавить
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
-                                <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
-                                    Действия
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
-                                    <div className="mr-3 text-zinc-500">
-                                        <UploadCloud className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Загрузить файлы</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
-                                    <div className="mr-3 text-amber-600">
-                                        <Sparkles className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Создать заметку</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                <DropdownMenuItem onClick={handleOpenLibrary} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
-                                    <div className="mr-3 text-blue-600">
-                                        <BookOpen className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Импорт из библиотеки</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
-                {kbConflicts.length > 0 && (
-                    <div className="flex gap-2">
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-9 rounded-xl shadow-sm animate-in fade-in zoom-in"
-                            onClick={() => {
-                                setSelectedConflict(kbConflicts[0])
-                                setIsConflictDialogOpen(true)
-                            }}
-                        >
-                            <Zap className="h-4 w-4 mr-2" />
-                            {kbConflicts.length} Проблем
-                        </Button>
-                    </div>
-                )}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 text-zinc-500 hover:text-zinc-900"
-                    onClick={handleRunAudit}
-                    disabled={isAuditRunning}
-                >
-                    {isAuditRunning ? <Sparkles className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                    Аудит
-                </Button>
-            </div>
+                    <div className="flex items-center justify-end gap-4">
+                        <div className="flex items-center gap-3">
+                            <Input
+                                placeholder="Поиск файлов..."
+                                value={searchQuery}
+                                readOnly
+                                className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
+                            />
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className={cn(
+                                        "h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm",
+                                        filterType !== 'all' && "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:border-zinc-800 hover:text-white"
+                                    )}>
+                                        <Filter className="h-4 w-4 mr-2" />
 
-            {/* Content Area */}
+                                        {filterType === 'all' ? 'Все типы' :
+                                            filterType === 'document' ? 'Документы' :
+                                                filterType === 'image' ? 'Изображения' :
+                                                    filterType === 'note' ? 'Заметки' : 'Все типы'}
+                                        <ChevronDown className="h-4 w-4 ml-2" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-zinc-100">
+                                    <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                        Тип контента
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-zinc-100")}
+                                    >
+                                        <div className="flex items-center gap-3 w-full">
+                                            <Filter className="h-4 w-4 text-zinc-500" />
+                                            <span className="font-medium">Все типы</span>
+                                            {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                        </div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-zinc-100")}
+                                    >
+                                        <div className="flex items-center gap-3 w-full">
+                                            <FileText className="h-4 w-4 text-blue-500" />
+                                            <span className="font-medium">Документы</span>
+                                            {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                        </div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-zinc-100")}
+                                    >
+                                        <div className="flex items-center gap-3 w-full">
+                                            <Image className="h-4 w-4 text-purple-500" />
+                                            <span className="font-medium">Изображения</span>
+                                            {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                        </div>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
+                                        <Plus className="h-4 w-4 mr-1.5" />
+                                        Добавить
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
+                                    <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                        Действия
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                        <div className="mr-3 text-zinc-500">
+                                            <UploadCloud className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">Загрузить файлы</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                        <div className="mr-3 text-amber-600">
+                                            <Sparkles className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">Создать заметку</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                                    <DropdownMenuItem onClick={handleOpenLibrary} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                        <div className="mr-3 text-blue-600">
+                                            <BookOpen className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">Импорт из библиотеки</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </div>
+                    {kbConflicts.length > 0 && (
+                        <div className="flex gap-2">
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-9 rounded-xl shadow-sm animate-in fade-in zoom-in"
+                                onClick={() => {
+                                    setSelectedConflict(kbConflicts[0])
+                                    setIsConflictDialogOpen(true)
+                                }}
+                            >
+                                <Zap className="h-4 w-4 mr-2" />
+                                {kbConflicts.length} Проблем
+                            </Button>
+                        </div>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 text-zinc-500 hover:text-zinc-900"
+                        onClick={handleRunAudit}
+                        disabled={isAuditRunning}
+                    >
+                        {isAuditRunning ? <Sparkles className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                        Аудит
+                    </Button>
+                </div>
+            )}
+
             {/* Content Area */}
             <div className="flex-1 px-6 pb-20">
                 <div className="space-y-8">

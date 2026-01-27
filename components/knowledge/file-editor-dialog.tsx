@@ -37,6 +37,7 @@ interface FileEditorDialogProps {
     onOpenChange: (open: boolean) => void
     onSave?: (fileId: string, newContent: string) => void
     agentId?: string // For agent documents - needed to call Gateway API
+    highlightText?: string
 }
 
 export function FileEditorDialog({
@@ -44,13 +45,26 @@ export function FileEditorDialog({
     open,
     onOpenChange,
     onSave,
-    agentId
+    agentId,
+    highlightText
 }: FileEditorDialogProps) {
     const [chunks, setChunks] = React.useState<Chunk[]>([])
     const [isLoading, setIsLoading] = React.useState(false)
     const [editingChunkId, setEditingChunkId] = React.useState<string | null>(null)
     const [editedContent, setEditedContent] = React.useState("")
     const [isSaving, setIsSaving] = React.useState(false)
+
+    const chunkRefs = React.useRef<{ [key: string]: HTMLDivElement | null }>({})
+
+    // Reset state when dialog closes
+    React.useEffect(() => {
+        if (!open) {
+            setChunks([])
+            setEditingChunkId(null)
+            setEditedContent("")
+            setIsLoading(false)
+        }
+    }, [open])
 
     // Load chunks when dialog opens
     React.useEffect(() => {
@@ -65,6 +79,39 @@ export function FileEditorDialog({
             }
         }
     }, [open, file?.id, file?.chunks])
+
+    // Scroll to highlighted text or isolate chunk
+    React.useEffect(() => {
+        if (!isLoading && chunks.length > 0 && highlightText) {
+            const normalizedHighlight = highlightText.toLowerCase().trim()
+            const matchIndex = chunks.findIndex(c => c.content.toLowerCase().includes(normalizedHighlight))
+
+            if (matchIndex !== -1) {
+                const match = chunks[matchIndex]
+
+                // Prevent loops: check if we are already in the desired state
+                const isAlreadyIsolated = chunks.length === 1 && chunks[0].id === match.id
+                const isAlreadyEditing = editingChunkId === match.id
+
+                if (isAlreadyIsolated && isAlreadyEditing) {
+                    return
+                }
+
+                // 1. Isolate this chunk
+                if (!isAlreadyIsolated) {
+                    setChunks([match])
+                }
+
+                // 2. Immediately start editing
+                if (!isAlreadyEditing) {
+                    // Use timeout to let the chunk render if needed, though state update should be enough
+                    // But here we just set state
+                    setEditingChunkId(match.id)
+                    setEditedContent(match.content)
+                }
+            }
+        }
+    }, [isLoading, chunks, highlightText, editingChunkId])
 
     const loadChunks = async () => {
         if (!file?.id) return
@@ -167,6 +214,8 @@ export function FileEditorDialog({
 
     if (!file) return null
 
+    const isIsolatedMode = chunks.length === 1 && editingChunkId === chunks[0].id
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col p-0">
@@ -198,62 +247,75 @@ export function FileEditorDialog({
                             </p>
                         </div>
                     ) : (
-                        <div className="space-y-4 py-4">
+                        <div className={cn("space-y-4 py-4", isIsolatedMode && "h-full py-0")}>
                             {chunks.map((chunk, idx) => (
                                 <div
                                     key={chunk.id}
+                                    ref={el => {
+                                        if (el) chunkRefs.current[chunk.id] = el
+                                    }}
                                     className={cn(
-                                        "rounded-xl border p-4 transition-all",
-                                        editingChunkId === chunk.id
+                                        "transition-all",
+                                        isIsolatedMode
+                                            ? "h-full border-none p-0"
+                                            : "rounded-xl border p-4",
+                                        !isIsolatedMode && editingChunkId === chunk.id
                                             ? "border-primary bg-primary/5"
-                                            : "border-zinc-200 bg-white hover:border-zinc-300"
+                                            : !isIsolatedMode && (highlightText && chunk.content.toLowerCase().includes(highlightText.toLowerCase().trim()))
+                                                ? "border-amber-400 bg-amber-50 shadow-[0_0_15px_rgba(251,191,36,0.3)] ring-1 ring-amber-400"
+                                                : !isIsolatedMode && "border-zinc-200 bg-white hover:border-zinc-300"
                                     )}
                                 >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <Badge variant="outline" className="text-xs">
-                                            Чанк {chunk.chunkIndex + 1}
-                                        </Badge>
-                                        {editingChunkId === chunk.id ? (
-                                            <div className="flex gap-2">
+                                    {!isIsolatedMode && (
+                                        <div className="flex items-center justify-between mb-3">
+                                            <Badge variant="outline" className="text-xs">
+                                                Чанк {chunk.chunkIndex + 1}
+                                            </Badge>
+                                            {editingChunkId === chunk.id ? (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={cancelEditing}
+                                                        disabled={isSaving}
+                                                    >
+                                                        Отмена
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={saveChunk}
+                                                        disabled={isSaving}
+                                                    >
+                                                        {isSaving ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <Save className="h-3 w-3 mr-1" />
+                                                                Сохранить
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            ) : (
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    onClick={cancelEditing}
-                                                    disabled={isSaving}
+                                                    onClick={() => startEditing(chunk)}
                                                 >
-                                                    Отмена
+                                                    Редактировать
                                                 </Button>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={saveChunk}
-                                                    disabled={isSaving}
-                                                >
-                                                    {isSaving ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <>
-                                                            <Save className="h-3 w-3 mr-1" />
-                                                            Сохранить
-                                                        </>
-                                                    )}
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => startEditing(chunk)}
-                                            >
-                                                Редактировать
-                                            </Button>
-                                        )}
-                                    </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {editingChunkId === chunk.id ? (
                                         <Textarea
                                             value={editedContent}
                                             onChange={(e) => setEditedContent(e.target.value)}
-                                            className="min-h-[150px] font-mono text-sm"
+                                            className={cn(
+                                                "font-mono text-sm leading-relaxed resize-none p-4",
+                                                isIsolatedMode ? "h-full min-h-[60vh] border-0 focus-visible:ring-0 px-0" : "min-h-[500px]"
+                                            )}
                                             autoFocus
                                         />
                                     ) : (
@@ -267,10 +329,27 @@ export function FileEditorDialog({
                     )}
                 </ScrollArea>
 
-                <DialogFooter className="p-6 pt-4 border-t">
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
-                        Закрыть
-                    </Button>
+                <DialogFooter className="p-6 pt-4 border-t flex justify-between items-center bg-zinc-50/50">
+                    {isIsolatedMode ? (
+                        <div className="flex w-full justify-between items-center">
+                            <span className="text-xs text-muted-foreground">
+                                Редактирование конфликтующего фрагмента
+                            </span>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                                    Отмена
+                                </Button>
+                                <Button onClick={saveChunk} disabled={isSaving}>
+                                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                    Сохранить исправления
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Закрыть
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
