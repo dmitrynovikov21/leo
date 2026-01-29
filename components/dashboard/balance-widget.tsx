@@ -1,11 +1,13 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { AlertTriangle, CreditCard } from "lucide-react"
+import { useEffect, useState } from "react"
+import { AlertTriangle, CreditCard, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { getCurrentUserBalance } from "@/actions/balance"
 
 interface BalanceWidgetProps {
     balance?: number
@@ -15,18 +17,42 @@ interface BalanceWidgetProps {
 }
 
 export function BalanceWidget({
-    balance = 0,
-    currency = "₽",
-    lowBalanceThreshold = 500,
+    balance: initialBalance,
+    currency = "PU",
+    lowBalanceThreshold = 50,
     compactMode = false,
 }: BalanceWidgetProps) {
     const t = useTranslations('Billing');
+    const [balance, setBalance] = useState<number | null>(initialBalance ?? null)
+    const [loading, setLoading] = useState(initialBalance === undefined)
 
-    // Use balance prop directly
-    const currentBalance = balance
+    useEffect(() => {
+        if (initialBalance !== undefined) {
+            setBalance(initialBalance)
+            return
+        }
 
+        const loadBalance = async () => {
+            try {
+                const data = await getCurrentUserBalance()
+                setBalance(data.balance)
+            } catch (error) {
+                console.error('Error loading balance:', error)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        loadBalance()
+
+        // Refresh balance every 30 seconds
+        const interval = setInterval(loadBalance, 30000)
+        return () => clearInterval(interval)
+    }, [initialBalance])
+
+    const currentBalance = balance ?? 0
     const isLowBalance = currentBalance < lowBalanceThreshold
-    const runwayDays = Math.floor(currentBalance / 50) // Mock calculation
+    const runwayDays = Math.floor(currentBalance / 10) // ~10 PU per day average usage
 
     if (compactMode) {
         return (
@@ -49,7 +75,7 @@ export function BalanceWidget({
                                     isLowBalance && "text-destructive"
                                 )}
                             >
-                                {currency} {currentBalance.toLocaleString()}
+                                {loading ? '—' : currentBalance.toLocaleString()} {currency}
                             </p>
                         </div>
                     </div>
@@ -72,7 +98,7 @@ export function BalanceWidget({
                                     isLowBalance && "text-destructive"
                                 )}
                             >
-                                {currency} {currentBalance.toLocaleString()}
+                                {loading ? '—' : currentBalance.toLocaleString()} {currency}
                             </p>
                         </div>
                         {isLowBalance && (

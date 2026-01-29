@@ -4,6 +4,7 @@ import * as React from "react"
 import { Send, RotateCcw, MessageSquare, ThumbsUp, ThumbsDown, Bot, User, Loader2, AlertTriangle, Trash2, History } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -33,6 +34,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     const t = useTranslations('Testing')
     const params = useParams()
     const agentId = params.agentId as string
+    const { data: session } = useSession()
     const { avatar: userEmoji } = useUserPreferences()
 
     const [messages, setMessages] = React.useState<Message[]>([])
@@ -179,9 +181,10 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
         setIsLoading(true)
 
         try {
-            const requestBody: { message: string; is_test: boolean; session_id?: string } = {
+            const requestBody: { message: string; is_test: boolean; session_id?: string; user_id?: string } = {
                 message: userMessage.text,
-                is_test: true
+                is_test: true,
+                user_id: session?.user?.id
             }
             if (sessionId) {
                 requestBody.session_id = sessionId

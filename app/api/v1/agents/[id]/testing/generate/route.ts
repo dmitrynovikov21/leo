@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getActivePromptContent } from "@/actions/system-prompts";
+import { checkUserBalance } from "@/lib/balance";
+import { trackTokenUsage } from "@/lib/token-tracking";
 
 // POST /api/v1/agents/[agentId]/testing/generate
 export async function POST(
@@ -30,6 +32,15 @@ export async function POST(
 
         if (!agent) {
             return NextResponse.json({ error: "Agent not found" }, { status: 404 });
+        }
+
+        // Check user balance before proceeding (estimated ~500 tokens per request)
+        const hasBalance = await checkUserBalance(session.user.id, 500);
+        if (!hasBalance) {
+            return NextResponse.json(
+                { error: "Insufficient token balance. Please top up your account." },
+                { status: 402 }
+            );
         }
 
         // Flatten knowledge items
@@ -116,6 +127,25 @@ export async function POST(
                 if (completionResponse.ok) {
                     const data = await completionResponse.json();
                     debugLogs.push(`Gateway response OK for ${item.filename}`);
+
+                    // Track token usage
+                    if (data.usage) {
+                        try {
+                            await trackTokenUsage({
+                                userId: session.user.id,
+                                agentId: agent.id,
+                                model: "gpt-4o",
+                                promptTokens: data.usage.prompt_tokens || 0,
+                                completionTokens: data.usage.completion_tokens || 0,
+                                responseTimeMs: 0, // Not available from gateway
+                                isTest: false,
+                            });
+                        } catch (trackError) {
+                            console.error(`Failed to track token usage for file ${item.filename}:`, trackError);
+                            debugLogs.push(`Token tracking error for ${item.filename}: ${trackError}`);
+                        }
+                    }
+
                     let content = data.choices[0].message.content;
 
                     // Strip markdown code blocks if present

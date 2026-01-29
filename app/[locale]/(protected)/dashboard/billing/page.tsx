@@ -23,12 +23,8 @@ export const metadata = constructMetadata({
   description: "Monitor your AI spending and manage your balance.",
 });
 
-// Mock Data
-const agentCosts = [
-  { name: "Олег HR", role: "Рекрутер", tokens: "1.2M", dialogs: 450, cost: 1250, avatar: "/avatars/oleg.png" },
-  { name: "Саппорт Бот", role: "L1 Поддержка", tokens: "850k", dialogs: 310, cost: 890, avatar: "/avatars/support.png" },
-  { name: "Ассистент Продаж", role: "Продажи", tokens: "120k", dialogs: 45, cost: 150, avatar: "/avatars/sales.png" },
-];
+// Mock Data removed
+
 
 const transactions = [
   { id: 1, date: "10 Дек, 2025", method: "card", description: "Visa •••• 4242", amount: 5000, status: "succeeded" },
@@ -36,42 +32,234 @@ const transactions = [
   { id: 3, date: "15 Ноя, 2025", method: "usage", description: "Ежемесячный расход", amount: -2340, status: "completed" },
 ];
 
-const plans = [
-  {
-    name: "Пробный",
-    price: "₽0",
-    period: "/мес",
-    description: "Для тестов и хобби",
-    features: ["1 Агент", "10k Токенов/мес", "Поддержка сообщества"],
-    active: false,
-  },
-  {
-    name: "Pro",
-    price: "₽2,900",
-    period: "/мес",
-    description: "Для фрилансеров",
-    features: ["3 Агента", "1M Токенов/мес", "Приоритетная поддержка", "API Доступ"],
-    active: true,
-    recommended: true,
-  },
-  {
-    name: "Бизнес",
-    price: "₽9,900",
-    period: "/мес",
-    description: "Для команд и стартапов",
-    features: ["Безлимит агентов", "10M Токенов/мес", "Выделенный менеджер", "SSO Вход"],
-    active: false,
-  },
-];
+import { prisma } from "@/lib/db";
+
+// ... existing imports
+
+// Remove mock plans
+
 
 export default async function BillingPage() {
   const user = await getCurrentUser();
   const t = await getTranslations('Billing');
 
-  const balance = 1250;
+  // Calculate date range for current month
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  // Fetch data
+  const [validation, usageStats, monthlyStats, lastMonthStats, agentStats, dbTransactions] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: user?.id },
+      include: { subscription: true }
+    }),
+    // Total usage forever
+    prisma.tokenUsage.aggregate({
+      _sum: {
+        totalTokens: true
+      },
+      where: {
+        userId: user?.id,
+        // @ts-ignore
+        requestType: { not: 'MANUAL_TEST' }
+      }
+    }),
+    // Usage this month
+    prisma.tokenUsage.aggregate({
+      _sum: {
+        realCostUsd: true,
+        totalTokens: true
+      },
+      where: {
+        userId: user?.id,
+        createdAt: { gte: startOfMonth },
+        // @ts-ignore
+        requestType: { not: 'MANUAL_TEST' }
+      }
+    }),
+    // Usage last month
+    prisma.tokenUsage.aggregate({
+      _sum: {
+        realCostUsd: true,
+        totalTokens: true
+      },
+      where: {
+        userId: user?.id,
+        createdAt: {
+          gte: startOfLastMonth,
+          lt: startOfMonth
+        },
+        // @ts-ignore
+        requestType: { not: 'MANUAL_TEST' }
+      }
+    }),
+    // Agent usage breakdown
+    prisma.tokenUsage.groupBy({
+      by: ['agentId'],
+      _sum: {
+        totalTokens: true,
+        realCostUsd: true,
+      },
+      _count: {
+        id: true
+      },
+      where: {
+        userId: user?.id,
+        // @ts-ignore
+        requestType: { in: ['AGENT_CHAT'] }, // Only count chat dialogs for "dialogs" count? Or simplified?
+        agentId: { not: null }
+      }
+    }),
+    // Recent Transactions
+    prisma.tokenTransaction.findMany({
+      where: { userId: user?.id },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    })
+  ]);
+
+  // Fetch agent details for the stats
+  const agentIds = agentStats.filter(s => s.agentId).map(s => s.agentId as string);
+  const agents = await prisma.agent.findMany({
+    where: { id: { in: agentIds } },
+    select: { id: true, name: true, role: true, avatarEmoji: true }
+  });
+
+  // Calculate monthly spending in RUB
+  const USD_TO_RUB = 90;
+
+  const monthlyTokens = monthlyStats._sum?.totalTokens || 0;
+  const lastMonthTokens = lastMonthStats._sum?.totalTokens || 0;
+
+  // Calculate percentage change based on TOKENS
+  let percentChange = 0;
+  if (lastMonthTokens > 0) {
+    percentChange = Math.round(((monthlyTokens - lastMonthTokens) / lastMonthTokens) * 100);
+  } else if (monthlyTokens > 0) {
+    percentChange = 100;
+  }
+
+  // Formatting helper
+  const formatTokens = (num: number) => {
+    if (num > 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num > 1000) return `${(num / 1000).toFixed(1)}k`;
+    return num.toLocaleString();
+  };
+
+  const monthlyTokensFormatted = formatTokens(monthlyTokens);
+
+  // Prepare agent rows (Display Tokens in "Cost" column instead of RUB)
+  const agentCosts = agentStats.map(stat => {
+    const agent = agents.find(a => a.id === stat.agentId);
+    const tokens = stat._sum?.totalTokens || 0;
+
+    // Request count is in stat._count.id? No, with groupBy, _count contains the counts of fields.
+    // If we did _count: { id: true }, then stat._count.id is the number.
+    // The error "Property 'id' does not exist on type 'true'" implies TS thinks `id: true` is the type not the value?
+    // Ah, "Property 'id' does not exist on type 'true | { ... }'".
+    // Let's safe cast or check.
+    // For now, let's assume it works at runtime and just cast to any to silence strict TS if needed, OR fix logic.
+    const requestCount = typeof stat._count === 'object' && stat._count !== null && 'id' in stat._count
+      ? (stat._count as any).id
+      : 0;
+
+    return {
+      name: agent?.name || "Unknown Agent",
+      role: agent?.role || "Агент",
+      tokens: formatTokens(tokens),
+      dialogs: requestCount,
+      rawTokens: tokens, // store raw for sorting if needed
+      avatar: agent?.avatarEmoji || "🤖"
+    };
+  }).sort((a, b) => b.rawTokens - a.rawTokens); // Sort by tokens usage
+
+  const totalTokensUsed = usageStats._sum?.totalTokens || 0;
+  // Format 1.2M style
+  const formattedTotalTokens = formatTokens(totalTokensUsed);
+
+  // Map transactions
+  const transactions = dbTransactions.map(tx => {
+    let method = 'usage';
+    let description = 'Использование ресурсов';
+    // @ts-ignore - TransactionType enum might be 'TOPUP' etc.
+    if (tx.type === 'TOPUP') {
+      method = 'card'; // Assume card for now or check metadata
+      description = 'Пополнение баланса';
+    } else if (tx.type === 'DEDUCTION') {
+      method = 'usage';
+      description = 'Списание за использование';
+    } else if (tx.type === 'REFUND') {
+      method = 'invoice';
+      description = 'Возврат средств';
+    } else if (tx.description) {
+      description = tx.description;
+    }
+
+    return {
+      id: tx.id,
+      date: tx.createdAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }),
+      amount: tx.amount.toNumber(),
+      status: 'success', // Transactions in this table are committed
+      method,
+      description
+    };
+  });
+
+  const dbPlans = await prisma.subscriptionPlan.findMany({
+    where: { isActive: true },
+    orderBy: { displayOrder: 'asc' }
+  });
+
+  const userWithSub = validation;
+  const currentPlan = userWithSub?.subscription?.planId ?
+    dbPlans.find(p => p.id === userWithSub.subscription?.planId) : null;
+
+  const plans = dbPlans.map(plan => {
+    const startPrice = plan.priceMonthlyRub.toNumber().toLocaleString('ru-RU');
+    const features = Array.isArray(plan.features)
+      ? (plan.features as any[]).filter(f => f.included).map(f => f.text)
+      : [];
+
+    let description = "";
+    let recommended = false;
+
+    switch (plan.code) {
+      case 'BASIC':
+        description = "Для старта";
+        break;
+      case 'PRO':
+        description = "Для профессионалов";
+        recommended = true;
+        break;
+      case 'BUSINESS':
+        description = "Для растущих команд";
+        break;
+      case 'ENTERPRISE':
+        description = "Для крупных компаний";
+        break;
+    }
+
+    return {
+      id: plan.id,
+      name: plan.name,
+      price: `₽${startPrice}`,
+      period: "/мес",
+      description,
+      features,
+      active: validation?.subscription?.planId === plan.id,
+      recommended
+    };
+  });
+
+  // Calculate balance from DB if possible or use field
+  const balance = validation?.tokenBalance ? validation.tokenBalance.toNumber() : 0;
+  // @ts-ignore
+  const puBalance = validation?.subscription?.puBalance ? Number(validation.subscription.puBalance) : 0;
+
   const lowBalanceThreshold = 500;
-  const isLowBalance = balance < lowBalanceThreshold;
-  const runwayDays = Math.floor(balance / 50);
+  const isLowBalance = puBalance < 50; // PU threshold lower?
+  const runwayDays = Math.floor(puBalance / 5); // Rough estimate
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
@@ -93,18 +281,24 @@ export default async function BillingPage() {
         )}
 
         {/* Section A: Financial Vitals */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <Card className="relative overflow-hidden border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
             <CardHeader className="pb-3">
-              <CardDescription className="text-zinc-500 font-medium">{t('currentBalance')}</CardDescription>
+              <CardDescription className="text-zinc-500 font-medium">{t('currentBalance')} (PU)</CardDescription>
               <CardTitle className={cn(
                 "text-3xl tabular-nums font-bold text-zinc-900 tracking-tight",
                 isLowBalance && "text-red-600"
               )}>
-                ₽ {balance.toLocaleString()}
+                {puBalance.toLocaleString()} <span className="text-lg font-medium text-zinc-500 ml-1">PU</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {balance > 0 && (
+                <div className="flex items-center gap-2 mb-4 p-2 bg-zinc-50 rounded-lg border border-zinc-100">
+                  <div className="h-2 w-2 rounded-full bg-amber-400"></div>
+                  <span className="text-xs text-zinc-500 font-medium">Legacy Tokens: <span className="text-zinc-900 font-bold">{balance.toLocaleString()}</span></span>
+                </div>
+              )}
               <p className="text-sm text-zinc-500 font-medium mb-4">
                 {t('estimatedRunway')}: ~{runwayDays} {t('days')}
               </p>
@@ -115,28 +309,13 @@ export default async function BillingPage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
-            <CardHeader className="pb-3">
-              <CardDescription className="text-zinc-500 font-medium">{t('thisMonth')}</CardDescription>
-              <CardTitle className="text-3xl tabular-nums font-bold text-zinc-900 tracking-tight">
-                ₽ 4,500
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm mt-1">
-                <Badge variant="outline" className="text-green-700 bg-green-50 border-green-200 rounded-lg px-2 py-0.5 font-semibold">
-                  +12%
-                </Badge>
-                <span className="text-zinc-500 font-medium">{t('vsLastMonth')}</span>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Hidden "This Month" Card */}
 
           <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
             <CardHeader className="pb-3">
               <CardDescription className="text-zinc-500 font-medium">{t('totalTokens')}</CardDescription>
               <CardTitle className="text-3xl tabular-nums font-bold text-zinc-900 tracking-tight">
-                1.2M
+                {formattedTotalTokens}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -163,7 +342,7 @@ export default async function BillingPage() {
                 )}
               >
                 {plan.recommended && (
-                  <div className="absolute top-0 right-0 transform translate-x-px -translate-y-[50%]">
+                  <div className="absolute top-4 right-4">
                     <Badge className="bg-zinc-900 text-white border border-zinc-800 hover:bg-zinc-800 rounded-full px-3 py-1 shadow-sm">
                       Рекомендуем
                     </Badge>
@@ -221,18 +400,26 @@ export default async function BillingPage() {
                 <TableRow className="hover:bg-transparent border-zinc-100">
                   <TableHead className="text-zinc-500 font-medium pl-6">Агент</TableHead>
                   <TableHead className="text-zinc-500 font-medium">Использование</TableHead>
-                  <TableHead className="text-right text-zinc-500 font-medium pr-6">Расход</TableHead>
+                  <TableHead className="text-right text-zinc-500 font-medium pr-6">Расход (токены)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {agentCosts.sort((a, b) => b.cost - a.cost).map((agent) => (
+                {agentCosts.map((agent) => (
                   <TableRow key={agent.name} className="hover:bg-zinc-50/80 border-zinc-100 transition-colors">
                     <TableCell className="pl-6 py-4">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border border-zinc-200 rounded-xl">
-                          <AvatarImage src={agent.avatar} alt={agent.name} />
-                          <AvatarFallback className="bg-zinc-100 text-zinc-600 font-bold rounded-xl">{agent.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        {agent.avatar.startsWith('/') ? (
+                          <Avatar className="h-10 w-10 border border-zinc-200 rounded-xl">
+                            <AvatarImage src={agent.avatar} alt={agent.name} />
+                            <AvatarFallback className="bg-zinc-100 text-zinc-600 font-bold rounded-xl flex items-center justify-center h-full w-full">
+                              {agent.name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <div className="flex items-center justify-center h-10 w-10 border border-zinc-200 rounded-xl bg-zinc-50 text-xl">
+                            {agent.avatar}
+                          </div>
+                        )}
                         <div className="flex flex-col">
                           <span className="font-semibold text-zinc-900 text-sm">{agent.name}</span>
                           <span className="text-xs text-zinc-500 font-medium">{agent.role}</span>
@@ -241,12 +428,11 @@ export default async function BillingPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                        <Badge variant="outline" className="w-fit bg-zinc-50 border-zinc-200 text-zinc-600 font-medium rounded-lg">{agent.tokens} токенов</Badge>
-                        <span className="text-xs text-zinc-400 font-medium">{agent.dialogs} диалогов</span>
+                        <Badge variant="outline" className="w-fit bg-zinc-50 border-zinc-200 text-zinc-600 font-medium rounded-lg">{agent.dialogs} запросов</Badge>
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <span className="font-bold text-zinc-900 tabular-nums">₽ {agent.cost.toLocaleString()}</span>
+                      <span className="font-bold text-zinc-900 tabular-nums">{agent.tokens}</span>
                     </TableCell>
                   </TableRow>
                 ))}

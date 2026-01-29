@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { getActivePromptContent } from "@/actions/system-prompts";
+import { getBillingSystem } from "@/lib/billing-adapter";
+import { trackTokenUsage } from "@/lib/token-tracking";
 
 // AI Metadata generation types
 interface AIMetadata {
@@ -48,6 +50,16 @@ export async function POST(req: Request) {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }
+            );
+        }
+
+        // Check user balance before proceeding
+        const billing = await getBillingSystem(session.user.id);
+        const hasBalance = await billing.checkBalance(session.user.id, 0.1); // 100 tokens = 0.1 PU
+        if (!hasBalance) {
+            return NextResponse.json(
+                { error: "Insufficient balance. Please upgrade your plan or purchase additional Processing Units." },
+                { status: 402 }
             );
         }
 
@@ -110,6 +122,40 @@ ${textSnippet}`;
         }
 
         const data = await response.json();
+
+        // Track token usage and deduct from balance
+        if (data.usage) {
+            try {
+                const promptTokens = data.usage.prompt_tokens || 0;
+                const completionTokens = data.usage.completion_tokens || 0;
+                const totalTokens = promptTokens + completionTokens;
+                const puCost = totalTokens / 1000; // 1 PU = 1000 tokens
+
+                await trackTokenUsage({
+                    userId: session.user.id,
+                    model: "gpt-4o-mini",
+                    promptTokens,
+                    completionTokens,
+                    responseTimeMs: 0,
+                    isTest: false,
+                    requestType: 'MANUAL_TEST',
+                });
+
+                // Deduct from billing system
+                await billing.deductUsage(session.user.id, puCost, {
+                    source: 'LLM_USAGE',
+                    description: `Metadata generation: ${totalTokens} tokens for ${filename}`,
+                    metadata: {
+                        model: 'gpt-4o-mini',
+                        promptTokens,
+                        completionTokens,
+                        documentId,
+                    },
+                });
+            } catch (trackError) {
+                console.error(`Failed to process token usage for metadata generation:`, trackError);
+            }
+        }
 
         // Extract content from response
         const content = data.choices?.[0]?.message?.content || data.content || data.response;

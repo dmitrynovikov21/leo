@@ -4,6 +4,7 @@ import * as React from "react"
 import { Zap, Loader2, Play, RotateCcw, Plus, Trash2, History, FileText, CheckCircle2, XCircle } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -40,6 +41,7 @@ export function AutoTestRunner() {
     const t = useTranslations('Testing')
     const params = useParams()
     const agentId = params.agentId as string
+    const { data: session } = useSession()
 
     const [testCases, setTestCases] = React.useState<TestCaseItem[]>([])
     const [history, setHistory] = React.useState<TestRunHistory[]>([])
@@ -154,7 +156,8 @@ export function AutoTestRunner() {
             try {
                 const requestBody: any = {
                     message: testCase.question,
-                    is_test: true
+                    is_test: true,
+                    user_id: session?.user?.id
                 }
                 if (currentSessionId) requestBody.session_id = currentSessionId
 

@@ -117,7 +117,22 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                 }),
             })
 
-            if (!vectorizeResponse.ok) throw new Error('Failed to vectorize')
+            if (!vectorizeResponse.ok) {
+                const errorText = await vectorizeResponse.text()
+                let errorDetails: any = null
+                try {
+                    errorDetails = JSON.parse(errorText)
+                } catch (e) { }
+
+                if (errorDetails && errorDetails.error === "Insufficient PU balance") {
+                    toast.error("Недостаточно PU баланса", {
+                        description: `Требуется: ${Number(errorDetails.required).toFixed(3)} PU. Доступно: ${Number(errorDetails.current).toFixed(3)} PU.`
+                    })
+                    throw new Error("Insufficient PU balance")
+                }
+
+                throw new Error(`Failed to vectorize: ${errorText}`)
+            }
 
             // Trigger AI metadata generation in background
             const vectorizeData = await vectorizeResponse.json()
@@ -146,7 +161,7 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                 console.warn('[UploadDialog] Metadata generation skipped. Missing ID or content.', { documentId, contentLength: content?.length, vectorizeData })
             }
         } else {
-            // Save to global library
+            // Save to global library (with smart file charging)
             const result = await createLibraryItem({
                 name: file.name,
                 type: 'FILE',
@@ -155,6 +170,41 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                 mimeType: file.type || 'application/octet-stream',
                 chunks
             })
+
+            // Handle charge result
+            if (!result.success) {
+                // Try to parse JSON error (if coming from Gateway/Billing)
+                let errorDetails: any = null;
+                try {
+                    if (result.error && result.error.trim().startsWith('{')) {
+                        errorDetails = JSON.parse(result.error);
+                    }
+                } catch (e) {
+                    // Not a JSON error
+                }
+
+                if (errorDetails && errorDetails.error === "Insufficient PU balance") {
+                    toast.error("Недостаточно PU баланса", {
+                        description: `Требуется: ${Number(errorDetails.required).toFixed(3)} PU. Доступно: ${Number(errorDetails.current).toFixed(3)} PU.`
+                    });
+                }
+                // Legacy check
+                else if (result.error?.includes('Недостаточно PU')) {
+                    toast.error(`${result.error}`, {
+                        description: `Файл "${file.name}" требует ${result.requiredPu?.toFixed(4)} PU`
+                    })
+                } else {
+                    toast.error(`Ошибка загрузки: ${result.error}`)
+                }
+                throw new Error(result.error)
+            }
+
+            // Show charge info
+            if (result.puCharged && result.puCharged > 0) {
+                toast.info(`Файл загружен`, {
+                    description: `"${file.name}": ${result.puCharged.toFixed(4)} PU (${result.chargeInfo?.reason || 'новый файл'})`
+                })
+            }
 
             // Trigger AI metadata generation for library item and wait for it
             if (result.success && result.item?.id && content) {
@@ -194,7 +244,11 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
             onUploadComplete?.()
         } catch (error) {
             console.error("Upload failed:", error)
-            toast.error("Не удалось загрузить некоторые файлы")
+            // If the error was already handled (e.g. insufficient PU), don't show generic error
+            if (error instanceof Error && (error.message === "Insufficient PU balance" || error.message.includes('Недостаточно PU'))) {
+                return
+            }
+            toast.error("Недостаточно загрузить некоторые файлы")
         } finally {
             setIsProcessing(false)
         }

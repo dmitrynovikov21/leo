@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getActivePromptContent } from "@/actions/system-prompts";
+import { checkUserBalance } from "@/lib/balance";
+import { trackTokenUsage } from "@/lib/token-tracking";
 
 // POST /api/v1/agents/[id]/kb/audit
 export async function POST(
@@ -12,6 +14,15 @@ export async function POST(
         const session = await auth();
         if (!session?.user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Check user balance before proceeding
+        const hasBalance = await checkUserBalance(session.user.id, 1000);
+        if (!hasBalance) {
+            return NextResponse.json(
+                { error: "Insufficient token balance. Please top up your account." },
+                { status: 402 }
+            );
         }
 
         const { id: agentId } = await params;
@@ -106,6 +117,23 @@ CRITICAL RULES:
         }
 
         const data = await response.json();
+
+        // Track token usage
+        if (data.usage) {
+            try {
+                await trackTokenUsage({
+                    userId: session.user.id,
+                    agentId: agentId,
+                    model: "gpt-4o",
+                    promptTokens: data.usage.prompt_tokens || 0,
+                    completionTokens: data.usage.completion_tokens || 0,
+                    responseTimeMs: 0,
+                    isTest: false,
+                });
+            } catch (trackError) {
+                console.error(`Failed to track token usage for KB audit:`, trackError);
+            }
+        }
         let content = data.choices?.[0]?.message?.content || "{}";
 
         // Cleanup markdown
