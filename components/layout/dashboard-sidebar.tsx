@@ -192,9 +192,9 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col gap-4 items-center">
-                    <BalanceWidget compactMode={true} />
-                    <UserAccountNav side="right" align="start" />
+                  <div className="flex flex-col gap-4 items-center w-full">
+                    <BalanceWidget compactMode={true} collapsed={true} />
+                    <UserAccountNav side="right" align="start" collapsed={true} />
                   </div>
                 )}
               </div>

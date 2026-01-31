@@ -319,7 +319,9 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                         <DialogHeader>
                             <DialogTitle>Загрузка знаний</DialogTitle>
                             <DialogDescription>
-                                Добавьте документы в базу знаний. Поддерживаются PDF, TXT, DOCX.
+                                Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, Изображения.
+                                <br />
+                                Лимит размера файла — 50 МБ.
                             </DialogDescription>
                         </DialogHeader>
                         <div
@@ -338,6 +340,7 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                                 ref={fileInputRef}
                                 onChange={handleFileInput}
                                 multiple
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.json,.html,.htm,.pptx,.ppt,.txt,.md,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.gif"
                             />
                             <div className="p-4 rounded-full bg-muted/50">
                                 <UploadCloud className="h-8 w-8 text-muted-foreground" />

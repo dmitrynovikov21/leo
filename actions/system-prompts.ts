@@ -260,7 +260,8 @@ Important:
    - НЕ выбирай значение случайно.
    - **НЕМЕДЛЕННО** вызови инструмент \`report_conflict\`!
    - В аргументах вызова укажи найденные противоречивые значения и их источники (номера фрагментов [1], [2] и т.д.).
-   - В ответе пользователю напиши: "Я вижу противоречивую информацию в базе знаний: в одном месте указано X, а в другом Y."`
+   - В ответе пользователю напиши: "Я вижу противоречивую информацию в базе знаний: в одном месте указано X, а в другом Y."
+3. ВАЖНО: Никогда не сообщай "File ID" или идентификаторы документов пользователю. Это служебная информация для инструментов.`
         },
         {
             key: "quiz_meta_architect",
@@ -308,6 +309,7 @@ formatting_rules: Использование жирного для UI и code д
     ]
 
     let created = 0
+    let updated = 0
 
     for (const prompt of defaultPrompts) {
         const existing = await prisma.globalSystemPrompt.findUnique({
@@ -317,9 +319,23 @@ formatting_rules: Использование жирного для UI и code д
         if (!existing) {
             await prisma.globalSystemPrompt.create({ data: prompt })
             created++
+        } else {
+            // Check if updates are needed (optional optimization, but good practice)
+            // For now, let's just update content and other fields to ensure sync
+            await prisma.globalSystemPrompt.update({
+                where: { key: prompt.key },
+                data: {
+                    name: prompt.name,
+                    description: prompt.description,
+                    usedIn: prompt.usedIn,
+                    content: prompt.content
+                    // We don't touch isActive to preserve manual overrides
+                }
+            })
+            updated++
         }
     }
 
     revalidatePath("/admin/prompts")
-    return { success: true, created }
+    return { success: true, created } // Kept return interface same for compatibility, but internally it updates too
 }

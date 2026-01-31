@@ -153,10 +153,13 @@ export async function createLibraryItem(data: {
             try {
                 // Calculate file charge (duplicate, version, new file, etc.)
                 const content = Buffer.from(data.content)
+                const contentTokens = Math.ceil(data.content.length / 4) // Rough estimation
+
                 const charge = await calculateFileCharge(
                     `user-${user.id}`, // Use userId as "agentId" for library
                     data.name,
-                    content
+                    content,
+                    contentTokens
                 )
 
                 puCost = charge.puCost

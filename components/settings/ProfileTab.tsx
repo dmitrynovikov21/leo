@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+
 import {
     Select,
     SelectContent,
@@ -29,7 +29,6 @@ export function ProfileTab() {
         email: '',
         jobTitle: '',
         timezone: 'utc+3',
-        bio: ''
     })
 
     useEffect(() => {
@@ -43,7 +42,6 @@ export function ProfileTab() {
                     email: data.email || '',
                     jobTitle: data.jobTitle || '',
                     timezone: data.timezone || 'utc+3',
-                    bio: data.bio || ''
                 })
                 // setAvatar(data.image) // Do not override avatar from user preferences if it's local only logic, 
                 // but usually user preferences syncs with DB. 
@@ -69,7 +67,6 @@ export function ProfileTab() {
                     name: formData.name,
                     jobTitle: formData.jobTitle,
                     timezone: formData.timezone,
-                    bio: formData.bio,
                     // image: avatar // If we want to save avatar too
                 })
             })
@@ -151,16 +148,7 @@ export function ProfileTab() {
                         </Select>
                     </div>
 
-                    <div className="space-y-3">
-                        <Label htmlFor="bio" className="text-zinc-700 font-medium">О себе</Label>
-                        <Textarea
-                            id="bio"
-                            className="min-h-[120px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 resize-none p-4"
-                            placeholder="Расскажите немного о себе..."
-                            value={formData.bio}
-                            onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                        />
-                    </div>
+
 
                     <div className="space-y-2">
                         <Label htmlFor="email" className="text-zinc-700 font-medium">Email</Label>

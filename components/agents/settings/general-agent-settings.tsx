@@ -22,8 +22,13 @@ import { TelegramConnectionDialog } from "@/components/agents/telegram-connectio
 
 import { useUserData } from "@/components/providers/user-data-provider"
 import { Button } from "@/components/ui/button"
-import { Loader2, Power, Play, Square, Send, Save } from "lucide-react"
+import { Loader2, Power, Play, Square, Send, Save, User, MessageSquare, HelpCircle, Shield } from "lucide-react"
 import { toast } from "sonner"
+import {
+    HoverCard,
+    HoverCardContent,
+    HoverCardTrigger,
+} from "@/components/ui/hover-card"
 
 import { useTranslations } from "next-intl"
 
@@ -257,13 +262,68 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                         </div>
 
                         {/* Description */}
-                        <div>
-                            <Label htmlFor="agent-desc" className="sr-only">Описание</Label>
+                        {/* Description */}
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="agent-desc" className="text-sm font-semibold text-zinc-700">Описание / Должность</Label>
+                                <HoverCard>
+                                    <HoverCardTrigger asChild>
+                                        <div className="cursor-default rounded-full p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors">
+                                            <HelpCircle className="h-4 w-4" />
+                                        </div>
+                                    </HoverCardTrigger>
+                                    <HoverCardContent align="start" className="w-[450px] p-5 rounded-xl shadow-xl border-zinc-200">
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <h4 className="text-sm font-bold text-zinc-900 leading-none">Зачем указывать должность?</h4>
+                                                <p className="text-xs text-zinc-500">
+                                                    Правильное описание роли агента критически влияет на качество ответов.
+                                                </p>
+                                            </div>
+                                            <div className="grid gap-3">
+                                                <div className="flex gap-3 items-start">
+                                                    <div className="mt-0.5 rounded-full p-1 bg-blue-50 text-blue-600 shrink-0">
+                                                        <User className="h-3 w-3" />
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-xs font-semibold text-zinc-900">Роль и контекст</p>
+                                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                                            Помогает агенту понять, в каком качестве он выступает (менеджер, помощник, эксперт), что определяет уровень ответственности.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-3 items-start">
+                                                    <div className="mt-0.5 rounded-full p-1 bg-purple-50 text-purple-600 shrink-0">
+                                                        <MessageSquare className="h-3 w-3" />
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-xs font-semibold text-zinc-900">Тон общения</p>
+                                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                                            Влияет на стиль речи. Менеджер говорит иначе, чем консультант. Это создает правильное впечатление о компетентности.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-3 items-start">
+                                                    <div className="mt-0.5 rounded-full p-1 bg-amber-50 text-amber-600 shrink-0">
+                                                        <Shield className="h-3 w-3" />
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        <p className="text-xs font-semibold text-zinc-900">Границы компетенции</p>
+                                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                                            Определяет, в каких вопросах агент может давать рекомендации, а где должен перенаправить к человеку.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </HoverCardContent>
+                                </HoverCard>
+                            </div>
                             <Textarea
                                 id="agent-desc"
                                 value={description}
                                 onChange={handleDescriptionChange}
-                                placeholder="Описание агента"
+                                placeholder="Например: Старший менеджер по работе с корпоративными клиентами. Занимается оформлением сделок и поддержкой ключевых партнеров."
                                 className="min-h-[80px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 resize-none"
                             />
                         </div>

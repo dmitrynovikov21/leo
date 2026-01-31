@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronsUpDown, Languages, LogOut, Moon, Settings, Sun, User } from "lucide-react";
+import { ChevronsUpDown, LogOut, Moon, Settings, Sun, User } from "lucide-react";
 import { EmojiAvatar } from "@/components/shared/emoji-avatar";
 import { signOut, useSession } from "next-auth/react";
 import { useLocale } from "next-intl";
@@ -29,16 +29,14 @@ import { useUserData } from "@/components/providers/user-data-provider";
 interface UserAccountNavProps {
   side?: "top" | "bottom" | "left" | "right";
   align?: "start" | "center" | "end";
+  collapsed?: boolean;
 }
 
-const languages = [
-  { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "ru", label: "Русский", flag: "🇷🇺" },
-];
 
-export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNavProps) {
+
+export function UserAccountNav({ side = "bottom", align = "end", collapsed }: UserAccountNavProps) {
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname(); // Remove if unused
   const locale = useLocale();
   const { setTheme, theme } = useTheme();
   const { data: session } = useSession();
@@ -57,11 +55,7 @@ export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNa
 
   const { isMobile } = useMediaQuery();
 
-  const switchLanguage = (newLocale: string) => {
-    const newPath = pathname.replace(`/${locale}/`, `/${newLocale}/`) || `/${newLocale}`;
-    router.push(newPath);
-    closeMenu();
-  };
+
 
   const getPlanLabel = () => {
     const plan = userData?.profile?.plan;
@@ -120,13 +114,7 @@ export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNa
                 </div>
               </li>
 
-              <li className="rounded-lg text-foreground hover:bg-muted cursor-pointer" onClick={() => switchLanguage(locale === 'ru' ? 'en' : 'ru')}>
-                <div className="flex w-full items-center gap-3 px-2.5 py-2">
-                  <Languages className="size-4" />
-                  <span className="text-sm">Язык</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{locale === 'ru' ? 'Русский' : 'English'}</span>
-                </div>
-              </li>
+
 
               <li className="rounded-lg text-foreground hover:bg-muted cursor-pointer" onClick={handleLogout}>
                 <div className="flex w-full items-center gap-3 px-2.5 py-2">
@@ -145,14 +133,20 @@ export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNa
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted w-full cursor-pointer">
-          <EmojiAvatar value={avatar} fallbackIcon={User} className="size-8" />
-          <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-medium truncate">{user?.name || 'Пользователь'}</p>
-            <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
+        {collapsed ? (
+          <div className="flex items-center justify-center w-full p-2 rounded-lg hover:bg-muted cursor-pointer group">
+            <EmojiAvatar value={avatar} fallbackIcon={User} className="size-8 group-hover:scale-105 transition-transform" />
           </div>
-          <ChevronsUpDown className="size-4 text-muted-foreground shrink-0" />
-        </div>
+        ) : (
+          <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted w-full cursor-pointer">
+            <EmojiAvatar value={avatar} fallbackIcon={User} className="size-8" />
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-sm font-medium truncate">{user?.name || 'Пользователь'}</p>
+              <p className="text-xs text-muted-foreground">{getPlanLabel()}</p>
+            </div>
+            <ChevronsUpDown className="size-4 text-muted-foreground shrink-0" />
+          </div>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} side={side} sideOffset={10} className="w-56">
         <div className="flex items-center gap-3 p-2">
@@ -193,24 +187,7 @@ export function UserAccountNav({ side = "bottom", align = "end" }: UserAccountNa
           </DropdownMenuPortal>
         </DropdownMenuSub>
 
-        {/* Language submenu */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="cursor-pointer">
-            <Languages className="size-4 mr-2" />
-            <span>Язык</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuSubContent>
-              {languages.map((lang) => (
-                <DropdownMenuItem key={lang.code} onSelect={() => switchLanguage(lang.code)} className="cursor-pointer">
-                  <span className="mr-2">{lang.flag}</span>
-                  <span>{lang.label}</span>
-                  {locale === lang.code && <span className="ml-auto">✓</span>}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuPortal>
-        </DropdownMenuSub>
+
 
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">

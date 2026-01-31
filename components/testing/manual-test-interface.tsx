@@ -100,7 +100,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight
         }
-    }, [messages])
+    }, [messages, isLoading])
 
     // Fetch welcome message on mount
     React.useEffect(() => {
@@ -419,7 +419,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
             </div>
 
             {/* Chat Area */}
-            <ScrollArea className="flex-1 p-4 bg-white min-h-0" ref={scrollRef}>
+            <div className="flex-1 overflow-y-auto p-4 bg-white min-h-0" ref={scrollRef}>
                 <div className="flex flex-col gap-4">
                     {messages.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-32 text-center">
@@ -499,7 +499,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                         </div>
                     )}
                 </div>
-            </ScrollArea>
+            </div>
 
             {/* Context Overflow Warning */}
             {messages.length >= 10 && (

@@ -212,6 +212,14 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
+                                                className="h-5 w-5 text-zinc-300 hover:text-zinc-600"
+                                                onClick={(e) => { e.stopPropagation(); openEdit(item); }}
+                                            >
+                                                <Edit2 className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
                                                 className="h-5 w-5 text-zinc-300 hover:text-red-500"
                                                 onClick={(e) => { e.stopPropagation(); handleRemoveTestCase(item.id); }}
                                             >

@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { Send, Phone, MessageSquare, MessageCircle, ArrowRight, CheckCircle2, Sparkles } from "lucide-react"
+import { Send, Phone, MessageSquare, MessageCircle, ArrowRight, CheckCircle2, Sparkles, Calendar, CalendarCheck } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +50,30 @@ export default function SourcesPage() {
             icon: Phone,
             status: 'coming_soon',
             color: 'text-green-500'
+        },
+        {
+            id: 'amocrm',
+            title: 'amoCRM',
+            description: 'Автоматическое создание сделок и сохранение истории переписки в карточках клиентов.',
+            icon: Sparkles, // Placeholder for AmoCRM logo
+            status: 'coming_soon',
+            color: 'text-blue-500'
+        },
+        {
+            id: 'yclients',
+            title: 'YCLIENTS',
+            description: 'Запись клиентов на услуги прямо в диалоге, проверка свободных слотов и управление расписанием.',
+            icon: Calendar, // Placeholder for YClients (booking)
+            status: 'coming_soon',
+            color: 'text-yellow-500'
+        },
+        {
+            id: 'google_calendar',
+            title: 'Google Calendar',
+            description: 'Синхронизация встреч и событий, автоматическое планирование и напоминания.',
+            icon: CalendarCheck,
+            status: 'coming_soon',
+            color: 'text-red-500'
         },
         {
             id: 'bitrix',

@@ -282,7 +282,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
             }
 
             // Load assembled prompt preview
-            const previewRes = await fetch(`${gatewayUrl}/api/v1/agents/${agentId}/prompt-preview`)
+            const previewRes = await fetch(`${gatewayUrl}/api/v1/system-prompts/agents/${agentId}/prompt-preview`)
             if (previewRes.ok) {
                 const data = await previewRes.json()
                 setPromptPreview(data.fullPrompt || data.preview || data.prompt || data.content || null)

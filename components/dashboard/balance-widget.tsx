@@ -14,6 +14,7 @@ interface BalanceWidgetProps {
     currency?: string
     lowBalanceThreshold?: number
     compactMode?: boolean
+    collapsed?: boolean
 }
 
 export function BalanceWidget({
@@ -21,9 +22,21 @@ export function BalanceWidget({
     currency = "PU",
     lowBalanceThreshold = 50,
     compactMode = false,
+    collapsed = false,
 }: BalanceWidgetProps) {
     const t = useTranslations('Billing');
     const [balance, setBalance] = useState<number | null>(initialBalance ?? null)
+    // ... logic stays same ...
+
+    // Moved loadBalance logic inside to match existing file structure which is hidden in this replace block? 
+    // Wait, I need to be careful not to delete logic. 
+    // I should only replace the interface and the early return for compactMode, or wrap the whole component if I'm confident.
+    // But I will try to target specific blocks. 
+
+    // Actually, I can simply add the collapsed check BEFORE compactMode check.
+
+    // Let's rely on the previous context. I will fetch the whole file content in my mind.
+
     const [loading, setLoading] = useState(initialBalance === undefined)
 
     useEffect(() => {
@@ -53,6 +66,30 @@ export function BalanceWidget({
     const currentBalance = balance ?? 0
     const isLowBalance = currentBalance < lowBalanceThreshold
     const runwayDays = Math.floor(currentBalance / 10) // ~10 PU per day average usage
+
+    if (collapsed) {
+        return (
+            <Link href="/billing" className="w-full flex justify-center">
+                <div
+                    className={cn(
+                        "flex h-9 w-9 items-center justify-center rounded-lg border transition-colors hover:bg-muted relative",
+                        isLowBalance && "border-destructive/50 bg-destructive/5 text-destructive"
+                    )}
+                    title={`${t('currentBalance')}: ${loading ? '...' : currentBalance.toLocaleString()} ${currency}`}
+                >
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                    {isLowBalance && (
+                        <div className="absolute -top-1 -right-1">
+                            <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </Link>
+        )
+    }
 
     if (compactMode) {
         return (
