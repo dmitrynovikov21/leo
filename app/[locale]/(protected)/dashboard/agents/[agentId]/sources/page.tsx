@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { Send, Phone, MessageSquare, MessageCircle, ArrowRight, CheckCircle2, Sparkles } from "lucide-react"
+import { Send, Phone, MessageSquare, MessageCircle, ArrowRight, CheckCircle2, Sparkles, Calendar, CalendarCheck } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -52,6 +52,30 @@ export default function SourcesPage() {
             color: 'text-green-500'
         },
         {
+            id: 'amocrm',
+            title: 'amoCRM',
+            description: 'Автоматическое создание сделок и сохранение истории переписки в карточках клиентов.',
+            icon: Sparkles, // Placeholder for AmoCRM logo
+            status: 'coming_soon',
+            color: 'text-blue-500'
+        },
+        {
+            id: 'yclients',
+            title: 'YCLIENTS',
+            description: 'Запись клиентов на услуги прямо в диалоге, проверка свободных слотов и управление расписанием.',
+            icon: Calendar, // Placeholder for YClients (booking)
+            status: 'coming_soon',
+            color: 'text-yellow-500'
+        },
+        {
+            id: 'google_calendar',
+            title: 'Google Calendar',
+            description: 'Синхронизация встреч и событий, автоматическое планирование и напоминания.',
+            icon: CalendarCheck,
+            status: 'coming_soon',
+            color: 'text-red-500'
+        },
+        {
             id: 'bitrix',
             title: 'Bitrix24',
             description: 'Интеграция с вашей CRM для логирования диалогов и управления сделками прямо из чата.',
@@ -93,16 +117,18 @@ export default function SourcesPage() {
                             )}
                         >
                             <CardHeader className="pb-4">
-                                <div className={cn(
-                                    "h-12 w-12 rounded-xl flex items-center justify-center mb-4 transition-colors",
-                                    "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
-                                )}>
-                                    <source.icon className={cn("h-6 w-6", source.color)} />
+                                <div className="flex items-center gap-4 mb-2">
+                                    <div className={cn(
+                                        "h-8 w-8 rounded-xl flex items-center justify-center transition-colors shrink-0",
+                                        "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
+                                    )}>
+                                        <source.icon className={cn("h-4 w-4", source.color)} />
+                                    </div>
+                                    <CardTitle className="text-lg font-bold text-zinc-900 leading-tight">
+                                        {source.title}
+                                    </CardTitle>
                                 </div>
-                                <CardTitle className="text-lg font-bold text-zinc-900">
-                                    {source.title}
-                                </CardTitle>
-                                <CardDescription className="text-sm text-zinc-500 mt-2 leading-relaxed">
+                                <CardDescription className="text-sm text-zinc-500 leading-relaxed">
                                     {source.description}
                                 </CardDescription>
                             </CardHeader>

@@ -40,48 +40,70 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     const [progress, setProgress] = React.useState(0)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
+    // Track processed files to prevent duplicates
+    const processedFilesRef = React.useRef<Set<string>>(new Set())
+
     // Handle external files (drag & drop from parent)
     React.useEffect(() => {
         if (externalFiles && externalFiles.length > 0) {
-            handleFiles(externalFiles)
+            // Filter out already processed files
+            const newFiles = externalFiles.filter(f => !processedFilesRef.current.has(f.name + f.size))
+            if (newFiles.length > 0) {
+                newFiles.forEach(f => processedFilesRef.current.add(f.name + f.size))
+                handleFiles(newFiles)
+            }
         }
     }, [externalFiles])
 
     const processFile = async (file: File) => {
-        // Read file content if text/md
+        const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+
+        let chunks: { content: string; index: number; metadata?: any }[] = []
         let content = ""
-        if (file.type === "text/plain" || file.name.endsWith(".md")) {
-            content = await file.text()
-        } else {
-            content = "File processing pending... Content will be extracted by OCR/Parser worker."
+
+        // Always try to parse through Gateway first
+        if (gatewayUrl) {
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+
+                const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+                    method: 'POST',
+                    body: formData,
+                })
+
+                if (parseResponse.ok) {
+                    const parseData = await parseResponse.json()
+                    chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
+                        content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
+                        index,
+                        metadata: { fileName: file.name, ...(chunk.metadata || {}) }
+                    }))
+                    content = chunks.map(c => c.content).join('\n\n')
+                } else {
+                    console.warn('Gateway parse failed, falling back to local processing')
+                }
+            } catch (err) {
+                console.warn('Gateway unavailable, falling back to local processing:', err)
+            }
         }
 
-        // If agentId is provided, upload to agent via API
-        if (agentId) {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) {
-                toast.error("AI Gateway URL не настроен")
-                return
+        // Fallback: local processing for text files
+        if (chunks.length === 0) {
+            if (file.type === "text/plain" || file.name.endsWith(".md")) {
+                content = await file.text()
+            } else {
+                content = `Файл ${file.name} требует обработки через OCR/Parser.`
             }
+            chunks = [{
+                content: content.slice(0, 2000) || "Empty content",
+                index: 0,
+                metadata: { fileName: file.name }
+            }]
+        }
 
-            // Parse file first
-            const formData = new FormData()
-            formData.append('file', file)
-
-            const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
-                method: 'POST',
-                body: formData,
-            })
-
-            if (!parseResponse.ok) throw new Error('Failed to parse document')
-
-            const parseData = await parseResponse.json()
-            const chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
-                index,
-                text: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || ''
-            }))
-
-            // Vectorize and save
+        // If agentId is provided, vectorize for agent
+        if (agentId && gatewayUrl) {
             const vectorizeResponse = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -91,20 +113,56 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                     filename: file.name,
                     fileSize: file.size,
                     mimeType: file.type || 'application/octet-stream',
-                    chunks,
+                    chunks: chunks.map(c => ({ index: c.index, text: c.content })),
                 }),
             })
 
-            if (!vectorizeResponse.ok) throw new Error('Failed to vectorize')
-        } else {
-            // Upload to library
-            const chunks = [{
-                content: content.slice(0, 500) || "Empty content",
-                index: 0,
-                metadata: { fileName: file.name }
-            }]
+            if (!vectorizeResponse.ok) {
+                const errorText = await vectorizeResponse.text()
+                let errorDetails: any = null
+                try {
+                    errorDetails = JSON.parse(errorText)
+                } catch (e) { }
 
-            await createLibraryItem({
+                if (errorDetails && errorDetails.error === "Insufficient PU balance") {
+                    toast.error("Недостаточно PU баланса", {
+                        description: `Требуется: ${Number(errorDetails.required).toFixed(3)} PU. Доступно: ${Number(errorDetails.current).toFixed(3)} PU.`
+                    })
+                    throw new Error("Insufficient PU balance")
+                }
+
+                throw new Error(`Failed to vectorize: ${errorText}`)
+            }
+
+            // Trigger AI metadata generation in background
+            const vectorizeData = await vectorizeResponse.json()
+            console.log('[UploadDialog] Vectorize response:', vectorizeData)
+
+            // Gateway returns knowledgeBaseId for agent documents
+            const documentId = vectorizeData.documentId || vectorizeData.id || vectorizeData.document_id || vectorizeData.knowledgeBaseId
+
+            if (documentId && content) {
+                try {
+                    console.log('[UploadDialog] Generating metadata for:', documentId)
+                    await fetch('/api/ai/generate-metadata', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            documentId,
+                            filename: file.name,
+                            textContent: content,
+                            isLibraryItem: false,
+                        }),
+                    })
+                } catch (err) {
+                    console.warn('AI metadata generation failed:', err)
+                }
+            } else {
+                console.warn('[UploadDialog] Metadata generation skipped. Missing ID or content.', { documentId, contentLength: content?.length, vectorizeData })
+            }
+        } else {
+            // Save to global library (with smart file charging)
+            const result = await createLibraryItem({
                 name: file.name,
                 type: 'FILE',
                 content: content,
@@ -112,6 +170,59 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                 mimeType: file.type || 'application/octet-stream',
                 chunks
             })
+
+            // Handle charge result
+            if (!result.success) {
+                // Try to parse JSON error (if coming from Gateway/Billing)
+                let errorDetails: any = null;
+                try {
+                    if (result.error && result.error.trim().startsWith('{')) {
+                        errorDetails = JSON.parse(result.error);
+                    }
+                } catch (e) {
+                    // Not a JSON error
+                }
+
+                if (errorDetails && errorDetails.error === "Insufficient PU balance") {
+                    toast.error("Недостаточно PU баланса", {
+                        description: `Требуется: ${Number(errorDetails.required).toFixed(3)} PU. Доступно: ${Number(errorDetails.current).toFixed(3)} PU.`
+                    });
+                }
+                // Legacy check
+                else if (result.error?.includes('Недостаточно PU')) {
+                    toast.error(`${result.error}`, {
+                        description: `Файл "${file.name}" требует ${result.requiredPu?.toFixed(4)} PU`
+                    })
+                } else {
+                    toast.error(`Ошибка загрузки: ${result.error}`)
+                }
+                throw new Error(result.error)
+            }
+
+            // Show charge info
+            if (result.puCharged && result.puCharged > 0) {
+                toast.info(`Файл загружен`, {
+                    description: `"${file.name}": ${result.puCharged.toFixed(4)} PU (${result.chargeInfo?.reason || 'новый файл'})`
+                })
+            }
+
+            // Trigger AI metadata generation for library item and wait for it
+            if (result.success && result.item?.id && content) {
+                try {
+                    await fetch('/api/ai/generate-metadata', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            documentId: result.item.id,
+                            filename: file.name,
+                            textContent: content,
+                            isLibraryItem: true,
+                        }),
+                    })
+                } catch (err) {
+                    console.warn('AI metadata generation failed:', err)
+                }
+            }
         }
     }
 
@@ -133,7 +244,11 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
             onUploadComplete?.()
         } catch (error) {
             console.error("Upload failed:", error)
-            toast.error("Не удалось загрузить некоторые файлы")
+            // If the error was already handled (e.g. insufficient PU), don't show generic error
+            if (error instanceof Error && (error.message === "Insufficient PU balance" || error.message.includes('Недостаточно PU'))) {
+                return
+            }
+            toast.error("Недостаточно загрузить некоторые файлы")
         } finally {
             setIsProcessing(false)
         }
@@ -204,7 +319,9 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                         <DialogHeader>
                             <DialogTitle>Загрузка знаний</DialogTitle>
                             <DialogDescription>
-                                Добавьте документы в базу знаний. Поддерживаются PDF, TXT, DOCX.
+                                Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, Изображения.
+                                <br />
+                                Лимит размера файла — 50 МБ.
                             </DialogDescription>
                         </DialogHeader>
                         <div
@@ -223,6 +340,7 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                                 ref={fileInputRef}
                                 onChange={handleFileInput}
                                 multiple
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.json,.html,.htm,.pptx,.ppt,.txt,.md,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.gif"
                             />
                             <div className="p-4 rounded-full bg-muted/50">
                                 <UploadCloud className="h-8 w-8 text-muted-foreground" />

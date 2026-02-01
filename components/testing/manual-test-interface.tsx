@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Send, RotateCcw, MessageSquare, ThumbsUp, ThumbsDown, Bot, User, Loader2 } from "lucide-react"
+import { Send, RotateCcw, MessageSquare, ThumbsUp, ThumbsDown, Bot, User, Loader2, AlertTriangle, Trash2, History } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -15,6 +16,8 @@ import { EmojiAvatar } from "@/components/shared/emoji-avatar"
 import { MarkdownText } from "@/components/shared/markdown-text"
 import { useUserPreferences } from "@/components/providers/user-preferences-provider"
 import { toast } from "sonner"
+import { saveChatTestHistory, getChatTestHistory, getChatTestHistoryById } from "@/actions/chat-test-history"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 interface Message {
     id: number
@@ -31,6 +34,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     const t = useTranslations('Testing')
     const params = useParams()
     const agentId = params.agentId as string
+    const { data: session } = useSession()
     const { avatar: userEmoji } = useUserPreferences()
 
     const [messages, setMessages] = React.useState<Message[]>([])
@@ -47,16 +51,56 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     const [activeMessageId, setActiveMessageId] = React.useState<number | null>(null)
     const [welcomeMessage, setWelcomeMessage] = React.useState<string | null>(null)
     const [hasShownWelcome, setHasShownWelcome] = React.useState(false)
+    const [isHistoryOpen, setIsHistoryOpen] = React.useState(false)
+    const [historyItems, setHistoryItems] = React.useState<{ id: string, sessionId: string | null, messageCount: number, createdAt: Date }[]>([])
 
     const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL || ''
     const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL || ''
+    const STORAGE_KEY = `test_session_${agentId}`
+
+    // Load from localStorage on mount
+    React.useEffect(() => {
+        if (typeof window === 'undefined' || !agentId) return
+
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY)
+            if (saved) {
+                const data = JSON.parse(saved)
+                if (data.messages && Array.isArray(data.messages)) {
+                    setMessages(data.messages)
+                    setHasShownWelcome(true) // Don't show welcome if we have saved messages
+                }
+                if (data.sessionId) {
+                    setSessionId(data.sessionId)
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load from localStorage:', error)
+        }
+    }, [agentId, STORAGE_KEY])
+
+    // Save to localStorage when messages or sessionId change
+    React.useEffect(() => {
+        if (typeof window === 'undefined' || !agentId) return
+        if (messages.length === 0 && !sessionId) return // Don't save empty state
+
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                messages,
+                sessionId,
+                savedAt: new Date().toISOString()
+            }))
+        } catch (error) {
+            console.error('Failed to save to localStorage:', error)
+        }
+    }, [messages, sessionId, agentId, STORAGE_KEY])
 
     // Scroll to bottom when new messages arrive
     React.useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight
         }
-    }, [messages])
+    }, [messages, isLoading])
 
     // Fetch welcome message on mount
     React.useEffect(() => {
@@ -137,9 +181,10 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
         setIsLoading(true)
 
         try {
-            const requestBody: { message: string; is_test: boolean; session_id?: string } = {
+            const requestBody: { message: string; is_test: boolean; session_id?: string; user_id?: string } = {
                 message: userMessage.text,
-                is_test: true
+                is_test: true,
+                user_id: session?.user?.id
             }
             if (sessionId) {
                 requestBody.session_id = sessionId
@@ -180,8 +225,42 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
         }
     }
 
+    // Load history from DB
+    const loadHistory = async () => {
+        const history = await getChatTestHistory(agentId)
+        setHistoryItems(history)
+    }
+
+    // Load history on mount
+    React.useEffect(() => {
+        loadHistory()
+    }, [agentId])
+
     const handleResetSession = async () => {
         setIsResetting(true)
+
+        // Save current session to DB before clearing (if we have messages)
+        if (messages.length > 0) {
+            try {
+                const result = await saveChatTestHistory(agentId, messages, sessionId)
+                if (result.success) {
+                    await loadHistory() // Refresh history list
+                } else {
+                    console.error('Failed to save history:', result.error)
+                    toast.error("Не удалось сохранить историю", { description: result.error })
+                }
+            } catch (e) {
+                console.error('Failed to save to DB:', e)
+                toast.error("Ошибка сохранения истории")
+            }
+        }
+
+        // Clear localStorage
+        try {
+            localStorage.removeItem(STORAGE_KEY)
+        } catch (e) {
+            console.error('Failed to clear localStorage:', e)
+        }
 
         try {
             const body = sessionId ? { session_id: sessionId } : {}
@@ -196,7 +275,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                 setSessionId(data.sessionId || null)
                 setMessages([])
                 setHasShownWelcome(false) // Reset welcome message flag
-                toast.success('Сессия сброшена', { description: 'Начните новый диалог' })
+                toast.success('Сессия сброшена', { description: 'Диалог сохранён в историю' })
             }
         } catch (error) {
             console.error('Reset error:', error)
@@ -235,7 +314,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     return (
         <div className="flex flex-col h-full bg-white">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-100 shrink-0">
                 <div className="flex items-center gap-2 text-sm font-medium text-zinc-900">
                     <MessageSquare className="h-4 w-4 text-zinc-400" />
                     {t('manualSession')}
@@ -245,28 +324,106 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                         </span>
                     )}
                 </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
-                    onClick={handleResetSession}
-                    disabled={isResetting}
-                >
-                    {isResetting ? (
-                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                    ) : (
-                        <RotateCcw className="mr-2 h-3 w-3" />
-                    )}
-                    {t('newSession')}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Sheet open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+                        <SheetTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                            >
+                                <History className="mr-2 h-3 w-3" />
+                                История
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent className="w-[400px] sm:w-[540px] flex flex-col p-6 overflow-hidden">
+                            <SheetHeader className="mb-4">
+                                <SheetTitle className="text-xl font-semibold">История тестирования</SheetTitle>
+                            </SheetHeader>
+                            <ScrollArea className="flex-1 pr-4 -mr-4">
+                                <div className="space-y-3 pb-8">
+                                    {historyItems.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-500">
+                                            <History className="h-10 w-10 mb-3 opacity-20" />
+                                            <p className="text-sm">История пуста</p>
+                                        </div>
+                                    ) : (
+                                        historyItems.map((item) => (
+                                            <div
+                                                key={item.id}
+                                                className="group relative flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 hover:bg-zinc-50 hover:border-zinc-200 transition-all cursor-pointer"
+                                                onClick={async () => {
+                                                    const history = await getChatTestHistoryById(item.id)
+                                                    if (history) {
+                                                        setMessages(history.messages)
+                                                        setSessionId(history.sessionId)
+                                                        setHasShownWelcome(true)
+                                                        setIsHistoryOpen(false)
+                                                        toast.success("История загружена")
+
+                                                        // Update localStorage to match loaded history
+                                                        try {
+                                                            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                                                                messages: history.messages,
+                                                                sessionId: history.sessionId,
+                                                                savedAt: new Date().toISOString()
+                                                            }))
+                                                        } catch (e) {
+                                                            console.error('Failed to update localStorage:', e)
+                                                        }
+                                                    } else {
+                                                        toast.error("Не удалось загрузить историю")
+                                                    }
+                                                }}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-semibold text-zinc-900 bg-white px-2 py-0.5 rounded-md border border-zinc-100 shadow-sm">
+                                                        {new Date(item.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                    <span className="text-[10px] text-zinc-400 font-mono">
+                                                        {new Date(item.createdAt).toLocaleTimeString()}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-zinc-500 mt-1">
+                                                    <MessageSquare className="h-3 w-3" />
+                                                    {item.messageCount} сообщений
+                                                    {item.sessionId && (
+                                                        <span className="text-[10px] text-zinc-300 ml-auto font-mono">
+                                                            #{item.sessionId.slice(0, 8)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </SheetContent>
+                    </Sheet>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors"
+                        onClick={handleResetSession}
+                        disabled={isResetting}
+                    >
+                        {isResetting ? (
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        ) : (
+                            <RotateCcw className="mr-2 h-3 w-3" />
+                        )}
+                        {t('newSession')}
+                    </Button>
+                </div>
             </div>
 
             {/* Chat Area */}
-            <ScrollArea className="flex-1 p-6 bg-white" ref={scrollRef}>
-                <div className="flex flex-col gap-6">
+            <div className="flex-1 overflow-y-auto p-4 bg-white min-h-0" ref={scrollRef}>
+                <div className="flex flex-col gap-4">
                     {messages.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-48 text-center">
-                            <Bot className="h-12 w-12 text-zinc-200 mb-4" />
+                        <div className="flex flex-col items-center justify-center h-32 text-center">
+                            <Bot className="h-10 w-10 text-zinc-200 mb-2" />
                             <p className="text-zinc-400 text-sm">Напишите сообщение, чтобы начать тестирование</p>
                         </div>
                     )}
@@ -342,10 +499,30 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                         </div>
                     )}
                 </div>
-            </ScrollArea>
+            </div>
+
+            {/* Context Overflow Warning */}
+            {messages.length >= 10 && (
+                <div className="px-3 py-2 bg-amber-50 border-t border-amber-100 flex items-center justify-between gap-2 shrink-0">
+                    <div className="flex items-center gap-2 text-amber-700 text-xs">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span>Контекст переполнен. Рекомендуем очистить чат 🧹</span>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100 px-2"
+                        onClick={handleResetSession}
+                        disabled={isResetting}
+                    >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Очистить
+                    </Button>
+                </div>
+            )}
 
             {/* Input Area */}
-            <div className="p-4 bg-white">
+            <div className="p-3 bg-white border-t border-zinc-100 shrink-0">
                 <div className="relative group">
                     <Textarea
                         placeholder={t('typeScenario')}

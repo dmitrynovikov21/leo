@@ -54,7 +54,7 @@ export const sidebarLinks: SidebarNavItem[] = [
       {
         href: "/dashboard/knowledge",
         icon: "bookOpen",
-        title: "База знаний",
+        title: "Knowledge.title",
       },
       // Sources removed per user request
       // {
@@ -65,12 +65,12 @@ export const sidebarLinks: SidebarNavItem[] = [
       {
         href: "/dashboard/billing",
         icon: "billing",
-        title: "Билинг",
+        title: "Billing.title",
       },
       {
         href: "/dashboard/inbox",
         icon: "messages",
-        title: "Входящие (Скоро)",
+        title: "Inbox.title",
         disabled: true,
       },
     ],

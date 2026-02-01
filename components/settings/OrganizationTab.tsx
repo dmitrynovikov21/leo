@@ -16,11 +16,11 @@ import { EmojiAvatar } from "@/components/shared/emoji-avatar"
 import { X, ExternalLink } from "lucide-react"
 
 export function OrganizationTab() {
-    const members = [
+    /* const members = [
         { id: 1, name: "Dima Novikov", email: "dima@example.com", role: "Owner", avatar: "😎" },
         { id: 2, name: "Alice Smith", email: "alice@example.com", role: "Admin", avatar: "👩‍💻" },
         { id: 3, name: "Bob Jones", email: "bob@example.com", role: "Viewer", avatar: "👨‍💼" },
-    ]
+    ] */
 
     return (
         <div className="space-y-6">
@@ -71,6 +71,7 @@ export function OrganizationTab() {
             </Card>
 
             {/* Section 3 & 4: Team */}
+            {/* Section 3 & 4: Team - MUTED
             <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
                 <CardHeader>
                     <CardTitle className="text-xl font-bold text-zinc-900">Управление командой</CardTitle>
@@ -107,23 +108,11 @@ export function OrganizationTab() {
                         ))}
                     </div>
                 </CardContent>
-            </Card>
+            </Card> 
+            */}
 
             {/* Section 5: Danger Zone */}
-            <Card className="border-red-100 shadow-sm bg-red-50/30 rounded-2xl overflow-hidden">
-                <CardHeader className="pb-4">
-                    <CardTitle className="text-red-700 text-lg font-bold">Удалить организацию</CardTitle>
-                    <CardDescription className="text-red-600/70 font-medium">
-                        Это действие необратимо. Все данные будут потеряны навсегда.
-                    </CardDescription>
-                </CardHeader>
-                <CardFooter className="flex justify-between items-center bg-red-50/50 px-6 py-4 border-t border-red-100">
-                    <div className="text-sm text-red-600/80 font-medium">
-                        Пожалуйста, будьте уверены в этом действии.
-                    </div>
-                    <Button variant="destructive" className="bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-none">Удалить организацию</Button>
-                </CardFooter>
-            </Card>
+
         </div>
     )
 }

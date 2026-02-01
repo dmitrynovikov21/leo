@@ -36,22 +36,23 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 // Import User Data Provider
 import { useUserData } from "@/components/providers/user-data-provider"
+// Import Smart Quiz Step
+import { SmartQuizStep, initialQuizAnswers, type QuizAnswers } from "./smart-quiz-step"
 
 // Schema
 const agentSchema = z.object({
     name: z.string().min(2, "Имя должно быть минимум 2 символа"),
     role: z.string().min(1, "Выберите роль"),
-    description: z.string().min(10, "Описание должно быть не менее 10 символов"),
+    description: z.string().min(1, "Описание обязательно"), // Removed min 10
     systemPrompt: z.string(),
 })
 
 type AgentFormData = z.infer<typeof agentSchema>
 
 const steps = [
-    { id: 1, title: "Basics" },
-    { id: 2, title: "Persona" },
-    { id: 3, title: "Knowledge" },
-    { id: 4, title: "Review" },
+    { id: 1, title: "Persona" },
+    { id: 2, title: "Knowledge" },
+    { id: 3, title: "Review" },
 ]
 
 export function AgentWizardDialog() {
@@ -63,7 +64,6 @@ export function AgentWizardDialog() {
 
     const [open, setOpen] = React.useState(false)
     const [step, setStep] = React.useState(1)
-    const [isGenerating, setIsGenerating] = React.useState(false)
     const [uploadedFiles, setUploadedFiles] = React.useState<{ name: string, file: File }[]>([])
     const [chunks, setChunks] = React.useState<{ id: string, content: string }[]>([])
     const [isParsing, setIsParsing] = React.useState(false)
@@ -72,6 +72,9 @@ export function AgentWizardDialog() {
     const [chunksSaved, setChunksSaved] = React.useState(false)
     const [createdAgentId, setCreatedAgentId] = React.useState<string | null>(null)
     const [isCreatingAgent, setIsCreatingAgent] = React.useState(false)
+    // Smart Quiz State
+    const [quizAnswers, setQuizAnswers] = React.useState<QuizAnswers>(initialQuizAnswers)
+    const [isGeneratingPrompt, setIsGeneratingPrompt] = React.useState(false)
 
     const form = useForm<AgentFormData>({
         resolver: zodResolver(agentSchema),
@@ -90,33 +93,114 @@ export function AgentWizardDialog() {
         setChunks([])
         setChunksSaved(false)
         setCreatedAgentId(null)
+        setQuizAnswers(initialQuizAnswers)
         setOpen(false)
     }
 
     const nextStep = async () => {
+        // Step 1: Persona -> Step 2: Knowledge
+        // генерируем промпт из quiz и создаём агента
         if (step === 1) {
-            const result = await form.trigger(["name", "role", "description"])
-            if (!result) return
-        }
-
-        // Step 2 -> Step 3: проверяем инструкцию и создаём агента
-        if (step === 2) {
-            const systemPrompt = form.getValues("systemPrompt")
-            if (!systemPrompt || systemPrompt.trim().length < 10) {
-                toast.error("Необходимо заполнить инструкцию", {
-                    description: "Нажмите 'Авто-генерация' или напишите инструкцию вручную (минимум 10 символов)"
-                })
+            // Validate quiz is filled
+            if (!quizAnswers.role) {
+                toast.error("Выберите роль агента")
                 return
             }
 
+            // Validation for Corporate Bot
+            if (quizAnswers.role === 'corporate_bot') {
+                const missingFields: string[] = []
+                if (!quizAnswers.identityName) missingFields.push("Имя ассистента")
+                if (!quizAnswers.identityPosition) missingFields.push("Должность")
+                if (!quizAnswers.audience) missingFields.push("Аудитория")
+                if (!quizAnswers.strictness) missingFields.push("Источник знаний")
+                if (!quizAnswers.citations) missingFields.push("Ссылки")
+                if (!quizAnswers.conflicts) missingFields.push("Противоречия")
+                if (!quizAnswers.answerDepth) missingFields.push("Глубина")
+                if (!quizAnswers.format) missingFields.push("Оформление")
+                if (!quizAnswers.fallback) missingFields.push("Fallback")
+                if (!quizAnswers.fewShot) missingFields.push("Пример")
+
+                if (missingFields.length > 0) {
+                    toast.error("Заполните все поля квиза", {
+                        description: `Не заполнено: ${missingFields.join(", ")}`
+                    })
+                    return
+                }
+
+                if (quizAnswers.identityName.length < 2) {
+                    toast.error("Имя ассистента должно быть минимум 2 символа")
+                    return
+                }
+            }
+
+            // Sync quiz answers to form data
+            form.setValue("name", quizAnswers.identityName)
+            form.setValue("description", quizAnswers.identityPosition)
+            form.setValue("role", quizAnswers.role)
+
+            // Generate prompt from quiz if not yet generated
+            let systemPrompt = form.getValues("systemPrompt")
+            if (!systemPrompt || systemPrompt.trim().length < 10) {
+                setIsGeneratingPrompt(true)
+                try {
+                    // Filter out empty string values from quizAnswers
+                    const filteredQuizAnswers = Object.fromEntries(
+                        Object.entries(quizAnswers).filter(([, value]) => {
+                            if (Array.isArray(value)) return value.length > 0
+                            if (typeof value === 'string') return value !== ''
+                            return value !== undefined && value !== null
+                        })
+                    )
+
+                    const response = await fetch('/api/ai/generate-agent-prompt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            agentName: form.getValues('name'),
+                            agentDescription: form.getValues('description'),
+                            quizAnswers: filteredQuizAnswers,
+                        }),
+                    })
+
+                    if (!response.ok) throw new Error('Failed to generate')
+
+                    const data = await response.json()
+                    if (data.systemPrompt || data.prompt) {
+                        systemPrompt = data.systemPrompt || data.prompt
+                        form.setValue('systemPrompt', systemPrompt)
+                        toast.success('Инструкция сгенерирована!')
+                    } else {
+                        throw new Error('No prompt in response')
+                    }
+                } catch (error) {
+                    console.error('Failed to generate prompt:', error)
+                    toast.error('Не удалось сгенерировать инструкцию')
+                    setIsGeneratingPrompt(false)
+                    return
+                } finally {
+                    setIsGeneratingPrompt(false)
+                }
+            }
+
             if (!createdAgentId) {
-                const success = await createAgent()
-                if (!success) return
+                const newAgentId = await createAgent()
+                if (newAgentId) {
+                    toast.success("Агент создан! Переходим к загрузке знаний...", {
+                        duration: 2000
+                    })
+                    // Don't close dialog, move to next step (Knowledge)
+                    // setOpen(false) 
+                    // router.push... NO, we continue wizard
+                } else {
+                    return // stay on step if failed
+                }
             }
         }
 
-        // Step 3: нельзя идти дальше если есть несохранённые чанки
-        if (step === 3 && chunks.length > 0 && !chunksSaved) {
+        // Step 2: Knowledge -> Step 3: Review
+        // нельзя идти дальше если есть несохранённые чанки
+        if (step === 2 && chunks.length > 0 && !chunksSaved) {
             toast.error('Сохраните чанки перед тем как продолжить')
             return
         }
@@ -124,7 +208,7 @@ export function AgentWizardDialog() {
     }
 
     // Создание агента через API
-    const createAgent = async (): Promise<boolean> => {
+    const createAgent = async (): Promise<string | null> => {
         setIsCreatingAgent(true)
 
         try {
@@ -135,7 +219,7 @@ export function AgentWizardDialog() {
                 const mockId = 'mock_agent_' + Date.now()
                 setCreatedAgentId(mockId)
                 toast.info('Агент создан (mock)')
-                return true
+                return mockId
             }
 
             // Call local API which proxies to orchestrator
@@ -178,15 +262,52 @@ export function AgentWizardDialog() {
                 }
             }
 
+            // Initialize behavior with displayName, constraints, and tone from quiz
+            const agentName = form.getValues('name')
+
+            // Map constraint IDs to Russian labels
+            const constraintLabels: Record<string, string> = {
+                no_swearing: "Не материться",
+                no_prices: "Не называть цены",
+                no_competitors: "Не обсуждать конкурентов",
+                no_hallucination: "Не галлюцинировать",
+            }
+
+            // Build guardrails array from quiz constraints (format: { rule: string })
+            const guardrails = [
+                ...quizAnswers.constraints.map(id => constraintLabels[id] || id),
+                ...quizAnswers.customConstraints
+            ].filter(Boolean).map(constraint => ({ rule: constraint }))
+
+            // Get tone of voice value as array
+            const toneValue = quizAnswers.toneOfVoice === 'custom'
+                ? quizAnswers.toneOfVoiceCustom
+                : quizAnswers.toneOfVoice
+            const toneArray = toneValue ? [toneValue] : ['friendly']
+
+            try {
+                await fetch(`${orchestratorUrl}/api/v1/agents/${data.id}/behavior`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        displayName: agentName,
+                        avatarEmoji: '🤖',  // Default emoji
+                        tone: toneArray,
+                        guardrails: guardrails,
+                    }),
+                })
+            } catch (behaviorErr) {
+                console.error('Failed to initialize behavior:', behaviorErr)
+            }
+
             await refreshAgents() // Refresh list
-            toast.success('Агент успешно создан!')
-            return true
+            return data.id
         } catch (error) {
             console.error('Error creating agent:', error)
             toast.error(tCommon('error'), {
                 description: 'Не удалось создать агента'
             })
-            return false
+            return null
         } finally {
             setIsCreatingAgent(false)
         }
@@ -194,87 +315,13 @@ export function AgentWizardDialog() {
 
     // Проверка можно ли нажать Далее
     const canProceed = () => {
-        if (isParsing || isSavingChunks || isCreatingAgent) return false
-        if (step === 3 && chunks.length > 0 && !chunksSaved) return false
+        if (isParsing || isSavingChunks || isCreatingAgent || isGeneratingPrompt) return false
+        if (step === 2 && chunks.length > 0 && !chunksSaved) return false
         return true
     }
 
     const prevStep = () => {
         setStep((prev) => Math.max(prev - 1, 1))
-    }
-
-    const handleGeneratePersona = async () => {
-        const name = form.getValues("name")
-        const role = form.getValues("role")
-        const desc = form.getValues("description")
-
-        if (!desc) {
-            toast.error(tCommon('error'), { description: t('enterDescFirst') })
-            return
-        }
-
-        setIsGenerating(true)
-
-        // Helper function to generate mock prompt
-        const generateMockPrompt = () => {
-            const roleName = role === 'corporate_bot' ? 'Корпоративный бот' : role
-            return `Ты — ${name || 'AI-ассистент'}, ${roleName || 'помощник'}.
-
-${desc}
-
-Основные обязанности:
-- Консультировать по вопросам компании
-- Помогать найти нужную информацию
-- Отвечать на часто задаваемые вопросы
-
-Правила общения:
-- Отвечай вежливо и профессионально
-- Будь кратким, но информативным
-- Если не знаешь ответа — честно признайся
-- Не выходи за рамки своей роли
-- Не обсуждай конкурентов и политику
-
-Формат ответов:
-- Используй структурированные ответы с абзацами
-- При необходимости используй списки
-- Всегда предлагай дополнительную помощь`
-        }
-
-        try {
-            // Use local proxy
-            const response = await fetch('/api/ai/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    agentName: name,
-                    agentRole: role === 'corporate_bot' ? 'Корпоративный бот' : role,
-                    agentDescription: desc
-                }),
-            })
-
-            if (!response.ok) {
-                console.error("Generation failed code:", response.status)
-                throw new Error("Failed to generate")
-            }
-
-            const data = await response.json()
-
-            if (data.systemPrompt || data.prompt) {
-                form.setValue("systemPrompt", data.systemPrompt || data.prompt)
-                toast.success(t('promptGenerated'))
-            } else {
-                throw new Error("No prompt in response")
-            }
-
-        } catch (error) {
-            console.warn("Auto-generation failed, using mock:", error)
-            form.setValue("systemPrompt", generateMockPrompt())
-            toast.info("Сгенерировано по шаблону (AI недоступен)")
-        } finally {
-            setIsGenerating(false)
-        }
     }
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -403,62 +450,15 @@ ${desc}
 
         setIsStarting(true)
         try {
-            // 1. Start Agent
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) {
-                // Mock start
-                await new Promise(resolve => setTimeout(resolve, 2000))
-                toast.success("Агент успешно запущен (Mock)!", {
-                    description: "Статус: RUNNING"
-                })
-                setOpen(false)
-                router.refresh()
-                return
-            }
-
-            const startRes = await fetch(`${orchestratorUrl}/api/v1/agents/${createdAgentId}/start`, {
-                method: 'POST'
+            // Updated logic: Redirect to Behavior page after creation
+            toast.success(tCommon('success'), {
+                description: "Агент создан! Переходим к настройкам..."
             })
-
-            if (!startRes.ok) {
-                throw new Error("Failed to start agent")
-            }
-
-            const startData = await startRes.json()
-
-            // 2. Poll Status if not running immediately
-            let status = startData.status
-            if (status !== 'RUNNING') {
-                // Simple poll: check 3 times with 2s interval
-                for (let i = 0; i < 3; i++) {
-                    await new Promise(r => setTimeout(r, 2000))
-                    const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${createdAgentId}/status`)
-                    if (statusRes.ok) {
-                        const statusData = await statusRes.json()
-                        status = statusData.agent?.status || statusData.status
-                        if (status === 'RUNNING') break
-                    }
-                }
-            }
-
-            if (status === 'RUNNING') {
-                toast.success(tCommon('success'), {
-                    description: "Агент успешно запущен и готов к работе!"
-                })
-                setOpen(false)
-                router.refresh()
-            } else {
-                toast.warning("Агент запущен, но статус неизвестен", {
-                    description: `Текущий статус: ${status}`
-                })
-                setOpen(false)
-            }
-
+            setOpen(false)
+            router.push(`/dashboard/agents/${createdAgentId}/behavior`)
         } catch (error) {
             console.error(error)
-            toast.error(tCommon('error'), {
-                description: "Не удалось запустить агента. Попробуйте вручную из списка."
-            })
+            toast.error(tCommon('error'))
         } finally {
             setIsStarting(false)
         }
@@ -500,20 +500,13 @@ ${desc}
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Progress Bar (Skip for Step 0) */}
-                {step > 0 && (
-                    <div className="mb-4 space-y-2">
-                        <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                            <span>{t('stepOf', { step: step })}</span>
-                            <span>{t('progress', { percent: Math.round((step / 4) * 100) })}</span>
-                        </div>
-                        <Progress value={(step / 4) * 100} className="h-2" />
-                    </div>
-                )}
+                {/* Progress Bar */}
+                <div className="mb-4 space-y-2">
+                    <Progress value={(step / 3) * 100} className="h-2" />
+                </div>
 
-                <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4">
+                <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4 relative">
                     <AnimatePresence mode="wait">
-
                         {step === 1 && (
                             <motion.div
                                 key="step1"
@@ -522,88 +515,17 @@ ${desc}
                                 exit={{ opacity: 0, x: -20 }}
                                 className="space-y-6"
                             >
-                                <div className="space-y-4">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="name">{t('agentNameLabel')}</Label>
-                                        <Input
-                                            id="name"
-                                            placeholder={t('agentNamePlaceholder')}
-                                            {...form.register("name")}
-                                        />
-                                        {form.formState.errors.name && (
-                                            <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-                                        )}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="role">{t('roleLabel')}</Label>
-                                        <Select
-                                            onValueChange={(val) => form.setValue("role", val)}
-                                            defaultValue={form.getValues("role")}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder={t('selectRole')} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="corporate_bot">Корпоративный бот</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        {form.formState.errors.role && (
-                                            <p className="text-sm text-destructive">{form.formState.errors.role.message}</p>
-                                        )}
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="desc">{t('descriptionLabel')}</Label>
-                                        <Textarea
-                                            id="desc"
-                                            placeholder={t('descriptionPlaceholder')}
-                                            className="min-h-[100px]"
-                                            {...form.register("description")}
-                                        />
-                                        {form.formState.errors.description && (
-                                            <p className="text-sm text-destructive">{form.formState.errors.description.message}</p>
-                                        )}
-                                    </div>
-                                </div>
+                                <SmartQuizStep
+                                    answers={quizAnswers}
+                                    onChange={setQuizAnswers}
+                                    isGenerating={isGeneratingPrompt}
+                                />
                             </motion.div>
                         )}
 
                         {step === 2 && (
                             <motion.div
                                 key="step2"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="space-y-6"
-                            >
-                                <div className="rounded-lg border bg-muted/50 p-4">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <Label className="text-base">{t('systemPersona')}</Label>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleGeneratePersona}
-                                            disabled={isGenerating}
-                                        >
-                                            {isGenerating ? (
-                                                <>{t('generating')}</>
-                                            ) : (
-                                                <><Wand2 className="mr-2 h-4 w-4" /> {t('autoGenerate')}</>
-                                            )}
-                                        </Button>
-                                    </div>
-                                    <Textarea
-                                        value={form.watch("systemPrompt")}
-                                        onChange={(e) => form.setValue("systemPrompt", e.target.value)}
-                                        placeholder={t('personaPlaceholder')}
-                                        className="min-h-[250px] font-mono text-sm leading-relaxed"
-                                    />
-                                </div>
-                            </motion.div>
-                        )}
-
-                        {step === 3 && (
-                            <motion.div
-                                key="step3"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -700,9 +622,9 @@ ${desc}
                             </motion.div>
                         )}
 
-                        {step === 4 && (
+                        {step === 3 && (
                             <motion.div
-                                key="step4"
+                                key="step3"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -753,6 +675,7 @@ ${desc}
                             </motion.div>
                         )}
                     </AnimatePresence>
+
                 </div>
 
                 <DialogFooter className="flex items-center justify-between sm:justify-between px-1">
@@ -762,7 +685,7 @@ ${desc}
                                 <ChevronLeft className="mr-2 h-4 w-4" />
                                 {t('back')}
                             </Button>
-                            {step < 4 ? (
+                            {step < 3 ? (
                                 <Button onClick={nextStep} disabled={!canProceed()}>
                                     {isParsing ? 'Обработка...' : t('next')}
                                     <ChevronRight className="ml-2 h-4 w-4" />
@@ -780,8 +703,8 @@ ${desc}
                                         </>
                                     ) : (
                                         <>
-                                            {t('startAgent')}
-                                            <Power className="ml-2 h-4 w-4" />
+                                            {t('configureAgent') || 'Настроить агента'}
+                                            <ChevronRight className="ml-2 h-4 w-4" />
                                         </>
                                     )}
                                 </Button>
@@ -793,6 +716,16 @@ ${desc}
                         </div>
                     )}
                 </DialogFooter>
+
+                {/* Loader Overlay - Global for Dialog */}
+                {isGeneratingPrompt && (
+                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm transition-all duration-300">
+                        <div className="flex flex-col items-center gap-3 animate-in fade-in zoom-in-95 duration-300">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <span className="text-lg font-medium">Генерируем инструкцию</span>
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     )

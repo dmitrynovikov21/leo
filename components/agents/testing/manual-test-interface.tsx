@@ -5,7 +5,7 @@ import { Send, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
@@ -104,10 +104,8 @@ export function ManualTestInterface({
     }
 
     React.useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-        }
-    }, [messages])
+        scrollRef.current?.scrollIntoView({ behavior: "smooth" })
+    }, [messages, isLoading])
 
     return (
         <div className="flex h-full flex-col">
@@ -151,7 +149,7 @@ export function ManualTestInterface({
             )}
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+            <div className="flex-1 overflow-y-auto p-4">
                 <div className="space-y-4">
                     {messages.length === 0 && (
                         <div className="flex h-full items-center justify-center text-center text-muted-foreground">
@@ -208,8 +206,9 @@ export function ManualTestInterface({
                             </div>
                         </div>
                     )}
+                    <div ref={scrollRef} />
                 </div>
-            </ScrollArea>
+            </div>
 
             {/* Input */}
             <div className="border-t p-4">

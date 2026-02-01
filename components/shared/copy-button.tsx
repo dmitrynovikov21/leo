@@ -36,7 +36,7 @@ export function CopyButton({ value, className, ...props }: CopyButtonProps) {
       onClick={() => handleCopyValue(value)}
       {...props}
     >
-      <span className="sr-only">Copy</span>
+      <span className="sr-only">Копировать</span>
       {hasCopied ? (
         <Icons.check className="size-4" />
       ) : (

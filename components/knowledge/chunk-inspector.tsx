@@ -86,10 +86,10 @@ export function ChunkInspector({
                     <div className="flex flex-1 flex-col p-6 overflow-hidden">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h4 className="font-semibold">Editing Chunk {selectedChunk.id}</h4>
+                                <h4 className="font-semibold">Редактирование чанка {selectedChunk.id}</h4>
                                 <p className="text-sm text-muted-foreground">
                                     {selectedChunk.metadata.source}
-                                    {selectedChunk.metadata.page && ` • Page ${selectedChunk.metadata.page}`}
+                                    {selectedChunk.metadata.page && ` • Страница ${selectedChunk.metadata.page}`}
                                 </p>
                             </div>
                             <Button
@@ -110,13 +110,13 @@ export function ChunkInspector({
                         <div className="flex gap-2 mt-4">
                             <Button onClick={handleSave} className="flex-1">
                                 <Save className="mr-2 h-4 w-4" />
-                                Save Changes
+                                Сохранить изменения
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => setEditedContent(selectedChunk.content)}
                             >
-                                Reset
+                                Сбросить
                             </Button>
                         </div>
                     </div>
@@ -126,7 +126,7 @@ export function ChunkInspector({
                         <div className="p-6 space-y-3">
                             <div className="flex items-center justify-between mb-4">
                                 <p className="text-sm text-muted-foreground">
-                                    {filteredChunks.length} segments found
+                                    {filteredChunks.length} сегментов найдено
                                 </p>
                             </div>
 
@@ -140,12 +140,12 @@ export function ChunkInspector({
                                         <div className="flex items-center gap-2">
                                             <FileText className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-xs font-medium text-muted-foreground">
-                                                Chunk {chunk.id}
+                                                Чанк {chunk.id}
                                             </span>
                                         </div>
                                         {chunk.metadata.page && (
                                             <Badge variant="outline" className="text-xs">
-                                                Page {chunk.metadata.page}
+                                                Стр. {chunk.metadata.page}
                                             </Badge>
                                         )}
                                     </div>

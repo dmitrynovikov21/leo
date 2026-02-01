@@ -25,7 +25,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     const [loading, setLoading] = useState(false)
     const [validating, setValidating] = useState(false)
     const [token, setToken] = useState(initialToken || "")
-    const [step, setStep] = useState<"input" | "validated" | "success" | "restart">("input")
+    const [step, setStep] = useState<"input" | "validated" | "success" | "restart" | "connected" | "start" | "disconnected">("input")
     const [open, setOpen] = useState(false)
     const [botInfo, setBotInfo] = useState<{ id: number; first_name: string; username: string } | null>(null)
 
@@ -36,10 +36,35 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     // Reset state when opening
     useEffect(() => {
         if (open) {
-            setStep('input')
-            setBotInfo(null)
+            if (initialToken) {
+                // Auto-fetch bot info for connected state
+                setStep('connected')
+                setToken(initialToken)
+                fetch(`https://api.telegram.org/bot${initialToken}/getMe`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.ok && data.result) {
+                            setBotInfo({
+                                id: data.result.id,
+                                first_name: data.result.first_name,
+                                username: data.result.username || ''
+                            })
+                        } else {
+                            // Token invalid/revoked — fall back to input
+                            setStep('input')
+                            setBotInfo(null)
+                        }
+                    })
+                    .catch(() => {
+                        setStep('input')
+                        setBotInfo(null)
+                    })
+            } else {
+                setStep('input')
+                setBotInfo(null)
+            }
         }
-    }, [open])
+    }, [open, initialToken])
 
     // Validate token with Telegram API
     const handleValidateToken = async () => {
@@ -83,7 +108,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                 if (isRunning) {
                     setStep('restart')
                 } else {
-                    setStep("success")
+                    setStep("start")
                 }
                 await refreshAgents()
                 onSuccess?.()
@@ -105,7 +130,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
             if (isRunning) {
                 setStep('restart')
             } else {
-                setStep("success")
+                setStep("start")
             }
 
         } catch (error) {
@@ -147,12 +172,133 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
             }
 
             await refreshAgents()
-            toast.success("Агент успешно перезапущен с новым токеном")
+            toast.success("Агент успешно перезапущен")
             setStep('success')
 
         } catch (error) {
             console.error(error)
             toast.error("Ошибка при перезапуске агента")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleRestartAfterDisconnect = async () => {
+        setLoading(true)
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) {
+                await new Promise(r => setTimeout(r, 1500))
+                toast.success("Telegram отключён, агент перезапущен")
+                setOpen(false)
+                setLoading(false)
+                return
+            }
+
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stop`, { method: 'POST' })
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+
+            for (let i = 0; i < 5; i++) {
+                await new Promise(r => setTimeout(r, 1000))
+                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json()
+                    const newStatus = statusData.agent?.status || statusData.status
+                    if (newStatus === 'RUNNING') break
+                }
+            }
+
+            await refreshAgents()
+            toast.success("Telegram отключён, агент перезапущен")
+            setOpen(false)
+
+        } catch (error) {
+            console.error(error)
+            toast.error("Ошибка при перезапуске агента")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleStart = async () => {
+        setLoading(true)
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) {
+                await new Promise(r => setTimeout(r, 1500))
+                toast.success("Agent started (mock)")
+                setStep('success')
+                setLoading(false)
+                return
+            }
+
+            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+
+            // Poll for running status
+            for (let i = 0; i < 5; i++) {
+                await new Promise(r => setTimeout(r, 1000))
+                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json()
+                    const newStatus = statusData.agent?.status || statusData.status
+                    if (newStatus === 'RUNNING') break
+                }
+            }
+
+            await refreshAgents()
+            toast.success("Агент успешно запущен")
+            setStep('success')
+
+        } catch (error) {
+            console.error(error)
+            toast.error("Ошибка при запуске агента")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleDisconnect = async () => {
+        setLoading(true)
+        try {
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+
+            if (!orchestratorUrl) {
+                // Mock
+                await new Promise(r => setTimeout(r, 1000))
+                toast.success("Disconnected (mock)")
+                setToken("")
+                await refreshAgents()
+                onSuccess?.()
+                if (isRunning) {
+                    setStep('disconnected')
+                } else {
+                    setOpen(false)
+                }
+                return
+            }
+
+            const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ telegram_token: "" })
+            })
+
+            if (!res.ok) throw new Error("Failed to disconnect")
+
+            await refreshAgents()
+            setToken("")
+            onSuccess?.()
+
+            if (isRunning) {
+                setStep('disconnected')
+            } else {
+                setOpen(false)
+                toast.success("Telegram успешно отключен")
+            }
+
+        } catch (error) {
+            console.error(error)
+            toast.error("Не удалось отключить Telegram")
         } finally {
             setLoading(false)
         }
@@ -180,14 +326,27 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                 Получите токен у <a href="https://t.me/BotFather" target="_blank" className="underline decoration-zinc-300 hover:text-zinc-600">@BotFather</a> в Telegram.
                             </p>
                         </div>
-                        <Button
-                            className="w-full rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm"
-                            onClick={handleValidateToken}
-                            disabled={!token || validating}
-                        >
-                            {validating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {validating ? "Проверка..." : "Проверить токен"}
-                        </Button>
+                        <div className="flex gap-2">
+                            {initialToken && (
+                                <Button
+                                    variant="destructive"
+                                    className="w-full rounded-xl shadow-sm"
+                                    onClick={handleDisconnect}
+                                    disabled={loading}
+                                >
+                                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Power className="mr-2 h-4 w-4" />}
+                                    Отключить
+                                </Button>
+                            )}
+                            <Button
+                                className="w-full rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm"
+                                onClick={handleValidateToken}
+                                disabled={!token || validating}
+                            >
+                                {validating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {validating ? "Проверка..." : "Проверить токен"}
+                            </Button>
+                        </div>
                     </div>
                 )}
                 {step === "validated" && botInfo && (
@@ -244,33 +403,13 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                     {/* Left Side: Bot Preview / Info */}
                     <div className="md:col-span-2 bg-zinc-50 border-r border-zinc-100 p-6 flex flex-col justify-between">
                         <div>
-                            <div className="flex items-center gap-2 mb-6">
+                            <div className="flex items-center gap-2">
                                 <div className="h-8 w-8 rounded-lg bg-[#0088cc] flex items-center justify-center shadow-sm shadow-blue-200">
                                     <Send className="h-4 w-4 text-white" />
                                 </div>
                                 <span className="font-bold text-zinc-900 tracking-tight">Telegram Bot</span>
                             </div>
 
-                            <div className="space-y-4">
-                                <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-zinc-100 flex items-center justify-center">
-                                            <BotIcon className="h-5 w-5 text-zinc-400" />
-                                        </div>
-                                        <div>
-                                            <div className="h-3 w-24 bg-zinc-100 rounded mb-1.5" />
-                                            <div className="h-2 w-16 bg-zinc-50 rounded" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <div className="h-2 w-full bg-zinc-50 rounded" />
-                                        <div className="h-2 w-3/4 bg-zinc-50 rounded" />
-                                    </div>
-                                </div>
-                                <p className="text-xs text-zinc-500 leading-relaxed">
-                                    Подключите вашего агента к Telegram, чтобы автоматически отвечать на сообщения пользователей 24/7.
-                                </p>
-                            </div>
                         </div>
 
 
@@ -280,12 +419,18 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                     <div className="md:col-span-3 p-6 flex flex-col">
                         <DialogHeader className="mb-6">
                             <DialogTitle className="text-xl font-bold text-zinc-900">
-                                {step === 'restart' ? 'Требуется перезапуск' : 'Настройка подключения'}
+                                {step === 'restart' || step === 'disconnected' ? 'Требуется перезапуск' : step === 'start' ? 'Требуется запуск' : step === 'connected' ? 'Управление подключением' : 'Настройка подключения'}
                             </DialogTitle>
                             <DialogDescription className="text-zinc-500">
                                 {step === 'restart'
                                     ? 'Агент активен. Для применения нового токена необходим перезапуск.'
-                                    : 'Введите токен вашего бота для активации.'}
+                                    : step === 'disconnected'
+                                        ? 'Агент активен. Для применения изменений необходим перезапуск.'
+                                        : step === 'start'
+                                            ? 'Запустите агента, чтобы изменения вступили в силу.'
+                                            : step === 'connected'
+                                                ? 'Telegram-бот подключён к агенту.'
+                                                : 'Введите токен вашего бота для активации.'}
                             </DialogDescription>
                         </DialogHeader>
 
@@ -320,6 +465,17 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                 </div>
 
                                 <div className="mt-auto pt-4 flex justify-end gap-2">
+                                    {initialToken && (
+                                        <Button
+                                            variant="destructive"
+                                            className="rounded-xl px-3"
+                                            onClick={handleDisconnect}
+                                            disabled={loading}
+                                            title="Отключить интеграцию"
+                                        >
+                                            <Power className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                     <Button variant="ghost" className="rounded-xl hover:bg-zinc-100 text-zinc-600" onClick={() => setOpen(false)}>Отмена</Button>
                                     <Button
                                         className="rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm shadow-blue-200"
@@ -368,6 +524,113 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                     >
                                         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {loading ? "Сохранение..." : "Подключить"}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === "connected" && (
+                            <div className="flex flex-col items-center justify-center flex-1 py-6 space-y-6 animate-in fade-in zoom-in-95 duration-300 w-full max-w-sm mx-auto">
+                                <div className="p-6 bg-green-50/50 border border-green-100 rounded-3xl w-full shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-zinc-100 shrink-0">
+                                            <div className="h-10 w-10 rounded-xl bg-[#0088cc] flex items-center justify-center">
+                                                <BotIcon className="h-6 w-6 text-white" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            {botInfo ? (
+                                                <>
+                                                    <p className="text-lg font-bold text-zinc-900 truncate">{botInfo.first_name}</p>
+                                                    <p className="text-sm text-zinc-500 truncate">@{botInfo.username}</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="h-4 w-24 bg-zinc-100 rounded animate-pulse mb-1.5" />
+                                                    <div className="h-3 w-16 bg-zinc-50 rounded animate-pulse" />
+                                                </>
+                                            )}
+                                        </div>
+                                        <Badge className="bg-green-100 text-green-700 border-green-200 shrink-0">Подключено</Badge>
+                                    </div>
+                                </div>
+
+                                <div className="flex w-full gap-3 pt-2">
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1 h-11 rounded-xl border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900"
+                                        onClick={() => {
+                                            setStep('input')
+                                            setToken('')
+                                            setBotInfo(null)
+                                        }}
+                                    >
+                                        Изменить токен
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        className="flex-1 h-11 rounded-xl"
+                                        onClick={handleDisconnect}
+                                        disabled={loading}
+                                    >
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {loading ? "Отключение..." : "Отключить"}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === "disconnected" && (
+                            <div className="flex flex-col items-center justify-center flex-1 py-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="h-16 w-16 rounded-full bg-yellow-100 flex items-center justify-center mb-2">
+                                    <RefreshCw className="h-8 w-8 text-yellow-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-zinc-900">Telegram отключён</h3>
+                                    <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
+                                        Чтобы изменения вступили в силу, агент должен быть перезапущен.
+                                    </p>
+                                </div>
+
+                                <div className="flex w-full gap-2 mt-4">
+                                    <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setOpen(false)}>
+                                        Позже
+                                    </Button>
+                                    <Button
+                                        className="flex-1 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white"
+                                        onClick={handleRestartAfterDisconnect}
+                                        disabled={loading}
+                                    >
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {loading ? "Перезапуск..." : "Перезапустить сейчас"}
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === "start" && (
+                            <div className="flex flex-col items-center justify-center flex-1 py-4 text-center space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mb-2">
+                                    <Power className="h-8 w-8 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-zinc-900">Токен сохранён</h3>
+                                    <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
+                                        Запустите агента, чтобы подключение к Telegram вступило в силу.
+                                    </p>
+                                </div>
+
+                                <div className="flex w-full gap-2 mt-4">
+                                    <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setOpen(false)}>
+                                        Позже
+                                    </Button>
+                                    <Button
+                                        className="flex-1 rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white"
+                                        onClick={handleStart}
+                                        disabled={loading}
+                                    >
+                                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {loading ? "Запуск..." : "Запустить сейчас"}
                                     </Button>
                                 </div>
                             </div>

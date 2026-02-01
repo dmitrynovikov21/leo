@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckCircle2, Clock, Plus, Trash2, Play, Loader2 } from "lucide-react"
+import { CheckCircle2, Clock, Plus, Trash2, Play, Loader2, Edit2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useParams } from "next/navigation"
 
@@ -31,6 +31,7 @@ interface FeedbackPanelProps {
     isRunning: boolean
     onAddTestCase?: (question: string, expectedAnswer: string) => Promise<void>
     onRemoveTestCase?: (id: string) => Promise<void>
+    onUpdateTestCase?: (id: string, question: string, expectedAnswer: string) => Promise<void>
 }
 
 // Calculate string similarity (simple word overlap)
@@ -50,38 +51,70 @@ function calculateSimilarity(expected: string, actual: string): number {
     return Math.round((matchCount / expectedWords.length) * 100)
 }
 
-export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, onAddTestCase, onRemoveTestCase }: FeedbackPanelProps) {
+export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, onAddTestCase, onRemoveTestCase, onUpdateTestCase }: FeedbackPanelProps) {
     const pendingCount = testCases.filter(i => i.status === 'pending').length
+
+    // State
     const [isAddOpen, setIsAddOpen] = React.useState(false)
     const [newQuestion, setNewQuestion] = React.useState("")
     const [newExpected, setNewExpected] = React.useState("")
     const [isAdding, setIsAdding] = React.useState(false)
+    const [editingItem, setEditingItem] = React.useState<TestCaseItem | null>(null)
 
-    const handleAddTestCase = async () => {
+    // Effect to pre-fill form when editing
+    React.useEffect(() => {
+        if (isAddOpen && editingItem) {
+            setNewQuestion(editingItem.question)
+            setNewExpected(editingItem.expectedAnswer)
+        } else if (isAddOpen && !editingItem) {
+            setNewQuestion("")
+            setNewExpected("")
+        }
+    }, [isAddOpen, editingItem])
+
+    const handleSaveTestCase = async () => {
         if (!newQuestion.trim() || !newExpected.trim()) {
             toast.error("Заполните оба поля")
             return
         }
 
-        if (onAddTestCase) {
-            setIsAdding(true)
-            await onAddTestCase(newQuestion.trim(), newExpected.trim())
-            setIsAdding(false)
-        } else {
-            // Fallback to local state
-            const newItem: TestCaseItem = {
-                id: Date.now().toString(),
-                question: newQuestion.trim(),
-                expectedAnswer: newExpected.trim(),
-                status: 'pending'
+        setIsAdding(true)
+        try {
+            if (editingItem && onUpdateTestCase) {
+                // Update mode
+                await onUpdateTestCase(editingItem.id, newQuestion.trim(), newExpected.trim())
+                toast.success("Обновлено")
+            } else if (onAddTestCase) {
+                // Add mode (API)
+                await onAddTestCase(newQuestion.trim(), newExpected.trim())
+                toast.success("Добавлено")
+            } else {
+                // Fallback local mode
+                if (editingItem) {
+                    setTestCases(prev => prev.map(tc =>
+                        tc.id === editingItem.id
+                            ? { ...tc, question: newQuestion.trim(), expectedAnswer: newExpected.trim() }
+                            : tc
+                    ))
+                } else {
+                    const newItem: TestCaseItem = {
+                        id: Date.now().toString(),
+                        question: newQuestion.trim(),
+                        expectedAnswer: newExpected.trim(),
+                        status: 'pending'
+                    }
+                    setTestCases(prev => [...prev, newItem])
+                    toast.success("Добавлено в очередь")
+                }
             }
-            setTestCases(prev => [...prev, newItem])
-            toast.success("Добавлено в очередь")
+        } catch (error) {
+            console.error(error)
+            toast.error("Ошибка сохранения")
+        } finally {
+            setIsAdding(false)
+            setIsAddOpen(false)
+            setEditingItem(null)
         }
-
-        setNewQuestion("")
-        setNewExpected("")
-        setIsAddOpen(false)
     }
 
     const handleRemoveTestCase = async (id: string) => {
@@ -90,6 +123,11 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
         } else {
             setTestCases(prev => prev.filter(tc => tc.id !== id))
         }
+    }
+
+    const openEdit = (item: TestCaseItem) => {
+        setEditingItem(item)
+        setIsAddOpen(true)
     }
 
     const getStatusIcon = (status: TestCaseItem['status']) => {
@@ -133,7 +171,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                 {testCases.length === 0 ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-white">
                         <button
-                            onClick={() => setIsAddOpen(true)}
+                            onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
                             className="h-14 w-14 rounded-full bg-zinc-50 hover:bg-zinc-100 flex items-center justify-center mb-4 transition-all cursor-pointer group shadow-sm hover:shadow-md border border-zinc-100"
                         >
                             <Plus className="h-6 w-6 text-zinc-300 group-hover:text-zinc-600 transition-colors" />
@@ -144,37 +182,50 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                         </p>
                     </div>
                 ) : (
-                    <ScrollArea className="h-full pb-20">
-                        <div className="p-4 space-y-3">
+                    <ScrollArea className="h-full">
+                        <div className="p-2 space-y-2 pb-24">
                             {testCases.map((item, idx) => (
-                                <Card key={item.id} className="p-3 bg-white border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] rounded-xl group hover:border-zinc-200 transition-all">
-                                    <div className="flex items-start gap-3">
+                                <Card
+                                    key={item.id}
+                                    onClick={() => openEdit(item)}
+                                    className="p-2 bg-white border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] rounded-lg group hover:border-zinc-200 transition-all cursor-pointer hover:shadow-md relative"
+                                >
+                                    <div className="flex items-start gap-2.5">
                                         <div className="mt-0.5">
                                             {getStatusIcon(item.status)}
                                         </div>
-                                        <div className="flex-1 space-y-1 min-w-0">
-                                            <div className="flex items-center gap-2">
+                                        <div className="flex-1 space-y-0.5 min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
                                                 <span className="text-[10px] font-mono text-zinc-400">#{idx + 1}</span>
                                                 {getStatusBadge(item)}
                                             </div>
-                                            <p className="text-sm text-zinc-700 leading-snug font-medium truncate">{item.question}</p>
-                                            <p className="text-[11px] text-zinc-400 truncate">Ожидается: {item.expectedAnswer}</p>
+                                            <p className="text-sm text-zinc-800 leading-snug font-medium break-words whitespace-normal">{item.question}</p>
+                                            <p className="text-[11px] text-zinc-400 break-words whitespace-normal">Ожидается: {item.expectedAnswer}</p>
                                             {item.actualAnswer && (
-                                                <p className="text-[11px] text-zinc-500 truncate mt-1 pt-1 border-t border-zinc-100">
+                                                <p className="text-[11px] text-zinc-500 break-words whitespace-normal mt-1 pt-1 border-t border-zinc-50">
                                                     Ответ: {item.actualAnswer}
                                                 </p>
                                             )}
                                         </div>
-                                        {item.status === 'pending' && (
+
+                                        <div className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-6 w-6 text-zinc-300 hover:text-red-500 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={() => handleRemoveTestCase(item.id)}
+                                                className="h-5 w-5 text-zinc-300 hover:text-zinc-600"
+                                                onClick={(e) => { e.stopPropagation(); openEdit(item); }}
                                             >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                                <Edit2 className="h-3 w-3" />
                                             </Button>
-                                        )}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-5 w-5 text-zinc-300 hover:text-red-500"
+                                                onClick={(e) => { e.stopPropagation(); handleRemoveTestCase(item.id); }}
+                                            >
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 </Card>
                             ))}
@@ -182,8 +233,8 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-full text-xs text-zinc-400 hover:text-zinc-900 border border-dashed border-zinc-200 hover:border-zinc-300 h-9 font-normal rounded-xl hover:bg-zinc-50"
-                                onClick={() => setIsAddOpen(true)}
+                                className="w-full text-xs text-zinc-400 hover:text-zinc-900 border border-dashed border-zinc-200 hover:border-zinc-300 h-8 font-normal rounded-lg hover:bg-zinc-50"
+                                onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
                             >
                                 <Plus className="h-3 w-3 mr-2" /> Добавить тест-кейс
                             </Button>
@@ -219,10 +270,12 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
             </div>
 
             {/* Add Test Case Dialog */}
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) setEditingItem(null); }}>
                 <DialogContent className="sm:max-w-[425px] rounded-2xl p-6 shadow-2xl border-zinc-100">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-semibold">Добавить тест-кейс</DialogTitle>
+                        <DialogTitle className="text-lg font-semibold">
+                            {editingItem ? "Редактировать тест-кейс" : "Добавить тест-кейс"}
+                        </DialogTitle>
                         <DialogDescription className="text-zinc-500">
                             Укажите вопрос и ожидаемый ответ. Тест проверит, что ответ агента содержит ключевые слова.
                         </DialogDescription>
@@ -251,7 +304,9 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl border-zinc-200 h-10 hover:bg-zinc-50">Отмена</Button>
-                        <Button onClick={handleAddTestCase} className="rounded-xl h-10 bg-zinc-900 text-white hover:bg-zinc-800 shadow-md">Добавить</Button>
+                        <Button onClick={handleSaveTestCase} disabled={isAdding} className="rounded-xl h-10 bg-zinc-900 text-white hover:bg-zinc-800 shadow-md">
+                            {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingItem ? "Сохранить" : "Добавить")}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

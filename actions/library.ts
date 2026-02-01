@@ -3,6 +3,9 @@
 import { getCurrentUser } from "@/lib/session"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
+import { calculateFileCharge, saveFileProcessingCache } from "@/lib/file-charging"
+import { getBillingSystem } from "@/lib/billing-adapter"
+import crypto from "crypto"
 
 export interface LibraryItemWithChunks {
     id: string
@@ -12,21 +15,39 @@ export interface LibraryItemWithChunks {
     fileUrl: string | null
     fileSize: number | null
     mimeType: string | null
+    aiMetadata: {
+        ai_title?: string
+        category?: string
+        summary?: string
+        utility?: string
+        topics?: string[]
+    } | null
     createdAt: Date
     _count: {
         chunks: number
     }
 }
 
-export async function getLibraryItems(): Promise<LibraryItemWithChunks[]> {
+export async function getLibraryItems(options?: { search?: string }): Promise<LibraryItemWithChunks[]> {
     const user = await getCurrentUser()
     if (!user) return []
 
     try {
+        const whereClause: any = {
+            userId: user.id
+        }
+
+        // Add search filter if provided
+        if (options?.search && options.search.trim().length > 0) {
+            const searchTerm = options.search.trim()
+            whereClause.OR = [
+                { name: { contains: searchTerm, mode: 'insensitive' } },
+                { content: { contains: searchTerm, mode: 'insensitive' } }
+            ]
+        }
+
         const items = await prisma.libraryItem.findMany({
-            where: {
-                userId: user.id
-            },
+            where: whereClause,
             include: {
                 _count: {
                     select: { chunks: true }
@@ -37,7 +58,10 @@ export async function getLibraryItems(): Promise<LibraryItemWithChunks[]> {
             }
         })
 
-        return items as LibraryItemWithChunks[]
+        return items.map((item: any) => ({
+            ...item,
+            aiMetadata: item.aiMetadata ?? null
+        })) as LibraryItemWithChunks[]
     } catch (error) {
         console.error('[getLibraryItems] Database error:', error)
 
@@ -118,6 +142,45 @@ export async function createLibraryItem(data: {
     await ensureDevUser(user.id)
 
     try {
+        // Get billing system for user
+        const billing = await getBillingSystem(user.id)
+
+        // For FILES, calculate smart charging cost
+        let puCost = 0
+        let chargeInfo: any = null
+
+        if (data.type === 'FILE' && data.content) {
+            try {
+                // Calculate file charge (duplicate, version, new file, etc.)
+                const content = Buffer.from(data.content)
+                const contentTokens = Math.ceil(data.content.length / 4) // Rough estimation
+
+                const charge = await calculateFileCharge(
+                    `user-${user.id}`, // Use userId as "agentId" for library
+                    data.name,
+                    content,
+                    contentTokens
+                )
+
+                puCost = charge.puCost
+                chargeInfo = charge
+
+                // Check balance before proceeding
+                const hasBalance = await billing.checkBalance(user.id, puCost)
+                if (!hasBalance) {
+                    return {
+                        success: false,
+                        error: `Недостаточно PU. Требуется: ${puCost.toFixed(4)} PU`,
+                        requiredPu: puCost
+                    }
+                }
+            } catch (chargeError) {
+                console.warn('[createLibraryItem] Charge calculation failed, proceeding without cost:', chargeError)
+                puCost = 0 // Continue without charge if calculation fails
+            }
+        }
+
+        // Create library item
         const item = await prisma.libraryItem.create({
             data: {
                 userId: user.id,
@@ -137,8 +200,52 @@ export async function createLibraryItem(data: {
             }
         })
 
+        // Deduct PU if applicable
+        if (puCost > 0 && data.type === 'FILE') {
+            try {
+                // Calculate content hash for caching
+                const contentHash = crypto
+                    .createHash('sha256')
+                    .update(data.content || '')
+                    .digest('hex')
+
+                // Deduct PU from user balance
+                await billing.deductUsage(user.id, puCost, {
+                    source: 'FILE_UPLOAD',
+                    description: `Загрузка файла: ${data.name}`,
+                    metadata: {
+                        libraryItemId: item.id,
+                        fileName: data.name,
+                        fileSize: data.fileSize,
+                        chargeReason: chargeInfo?.reason,
+                        chargePercentage: chargeInfo?.chargePercentage,
+                    }
+                })
+
+                // Save to file processing cache
+                await saveFileProcessingCache(
+                    `user-${user.id}`,
+                    data.name,
+                    contentHash,
+                    data.fileSize || 0,
+                    data.chunks.length,
+                    puCost,
+                    chargeInfo?.chargePercentage || 100
+                )
+            } catch (deductError) {
+                console.error('[createLibraryItem] PU deduction failed:', deductError)
+                // Note: Item was already created, but charge failed
+                // In production, might want to rollback or notify admin
+            }
+        }
+
         revalidatePath('/dashboard/knowledge')
-        return { success: true, item }
+        return {
+            success: true,
+            item,
+            puCharged: puCost,
+            chargeInfo
+        }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         console.error("Failed to create library item:", errorMessage)

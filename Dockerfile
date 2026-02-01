@@ -76,6 +76,11 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# COPY full node_modules from builder to ensure prisma CLI is available for migrations
+# (Standalone often excludes dev-dependencies or CLI tools even if in dependencies)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+
+
 USER nextjs
 
 EXPOSE 3000

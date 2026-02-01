@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { User, Shield, Plus, X, Wand2, Save, FileText, Loader2, RefreshCw, Send } from "lucide-react"
+import { User, Shield, Plus, X, Wand2, Save, FileText, Loader2, RefreshCw, Send, Bug } from "lucide-react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     Dialog,
     DialogContent,
@@ -80,12 +81,14 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
 
     const toneOptions = [
+        { value: "official", label: t('official') },
         { value: "friendly", label: t('friendly') },
         { value: "professional", label: t('professional') },
         { value: "concise", label: t('concise') },
         { value: "humorous", label: t('humorous') },
         { value: "empathetic", label: t('empathetic') },
         { value: "formal", label: t('formal') },
+        { value: "casual", label: t('casual') },
     ]
 
     const [isLoading, setIsLoading] = React.useState(true)
@@ -96,6 +99,12 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     const [showRestartDialog, setShowRestartDialog] = React.useState(false)
     const [isRestarting, setIsRestarting] = React.useState(false)
     const [isNewVersion, setIsNewVersion] = React.useState(false)
+
+    // Debug prompts state
+    const [platformPrompt, setPlatformPrompt] = React.useState<string | null>(null)
+    const [promptPreview, setPromptPreview] = React.useState<string | null>(null)
+    const [isLoadingDebug, setIsLoadingDebug] = React.useState(false)
+    const [debugTab, setDebugTab] = React.useState<string>("platform")
 
     // Check Telegram connection
     const { agents, refreshAgents } = useUserData()
@@ -257,6 +266,38 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
 
         loadBehaviorData()
     }, [agentId, orchestratorUrl, form])
+
+    // Load debug prompts
+    const loadDebugPrompts = React.useCallback(async () => {
+        const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+        if (!gatewayUrl) return
+
+        setIsLoadingDebug(true)
+        try {
+            // Load platform core prompt
+            const platformRes = await fetch(`${gatewayUrl}/api/v1/system-prompts/platform_core`)
+            if (platformRes.ok) {
+                const data = await platformRes.json()
+                setPlatformPrompt(data.content || data.prompt || null)
+            }
+
+            // Load assembled prompt preview
+            const previewRes = await fetch(`${gatewayUrl}/api/v1/system-prompts/agents/${agentId}/prompt-preview`)
+            if (previewRes.ok) {
+                const data = await previewRes.json()
+                setPromptPreview(data.fullPrompt || data.preview || data.prompt || data.content || null)
+            }
+        } catch (err) {
+            console.error("Error loading debug prompts:", err)
+        } finally {
+            setIsLoadingDebug(false)
+        }
+    }, [agentId])
+
+    // Load debug prompts on mount
+    React.useEffect(() => {
+        loadDebugPrompts()
+    }, [loadDebugPrompts])
 
     const handleSave = async (data: BehaviorFormData) => {
         if (!orchestratorUrl) {
@@ -561,6 +602,70 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             <FileText className="h-5 w-5" /> {t('systemInstructions')}
                         </h3>
 
+                        {/* Debug: Platform Prompts */}
+                        <Card className="border border-amber-200/50 bg-amber-50/30 shadow-none rounded-2xl">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-amber-800 flex items-center gap-2">
+                                    <Bug className="h-4 w-4" />
+                                    Debug: Системные промпты
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                                <Tabs value={debugTab} onValueChange={setDebugTab}>
+                                    <TabsList className="bg-amber-100/50 p-1 rounded-xl h-9 mb-3">
+                                        <TabsTrigger
+                                            value="platform"
+                                            className="rounded-lg text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                                        >
+                                            Техническая инструкция
+                                        </TabsTrigger>
+                                        <TabsTrigger
+                                            value="preview"
+                                            className="rounded-lg text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                                        >
+                                            Собранный промпт
+                                        </TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="platform" className="mt-0">
+                                        {isLoadingDebug ? (
+                                            <Skeleton className="h-32 w-full rounded-xl" />
+                                        ) : platformPrompt ? (
+                                            <div className="bg-white border border-amber-200/50 rounded-xl p-4">
+                                                <pre className="text-xs font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                                                    {platformPrompt}
+                                                </pre>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-amber-600 italic">Техническая инструкция не загружена</p>
+                                        )}
+                                    </TabsContent>
+                                    <TabsContent value="preview" className="mt-0">
+                                        {isLoadingDebug ? (
+                                            <Skeleton className="h-32 w-full rounded-xl" />
+                                        ) : promptPreview ? (
+                                            <div className="bg-white border border-amber-200/50 rounded-xl p-4">
+                                                <pre className="text-xs font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                                                    {promptPreview}
+                                                </pre>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-amber-600 italic">Собранный промпт недоступен</p>
+                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={loadDebugPrompts}
+                                            disabled={isLoadingDebug}
+                                            className="mt-2 text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100"
+                                        >
+                                            <RefreshCw className={cn("h-3 w-3 mr-1", isLoadingDebug && "animate-spin")} />
+                                            Обновить
+                                        </Button>
+                                    </TabsContent>
+                                </Tabs>
+                            </CardContent>
+                        </Card>
+
                         {/* Role Definition */}
                         <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
                             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
@@ -602,7 +707,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             </CardHeader>
                             <CardContent className="pb-6">
                                 <Textarea
-                                    className="min-h-[150px] font-mono text-sm leading-relaxed border-transparent bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all rounded-xl resize-none text-zinc-800"
+                                    className="min-h-[450px] font-mono text-sm leading-relaxed border-transparent bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all rounded-xl resize-none text-zinc-800"
                                     {...form.register("systemPrompt")}
                                 />
                             </CardContent>

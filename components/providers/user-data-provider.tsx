@@ -91,25 +91,49 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
             const agentsData = await agentsResponse.json()
 
+            // When orchestrator is the primary source, it may not return telegram_token.
+            // Fetch tokens from local DB to supplement.
+            let localTokens: Record<string, string> = {}
+            if (orchestratorUrl) {
+                try {
+                    const localRes = await fetch('/api/agents')
+                    if (localRes.ok) {
+                        const localAgents = await localRes.json()
+                        if (Array.isArray(localAgents)) {
+                            for (const a of localAgents) {
+                                if (a.telegramToken) {
+                                    localTokens[a.id] = a.telegramToken
+                                }
+                            }
+                        }
+                    }
+                } catch {
+                    // Local DB unavailable — continue without tokens
+                }
+            }
+
             // Нормализуем данные (snake_case -> camelCase)
-            const normalizedAgents = (Array.isArray(agentsData) ? agentsData : []).map((agent: any) => ({
-                id: agent.id,
-                name: agent.name,
-                role: agent.role,
-                description: agent.description,
-                systemPrompt: agent.system_prompt || agent.systemPrompt || '',
-                telegramToken: agent.telegram_token || agent.telegramToken,
-                avatarEmoji: agent.avatar_emoji || agent.avatarEmoji,
-                isTelegramConnected: agent.is_telegram_connected || agent.isTelegramConnected || !!(agent.telegram_token || agent.telegramToken),
-                status: agent.status || 'STOPPED',
-                containerId: agent.container_id || agent.containerId,
-                createdAt: agent.created_at || agent.createdAt,
-                updatedAt: agent.updated_at || agent.updatedAt,
-                // Statistics
-                totalDialogs: agent.total_dialogs || agent.totalDialogs || 0,
-                dialogsToday: agent.dialogs_today || agent.dialogsToday || 0,
-                source: (agent.telegram_token || agent.telegramToken ? 'telegram' : null) as 'telegram' | 'whatsapp' | 'web' | null,
-            }))
+            const normalizedAgents = (Array.isArray(agentsData) ? agentsData : []).map((agent: any) => {
+                const token = agent.telegram_token || agent.telegramToken || localTokens[agent.id] || undefined
+                return {
+                    id: agent.id,
+                    name: agent.name,
+                    role: agent.role,
+                    description: agent.description,
+                    systemPrompt: agent.system_prompt || agent.systemPrompt || '',
+                    telegramToken: token,
+                    avatarEmoji: agent.avatar_emoji || agent.avatarEmoji,
+                    isTelegramConnected: agent.is_telegram_connected || agent.isTelegramConnected || !!token,
+                    status: agent.status || 'STOPPED',
+                    containerId: agent.container_id || agent.containerId,
+                    createdAt: agent.created_at || agent.createdAt,
+                    updatedAt: agent.updated_at || agent.updatedAt,
+                    // Statistics
+                    totalDialogs: agent.total_dialogs || agent.totalDialogs || 0,
+                    dialogsToday: agent.dialogs_today || agent.dialogsToday || 0,
+                    source: (token ? 'telegram' : null) as 'telegram' | 'whatsapp' | 'web' | null,
+                }
+            })
 
             setAgents(normalizedAgents)
 

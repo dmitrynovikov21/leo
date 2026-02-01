@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Bot, LineChart, MessageSquare, Settings, Sparkles, Wifi } from "lucide-react"
+import { Bot, LineChart, MessageSquare, Settings, Sparkles, Wifi, AlertTriangle } from "lucide-react"
 import { EmojiAvatar } from "@/components/shared/emoji-avatar"
 import { useUserData } from "@/components/providers/user-data-provider"
 
@@ -53,6 +53,12 @@ export default function AgentLayout({ children }: AgentLayoutProps) {
             title: t('knowledge'),
             href: `${baseUrl}/knowledge`,
             icon: Bot,
+            exact: false,
+        },
+        {
+            title: t('conflicts'),
+            href: `${baseUrl}/conflicts`,
+            icon: AlertTriangle,
             exact: false,
         },
         {

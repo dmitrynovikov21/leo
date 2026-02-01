@@ -2,9 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, Check, Plus, Trash2 } from "lucide-react"
-
-
+import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, ChevronDown, Check, Plus, Trash2, FileText, Image } from "lucide-react"
 
 import { createLibraryItem, getLibraryItems, deleteLibraryItem, updateLibraryItem, clearLibrary, type LibraryItemWithChunks } from "@/actions/library"
 
@@ -14,6 +12,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmojiAvatar } from "@/components/shared/emoji-avatar"
 import { SpaceSelector } from "@/components/knowledge/space-selector"
+import { FolderSelector } from "@/components/knowledge/folder-selector"
+import { AgentKnowledgeView } from "@/components/knowledge/agent-knowledge-view"
+import { useUserData } from "@/components/providers/user-data-provider"
+
 import { DocumentsTable } from "@/components/knowledge/documents-table"
 import { UploadDialog } from "@/components/knowledge/upload-dialog"
 import { NoteEditorDialog } from "@/components/knowledge/note-editor-dialog"
@@ -39,21 +41,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-
-// Document type for UI display
-interface Document {
-    id: string
-    name: string
-    type: 'pdf' | 'docx' | 'txt' | 'md' | 'spreadsheet' | 'folder' | 'note'
-    size: string
-    chunksCount: number
-    tokensUsage: number
-    status: 'ready' | 'processing' | 'error' | 'vectorized'
-    updatedAt: string
-    errorMessage?: string
-    parentId?: string | null
-    content?: string
-}
+import type { Document } from "@/mocks/documents"
 
 // Helper to format bytes
 function formatBytes(bytes: number) {
@@ -100,7 +88,8 @@ function libraryItemToDocument(item: LibraryItemWithChunks): Document {
         status: item._count.chunks > 0 ? 'ready' : 'processing',
         updatedAt,
         parentId: null, // No folder structure in current schema
-        content: item.content || undefined
+        content: item.content || undefined,
+        aiMetadata: (item.aiMetadata as Document['aiMetadata']) || null
     }
 }
 
@@ -112,6 +101,11 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
         initialItems.length > 0 ? initialItems.map(libraryItemToDocument) : []
     )
 
+    // Folder Switcher State
+    const { agents } = useUserData()
+    const [selectedSpace, setSelectedSpace] = React.useState<string>('global')
+    const [agentLastUpdated, setAgentLastUpdated] = React.useState<number>(Date.now())
+
     // Sync state with server props when they change (e.g. after revalidatePath)
     React.useEffect(() => {
         setDocuments(initialItems.length > 0 ? initialItems.map(libraryItemToDocument) : [])
@@ -119,47 +113,39 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
 
     const [isLoading, setIsLoading] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
+    const [searchQuery, setSearchQuery] = React.useState("")
 
     // Drag & Drop State
     const [isDraggingGlobal, setIsDraggingGlobal] = React.useState(false)
+    const dragCounter = React.useRef(0)
     const [droppedFiles, setDroppedFiles] = React.useState<File[]>([])
     const [isUploadDialogOpen, setIsUploadDialogOpen] = React.useState(false)
     const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
     const [selectedNote, setSelectedNote] = React.useState<Document | null>(null)
 
+    // Load documents function (loads all data once, search is client-side)
+    const loadDocuments = React.useCallback(async () => {
+        try {
+            setIsLoading(true)
+            const items = await getLibraryItems()
+            const docs = items.map(libraryItemToDocument)
+            setDocuments(docs)
+        } catch (err) {
+            console.error('Failed to load documents:', err)
+            setError('Не удалось загрузить документы')
+            setDocuments([])
+        } finally {
+            setIsLoading(false)
+        }
+    }, [])
+
     // Load documents on mount
     React.useEffect(() => {
-        async function loadDocuments() {
-            try {
-                setIsLoading(true)
-                const items = await getLibraryItems()
-
-                if (items.length > 0) {
-                    // Use real data from database
-                    const docs = items.map(libraryItemToDocument)
-                    setDocuments(docs)
-                } else {
-                    // DEV MODE: Use mock data for design testing
-                    const { mockDocuments } = await import("@/mocks/documents")
-                    setDocuments(mockDocuments as Document[])
-                }
-            } catch (err) {
-                console.error('Failed to load documents:', err)
-                // Fallback to mocks on error
-                const { mockDocuments } = await import("@/mocks/documents")
-                setDocuments(mockDocuments as Document[])
-            } finally {
-                setIsLoading(false)
-            }
-        }
         loadDocuments()
-    }, [])
+    }, [loadDocuments])
 
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
-    const [isCreateOpen, setIsCreateOpen] = React.useState(false)
-    const [isCreateSpaceOpen, setIsCreateSpaceOpen] = React.useState(false)
-    const [newSpaceEmoji, setNewSpaceEmoji] = React.useState("📁")
 
     const handleCreateNote = async (noteData: { title: string, content: string }) => {
         try {
@@ -201,8 +187,6 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
             toast.error("Ошибка при создании заметки")
         }
     }
-
-
 
     const handleUpdateNote = async (noteData: { id: string, title: string, content: string }) => {
         try {
@@ -260,18 +244,30 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     }
 
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
-    const [filterType, setFilterType] = React.useState<'all' | 'folder' | 'document' | 'spreadsheet' | 'note'>('all')
+    const [filterType, setFilterType] = React.useState<'all' | 'document' | 'image' | 'note'>('all')
 
     // Filter documents based on current folder
     const currentDocuments = documents.filter(doc => doc.parentId === currentFolderId)
     const currentFolder = documents.find(d => d.id === currentFolderId)
 
-    // Apply type filter
-    const filteredDocuments = currentDocuments.filter(doc => {
+    // Separate notes from other documents
+    const notes = currentDocuments.filter(doc => doc.type === 'note')
+    const nonNoteDocuments = currentDocuments.filter(doc => doc.type !== 'note')
+
+    // Apply search filter to non-note documents only (client-side, by name only)
+    const searchFilteredDocuments = searchQuery.trim()
+        ? nonNoteDocuments.filter(doc =>
+            doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : nonNoteDocuments
+
+    // Apply type filter (excluding notes since they're shown separately)
+    const filteredDocuments = searchFilteredDocuments.filter(doc => {
         if (filterType === 'all') return true
-        if (filterType === 'document') return ['pdf', 'docx', 'txt'].includes(doc.type)
-        if (filterType === 'note') return ['md', 'note'].includes(doc.type)
-        return doc.type === filterType
+        if (filterType === 'document') return ['pdf', 'docx', 'txt', 'md'].includes(doc.type)
+        if (filterType === 'image') return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type)
+        if (filterType === 'note') return doc.type === 'note'
+        return true
     })
 
     const handleFileClick = (doc: Document) => {
@@ -294,6 +290,51 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
         setCurrentFolderId(null)
     }
 
+    const handleGlobalDragEnter = (e: React.DragEvent) => {
+        e.preventDefault()
+        dragCounter.current++
+        if (dragCounter.current === 1) setIsDraggingGlobal(true)
+    }
+
+    const handleGlobalDragOver = (e: React.DragEvent) => {
+        e.preventDefault()
+    }
+
+    const handleGlobalDragLeave = (e: React.DragEvent) => {
+        e.preventDefault()
+        dragCounter.current--
+        if (dragCounter.current <= 0) {
+            dragCounter.current = 0
+            setIsDraggingGlobal(false)
+        }
+    }
+
+    const handleGlobalDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        dragCounter.current = 0
+        setIsDraggingGlobal(false)
+
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const files = Array.from(e.dataTransfer.files)
+            setDroppedFiles(files)
+            setIsUploadDialogOpen(true)
+        }
+    }
+
+    // Reset dragging state on special conditions
+    React.useEffect(() => {
+        const resetDragging = () => {
+            dragCounter.current = 0
+            setIsDraggingGlobal(false)
+        }
+        window.addEventListener('dragend', resetDragging)
+        window.addEventListener('blur', resetDragging)
+        return () => {
+            window.removeEventListener('dragend', resetDragging)
+            window.removeEventListener('blur', resetDragging)
+        }
+    }, [])
+
     if (isLoading) {
         return (
             <div className="h-full flex flex-col space-y-6 p-6">
@@ -310,36 +351,13 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
         )
     }
 
-    // Global Drag & Drop Handlers
-    const handleGlobalDragOver = (e: React.DragEvent) => {
-        e.preventDefault()
-        if (!isDraggingGlobal) setIsDraggingGlobal(true)
-    }
-
-    const handleGlobalDragLeave = (e: React.DragEvent) => {
-        e.preventDefault()
-        // Simple check to avoid flickering when dragging over child elements
-        if (e.currentTarget.contains(e.relatedTarget as Node)) return
-        setIsDraggingGlobal(false)
-    }
-
-    const handleGlobalDrop = (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDraggingGlobal(false)
-
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files)
-            setDroppedFiles(files)
-            setIsUploadDialogOpen(true)
-        }
-    }
-
-    const notes = documents.filter(doc => doc.type === 'note');
     const notesCount = notes.length;
+    const filesCount = nonNoteDocuments.length;
 
     return (
         <div
-            className="flex flex-col min-h-full w-full relative bg-zinc-50/50"
+            className="flex flex-1 flex-col gap-6 p-6 relative"
+            onDragEnter={handleGlobalDragEnter}
             onDragOver={handleGlobalDragOver}
             onDragLeave={handleGlobalDragLeave}
             onDrop={handleGlobalDrop}
@@ -364,6 +382,11 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 open={isUploadDialogOpen}
                 onOpenChange={setIsUploadDialogOpen}
                 externalFiles={droppedFiles}
+                agentId={selectedSpace !== 'global' ? selectedSpace : undefined}
+                onUploadComplete={() => {
+                    loadDocuments()
+                    setAgentLastUpdated(Date.now())
+                }}
             />
 
             <NoteEditorDialog
@@ -401,87 +424,158 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 }}
             />
 
-            {/* Header Section - Sticky */}
-            <div className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-sm flex-none p-6 pb-2 space-y-6">
+            {/* Header Section */}
+            <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">База знаний</h1>
-                        <p className="text-zinc-500 mt-1 flex items-center gap-2 text-sm font-medium">
-                            {documents.length} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
-                        </p>
+                        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+                            {selectedSpace === 'global' ? 'База знаний' : `agent — ${agents.find(a => a.id === selectedSpace)?.name || 'Агент'}`}
+                        </h1>
+                        {selectedSpace === 'global' && (
+                            <p className="text-sm text-muted-foreground">
+                                {filesCount} Файлов <span className="text-zinc-300">•</span> {notesCount} Заметок
+                            </p>
+                        )}
                     </div>
                 </div>
-
-                <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Все ресурсы</h3>
-
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Input
-                                placeholder="Поиск файлов..."
-                                className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
-                            />
-                        </div>
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">
-                            <Filter className="h-4 w-4 mr-2" />
-                            Фильтр
-                        </Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
-                                    <Plus className="h-4 w-4 mr-1.5" />
-                                    Добавить
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
-                                <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
-                                    Действия
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => { setIsUploadDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-50 focus:bg-zinc-50 focus:text-zinc-900">
-                                    <div className="p-1.5 rounded-md bg-zinc-100 mr-3 text-zinc-500 group-hover:text-zinc-900 transition-colors">
-                                        <UploadCloud className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Загрузить файлы</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-amber-50 focus:bg-amber-50 focus:text-amber-900">
-                                    <div className="p-1.5 rounded-md bg-amber-100 mr-3 text-amber-600">
-                                        <Sparkles className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium text-amber-900">Создать заметку</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                <DropdownMenuItem
-                                    onClick={async () => {
-                                        if (confirm('Вы уверены? Это удалит ВСЕ файлы и заметки.')) {
-                                            await clearLibrary();
-                                            toast.success('База данных очищена');
-                                        }
-                                    }}
-                                    className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-red-50 focus:bg-red-50 focus:text-red-900"
-                                >
-                                    <div className="p-1.5 rounded-md bg-red-100 mr-3 text-red-600">
-                                        <Trash2 className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium text-red-900">Очистить базу</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem disabled className="rounded-lg py-2.5 px-3 opacity-50 cursor-not-allowed">
-                                    <div className="p-1.5 rounded-md bg-zinc-100 mr-3">
-                                        <Zap className="h-4 w-4 text-zinc-400" />
-                                    </div>
-                                    <span>Подключить таблицу</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                <div>
+                    <FolderSelector
+                        value={selectedSpace}
+                        onValueChange={setSelectedSpace}
+                        agents={agents}
+                    />
                 </div>
             </div>
 
-            {/* Scrollable Content Area */}
-            <div className="flex-1 px-6 pb-20">
-                <div className="space-y-8">
-                    {/* Important Notes Section */}
-                    {
-                        notes.length > 0 && (
+            {/* Controls Section (always visible) */}
+            <div className="flex items-center justify-between gap-4">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider">Все ресурсы</h3>
+
+                <div className="flex items-center gap-3">
+                    <div className="relative">
+                        <Input
+                            placeholder="Поиск файлов..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
+                        />
+                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className={cn(
+                                "h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm",
+                                filterType !== 'all' && "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:border-zinc-800 hover:text-white"
+                            )}>
+                                <Filter className="h-4 w-4 mr-2" />
+                                {filterType === 'all' ? 'Все типы' :
+                                    filterType === 'document' ? 'Документы' :
+                                        filterType === 'image' ? 'Изображения' :
+                                            filterType === 'note' ? 'Заметки' : 'Все типы'}
+                                <ChevronDown className="h-4 w-4 ml-2" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-zinc-100">
+                            <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                Тип контента
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={() => setFilterType('all')}
+                                className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-zinc-100")}
+                            >
+                                <div className="flex items-center gap-3 w-full">
+                                    <Filter className="h-4 w-4 text-zinc-500" />
+                                    <span className="font-medium">Все типы</span>
+                                    {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => setFilterType('document')}
+                                className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-zinc-100")}
+                            >
+                                <div className="flex items-center gap-3 w-full">
+                                    <FileText className="h-4 w-4 text-blue-500" />
+                                    <span className="font-medium">Документы</span>
+                                    {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => setFilterType('image')}
+                                className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-zinc-100")}
+                            >
+                                <div className="flex items-center gap-3 w-full">
+                                    <Image className="h-4 w-4 text-purple-500" />
+                                    <span className="font-medium">Изображения</span>
+                                    {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                </div>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
+                                <Plus className="h-4 w-4 mr-1.5" />
+                                Добавить
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
+                            <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                Действия
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => { setIsUploadDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-50 focus:bg-zinc-50 focus:text-zinc-900">
+                                <div className="p-1.5 rounded-md bg-zinc-100 mr-3 text-zinc-500 group-hover:text-zinc-900 transition-colors">
+                                    <UploadCloud className="h-4 w-4" />
+                                </div>
+                                <span className="font-medium">Загрузить файлы</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-amber-50 focus:bg-amber-50 focus:text-amber-900">
+                                <div className="p-1.5 rounded-md bg-amber-100 mr-3 text-amber-600">
+                                    <Sparkles className="h-4 w-4" />
+                                </div>
+                                <span className="font-medium text-amber-900">Создать заметку</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    if (confirm('Вы уверены? Это удалит ВСЕ файлы и заметки.')) {
+                                        await clearLibrary();
+                                        toast.success('База данных очищена');
+                                    }
+                                }}
+                                className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-red-50 focus:bg-red-50 focus:text-red-900"
+                            >
+                                <div className="p-1.5 rounded-md bg-red-100 mr-3 text-red-600">
+                                    <Trash2 className="h-4 w-4" />
+                                </div>
+                                <span className="font-medium text-red-900">Очистить базу</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem disabled className="rounded-lg py-2.5 px-3 opacity-50 cursor-not-allowed">
+                                <div className="p-1.5 rounded-md bg-zinc-100 mr-3">
+                                    <Zap className="h-4 w-4 text-zinc-400" />
+                                </div>
+                                <span>Подключить таблицу</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            {selectedSpace !== 'global' ? (
+                <div className="flex-1 -mx-6">
+                    <AgentKnowledgeView
+                        key={selectedSpace}
+                        agentId={selectedSpace}
+                        hideHeader
+                        searchQuery={searchQuery}
+                        filterType={filterType}
+                        lastUpdated={agentLastUpdated}
+                    />
+                </div>
+            ) : (
+                <>
+                    {/* Content Area for Global */}
+                    <div className="space-y-8">
+                        {/* Important Notes Section */}
+                        {notes.length > 0 && (
                             <div className="space-y-3">
                                 <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
                                     <Sparkles className="h-4 w-4" /> Важные заметки (Высокий приоритет)
@@ -501,19 +595,19 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                                     ))}
                                 </div>
                             </div>
-                        )
-                    }
+                        )}
 
-                    {/* Files Table */}
-                    <div className="pb-10">
-                        <DocumentsTable
-                            docs={filteredDocuments}
-                            onRowClick={handleFileClick}
-                            onDelete={(doc) => handleDelete(doc.id)}
-                        />
+                        {/* Files Table */}
+                        <div className="pb-10">
+                            <DocumentsTable
+                                docs={filteredDocuments}
+                                onRowClick={handleFileClick}
+                                onDelete={(doc) => handleDelete(doc.id)}
+                            />
+                        </div>
                     </div>
-                </div>
-            </div>
+                </>
+            )}
         </div>
     )
 }

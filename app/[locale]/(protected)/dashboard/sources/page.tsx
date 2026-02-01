@@ -57,66 +57,70 @@ const SOURCES: SourceCard[] = [
 
 export default function SourcesPage() {
     return (
-        <div className="space-y-6 max-w-5xl p-6">
+        <div className="flex flex-1 flex-col gap-6 p-6">
             {/* Page Header */}
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Источники коммуникации</h2>
-                <p className="text-muted-foreground mt-1">
-                    Управление подключенными каналами для всех ваших агентов.
-                </p>
+            <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Источники коммуникации</h1>
+                    <p className="text-sm text-muted-foreground">
+                        Управление подключенными каналами для всех ваших агентов.
+                    </p>
+                </div>
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {SOURCES.map((source) => (
                     <Card
                         key={source.id}
                         className={cn(
-                            "group flex flex-col h-full transition-all duration-200 border-zinc-200/50 shadow-sm rounded-2xl bg-white overflow-hidden",
+                            "group flex flex-col h-full transition-all duration-200 border-zinc-200/50 shadow-sm rounded-xl bg-white overflow-hidden",
                             source.status === 'active' ? "hover:shadow-md hover:border-zinc-300" : "opacity-70 bg-white grayscale-[0.5]"
                         )}
                     >
-                        <CardHeader className="pb-4">
-                            <div className={cn(
-                                "h-12 w-12 rounded-xl flex items-center justify-center mb-4 transition-colors",
-                                "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
-                            )}>
-                                <source.icon className={cn("h-6 w-6", source.color)} />
+                        <CardHeader className="pb-3 p-4">
+                            <div className="flex items-center gap-3 mb-1">
+                                <div className={cn(
+                                    "h-8 w-8 rounded-lg flex items-center justify-center transition-colors shrink-0",
+                                    "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
+                                )}>
+                                    <source.icon className={cn("h-4 w-4", source.color)} />
+                                </div>
+                                <CardTitle className="text-base font-bold text-zinc-900 leading-tight">
+                                    {source.title}
+                                </CardTitle>
                             </div>
-                            <CardTitle className="text-lg font-bold text-zinc-900">
-                                {source.title}
-                            </CardTitle>
-                            <CardDescription className="text-sm text-zinc-500 mt-2 leading-relaxed">
+                            <CardDescription className="text-xs text-zinc-500 leading-relaxed">
                                 {source.description}
                             </CardDescription>
                         </CardHeader>
 
-                        <CardContent className="flex-1">
+                        <CardContent className="flex-1 p-4 pt-0">
                             {/* Spacer content if needed, currently empty to push footer down */}
                         </CardContent>
 
-                        <CardFooter className="pt-0 pb-6">
+                        <CardFooter className="pt-0 pb-4 p-4">
                             {source.status === 'active' ? (
                                 <Button
-                                    className="w-full rounded-xl h-10 font-medium shadow-none"
+                                    className="w-full rounded-lg h-9 text-xs font-medium shadow-none"
                                     variant={source.connected ? "outline" : "default"}
                                 >
                                     {source.connected ? (
                                         <>
-                                            <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                                            <CheckCircle2 className="mr-2 h-3 w-3 text-green-500" />
                                             Подключено
                                         </>
                                     ) : (
                                         <>
-                                            Подключить <ArrowRight className="ml-2 h-4 w-4" />
+                                            Подключить <ArrowRight className="ml-2 h-3 w-3" />
                                         </>
                                     )}
                                 </Button>
                             ) : (
-                                <div className="w-full flex items-center justify-center h-10">
+                                <div className="w-full flex items-center justify-center h-9">
                                     <Badge
                                         variant="secondary"
-                                        className="bg-zinc-100 text-zinc-500 hover:bg-zinc-100 border-zinc-200 px-3 py-1 rounded-lg"
+                                        className="bg-zinc-100 text-zinc-500 hover:bg-zinc-100 border-zinc-200 px-2.5 py-0.5 text-xs rounded-md"
                                     >
                                         Скоро
                                     </Badge>

@@ -96,8 +96,9 @@ export async function POST(req: Request) {
 
         const body = await req.json();
 
-        // Use URL from env directly (localhost:8081 works from host)
-        const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL;
+        // Server-side URL (for Docker: use host.docker.internal)
+        // Falls back to NEXT_PUBLIC_ for local dev without Docker
+        const orchestratorUrl = process.env.AGENT_ORCHESTRATOR_URL || process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL;
 
         if (!orchestratorUrl) {
             console.error("Orchestrator URL is not defined");

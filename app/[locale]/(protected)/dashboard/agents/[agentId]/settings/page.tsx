@@ -140,7 +140,7 @@ export default function AgentSettingsPage() {
             />
 
             {/* Danger Zone */}
-            <FriendlyDangerZone />
+            {/* <FriendlyDangerZone /> */}
         </div>
     )
 }

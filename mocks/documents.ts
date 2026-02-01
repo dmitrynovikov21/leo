@@ -1,9 +1,18 @@
 export type DocumentStatus = 'ready' | 'processing' | 'error' | 'vectorized';
 
+// AI Metadata structure for file passport
+export interface AIMetadata {
+    ai_title: string;
+    category: string;
+    summary: string;
+    utility: string;
+    topics: string[];
+}
+
 export interface Document {
     id: string;
     name: string;
-    type: 'pdf' | 'docx' | 'txt' | 'md' | 'spreadsheet' | 'folder' | 'note';
+    type: 'pdf' | 'docx' | 'txt' | 'md' | 'spreadsheet' | 'folder' | 'note' | string;
     size: string;
     chunksCount: number;
     tokensUsage: number;
@@ -12,7 +21,8 @@ export interface Document {
     description?: string;
     content?: string;
     errorMessage?: string;
-    parentId?: string | null; // For folder structure
+    parentId?: string | null;
+    aiMetadata?: AIMetadata | null; // AI-generated file passport
 }
 
 export const mockDocuments: Document[] = [

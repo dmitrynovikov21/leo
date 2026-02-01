@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { toast } from "sonner"
-import { Loader2, Pencil, Save, Sparkles, ToggleLeft, ToggleRight } from "lucide-react"
+import { Loader2, Pencil, Save, Sparkles, ToggleLeft, ToggleRight, Code, Info, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -25,7 +25,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 import {
     getSystemPrompts,
@@ -66,6 +65,34 @@ export default function AdminPromptsPage() {
     React.useEffect(() => {
         loadPrompts()
     }, [loadPrompts])
+
+    const [isResettingCache, setIsResettingCache] = React.useState(false)
+
+    const handleResetCache = async () => {
+        setIsResettingCache(true)
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+            if (!gatewayUrl) {
+                toast.error("Gateway URL не настроен")
+                return
+            }
+
+            const res = await fetch(`${gatewayUrl}/api/v1/system-prompts/refresh`, {
+                method: 'POST'
+            })
+
+            if (res.ok) {
+                toast.success("Кеш промптов успешно сброшен")
+            } else {
+                throw new Error("Failed to refresh cache")
+            }
+        } catch (error) {
+            console.error("Error resetting cache:", error)
+            toast.error("Не удалось сбросить кеш")
+        } finally {
+            setIsResettingCache(false)
+        }
+    }
 
     const handleSeedDefaults = async () => {
         setIsSeeding(true)
@@ -162,18 +189,32 @@ export default function AdminPromptsPage() {
                         Редактирование глобальных промптов для AI-генерации
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={handleSeedDefaults}
-                    disabled={isSeeding}
-                >
-                    {isSeeding ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Sparkles className="mr-2 h-4 w-4" />
-                    )}
-                    Добавить стандартные
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleResetCache}
+                        disabled={isResettingCache}
+                    >
+                        {isResettingCache ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        Сбросить кеш
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleSeedDefaults}
+                        disabled={isSeeding}
+                    >
+                        {isSeeding ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="mr-2 h-4 w-4" />
+                        )}
+                        Добавить стандартные
+                    </Button>
+                </div>
             </div>
 
             {/* Prompts List */}
@@ -229,11 +270,20 @@ export default function AdminPromptsPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="space-y-3">
                                 {prompt.description && (
-                                    <p className="text-sm text-muted-foreground mb-3">
+                                    <p className="text-sm text-muted-foreground">
                                         {prompt.description}
                                     </p>
+                                )}
+                                {prompt.usedIn && (
+                                    <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950 p-2 text-xs">
+                                        <Code className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                        <div>
+                                            <span className="font-medium text-blue-700 dark:text-blue-300">Используется в: </span>
+                                            <span className="text-blue-600 dark:text-blue-400 font-mono">{prompt.usedIn}</span>
+                                        </div>
+                                    </div>
                                 )}
                                 <div className="rounded-md bg-muted p-3 font-mono text-xs text-muted-foreground max-h-32 overflow-hidden">
                                     {prompt.content.slice(0, 300)}
@@ -247,15 +297,15 @@ export default function AdminPromptsPage() {
 
             {/* Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-                    <DialogHeader>
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+                    <DialogHeader className="shrink-0">
                         <DialogTitle>Редактировать промпт</DialogTitle>
                         <DialogDescription>
                             Измените содержимое системного промпта
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 pr-4">
+                    <div className="flex-1 overflow-y-auto pr-4 min-h-0">
                         <div className="space-y-4 py-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -291,6 +341,16 @@ export default function AdminPromptsPage() {
                                 />
                             </div>
 
+                            {editingPrompt?.usedIn && (
+                                <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950 p-3 text-sm">
+                                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <span className="font-medium text-blue-700 dark:text-blue-300">Используется в: </span>
+                                        <span className="text-blue-600 dark:text-blue-400 font-mono text-xs">{editingPrompt.usedIn}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="space-y-2">
                                 <Label htmlFor="content">Содержимое промпта *</Label>
                                 <Textarea
@@ -314,9 +374,9 @@ export default function AdminPromptsPage() {
                                 <Label htmlFor="isActive">Активен</Label>
                             </div>
                         </div>
-                    </ScrollArea>
+                    </div>
 
-                    <DialogFooter>
+                    <DialogFooter className="shrink-0">
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                             Отмена
                         </Button>

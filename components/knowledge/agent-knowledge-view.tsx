@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { UploadCloud, Zap, Sparkles, Filter, Plus, Trash2, BookOpen } from "lucide-react"
+import { UploadCloud, Zap, Sparkles, Filter, Plus, Trash2, BookOpen, ChevronDown, Check, FileText, Table as TableIcon, Image } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 
 import { getLibraryItems, getLibraryItemChunks, type LibraryItemWithChunks } from "@/actions/library"
+import { getAgentDocuments } from "@/actions/agent-knowledge"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +17,7 @@ import { UploadDialog } from "@/components/knowledge/upload-dialog"
 import { NoteEditorDialog } from "@/components/knowledge/note-editor-dialog"
 import { FileEditorDialog } from "@/components/knowledge/file-editor-dialog"
 import { TableEditorDialog } from "@/components/knowledge/table-editor-dialog"
+import { ConflictResolverDialog, type KnowledgeConflict } from "@/components/knowledge/conflict-resolver-dialog"
 import {
     Dialog,
     DialogContent,
@@ -34,6 +36,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { useUserData } from "@/components/providers/user-data-provider"
+import { cn } from "@/lib/utils"
 
 // Document type for UI display
 interface Document {
@@ -61,6 +64,10 @@ interface Note {
 
 interface AgentKnowledgeViewProps {
     agentId: string
+    hideHeader?: boolean
+    searchQuery?: string
+    filterType?: 'all' | 'document' | 'image' | 'note'
+    lastUpdated?: number
 }
 
 // Helper to format bytes
@@ -95,7 +102,7 @@ function mimeTypeToLabel(mimeType: string, filename?: string): string {
     return 'Файл'
 }
 
-export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
+export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = "", filterType = "all", lastUpdated = 0 }: AgentKnowledgeViewProps) {
     const t = useTranslations('Knowledge')
     const { data: session } = useSession()
 
@@ -103,7 +110,9 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [documents, setDocuments] = React.useState<Document[]>([])
     const [notes, setNotes] = React.useState<Note[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
+    const [isSearching, setIsSearching] = React.useState(false)
     const [internalAgentId, setInternalAgentId] = React.useState<string | null>(null) // Real UUID from DB
+
 
     // Drag & Drop State
     const [isDraggingGlobal, setIsDraggingGlobal] = React.useState(false)
@@ -114,7 +123,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
     const [agentName, setAgentName] = React.useState<string>("")
-    const [searchQuery, setSearchQuery] = React.useState("")
+
 
     // Library Import State
     const [isLibraryDialogOpen, setIsLibraryDialogOpen] = React.useState(false)
@@ -122,53 +131,78 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
     const [isLoadingLibrary, setIsLoadingLibrary] = React.useState(false)
     const [importingItem, setImportingItem] = React.useState<string | null>(null)
 
+
+    // Audit & Conflicts State
+    const [conflicts, setConflicts] = React.useState<KnowledgeConflict[]>([])
+    const [isAuditRunning, setIsAuditRunning] = React.useState(false)
+    const [selectedConflict, setSelectedConflict] = React.useState<KnowledgeConflict | null>(null)
+    const [isConflictDialogOpen, setIsConflictDialogOpen] = React.useState(false)
+
     // Get agent from shared context (same as layout)
     const { agents } = useUserData()
 
-    // Find agent on mount - use context instead of API call
     React.useEffect(() => {
         const agent = agents.find(a => a.id === agentId)
         if (agent) {
             setInternalAgentId(agent.id)
             setAgentName(agent.name)
+
+            setIsLoading(true)
+            Promise.all([
+                fetchDocuments(agent.id),
+                fetchNotes(agent.id),
+                fetchConflicts(agent.id)
+            ]).finally(() => {
+                setIsLoading(false)
+            })
         }
-    }, [agents, agentId])
+    }, [agents, agentId, lastUpdated])
 
     // Fetch documents from agent API using real ID or state
-    const fetchDocuments = React.useCallback(async (id?: string) => {
+    const fetchDocuments = React.useCallback(async (id?: string, search?: string) => {
         const targetId = id || internalAgentId
         if (!targetId) return
 
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) return
+            // Use server action to get documents from local DB (including AI metadata)
+            const result = await getAgentDocuments(targetId)
 
-            const response = await fetch(`${gatewayUrl}/api/v1/agents/${targetId}/documents`, {
-                cache: 'no-store',
-                headers: { 'Pragma': 'no-cache' }
+            // Filter by search if provided
+            let data = result
+            if (search && search.trim().length > 0) {
+                const q = search.trim().toLowerCase()
+                data = data.filter((d: any) =>
+                    d.name.toLowerCase().includes(q)
+                )
+            }
+
+            // Filter out notes (filename starts with note_) - they are shown separately
+            const filteredData = data.filter((d: any) => {
+                const filename = d.name || ''
+                return !filename.startsWith('note_')
             })
 
-            if (response.ok) {
-                const data = await response.json()
-                const normalizedDocs = data.map((d: any) => {
-                    const filename = d.filename || d.name || ''
-                    const rawMimeType = d.mime_type || d.mimeType || d.type || ''
-                    return {
-                        id: d.id,
-                        name: filename,
-                        type: mimeTypeToLabel(rawMimeType, filename),
-                        size: d.size ? formatBytes(d.size) : 'Unknown',
-                        chunksCount: d.chunks_count || 0,
-                        tokensUsage: (d.chunks_count || 0) * 500,
-                        updatedAt: d.created_at ? new Date(d.created_at).toLocaleDateString() : 'Только что',
-                        status: d.status || 'ready'
-                    }
-                })
-                setDocuments(normalizedDocs)
-            }
+            const normalizedDocs = filteredData.map((d: any) => {
+                const filename = d.name || ''
+                const rawMimeType = d.type || ''
+                return {
+                    id: d.id,
+                    name: filename,
+                    type: mimeTypeToLabel(rawMimeType, filename),
+                    size: typeof d.size === 'number' ? d.size : '0', // Action returns number or string from DB? DB is Int.
+                    chunksCount: d.chunksCount || 0,
+                    tokensUsage: (d.chunksCount || 0) * 500,
+                    updatedAt: d.updatedAt ? new Date(d.updatedAt).toLocaleDateString() : 'Только что',
+                    status: (d.status || 'ready') as any,
+                    aiMetadata: d.aiMetadata || null
+                }
+            })
+            setDocuments(normalizedDocs as Document[])
         } catch (error) {
             console.error('Error fetching documents:', error)
             toast.error("Не удалось загрузить документы")
+        } finally {
+            setIsSearching(false)
         }
     }, [internalAgentId])
 
@@ -191,89 +225,76 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }, [internalAgentId])
 
-    // Search handler
-    const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const query = e.target.value
-        setSearchQuery(query)
-
-        if (query.length < 2) {
-            fetchDocuments() // Reset to full list
-            return
-        }
+    // Fetch conflicts
+    const fetchConflicts = React.useCallback(async (id?: string) => {
+        const targetId = id || internalAgentId
+        if (!targetId) return
 
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) return
-            if (!internalAgentId) return
-
-            // Call backend search
-            const response = await fetch(`${gatewayUrl}/api/v1/documents/search`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    agentId: internalAgentId,
-                    query,
-                    limit: 10
-                })
-            })
-
+            const response = await fetch(`/api/v1/agents/${targetId}/kb/conflicts`)
             if (response.ok) {
                 const data = await response.json()
-                // The search result contains { results: [{ id, ... }] }
-                // We need to map these results back to our document structure or fetch details
-                // Ideally, we filter existing documents or replace the list.
-                // Assuming backend search returns basic doc metadata or we can match by ID.
-
-                // For now, let's trust backend returns list of matches. 
-                // However, search endpoint format in documents.routes.ts was:
-                // { results: [{ document: {...}, score: ... }] } - wait, checking documents.routes.ts
-                // chromaService.searchDocuments returns { id, content, metadata }
-
-                // Let's rely on matching IDs with currently loaded docs for full metadata, 
-                // or just display what we got.
-                // A better approach for UI: filter client side by name OR use backend search IDs.
-
-                // Simple approach: standard clientside filter + backend results
-                // Let's just do client side filter for now as per "simple" search unless user explicitly asked for content search
-                // "ищем по словами - даже если нашли совпадение в самом контент"
-                // Yes, user wants content search.
-
-                // The backend returns chunks. identifying documents from chunks is tricky if we don't store doc ID in metadata.
-                // Agent-documents.routes.ts stores: metadata: { source: filename, ... }
-                // So we can match by `source` (filename).
-
-                if (data.results) {
-                    const matchedFilenames = new Set(data.results.map((r: any) => r.metadata?.source))
-                    setDocuments(prev => prev.filter(d => matchedFilenames.has(d.name) || d.name.toLowerCase().includes(query.toLowerCase())))
-                    // Wait, filter on `prev` will reduce list until empty.
-                    // We need to search against *all* documents. 
-                    // But we don't keep 'allDocuments' in state.
-                    // Let's refetch to reset then filter? No, inefficient.
-
-                    // Okay, I will implement a simpler backend-only search that replaces the list.
-                    // But backend search results might not have all 'Document' fields (status, size etc).
-                    // We need to join.
-                    // For now, let's assume we search ONLY if query > 2 chars.
-                    // And we re-fetch all documents if query cleared.
-                    // And inside search, we do the filtering visually? 
-                    // "filteredDocuments" variable in render.
-                }
+                setConflicts(data || [])
             }
-        } catch (e) {
-            console.error("Search error", e)
+        } catch (error) {
+            console.error('Error fetching conflicts:', error)
+        }
+    }, [internalAgentId])
+
+    // Load documents/notes when agent ID becomes available - consolidated with the main effect above or handled by fetch calls
+    // But we need to handle initial load carefully
+    React.useEffect(() => {
+        if (!internalAgentId) return
+        // No need to setIsLoading(true) here as it might cause flickering on typing
+    }, [internalAgentId])
+
+    const handleRunAudit = async () => {
+        if (!internalAgentId) return
+        setIsAuditRunning(true)
+        toast.info("Запущен семантический аудит...", { description: "Это может занять некоторое время" })
+
+        try {
+            const response = await fetch(`/api/v1/agents/${internalAgentId}/kb/audit`, {
+                method: 'POST'
+            })
+
+            if (!response.ok) {
+                const err = await response.json()
+                throw new Error(err.message || "Audit failed")
+            }
+
+            const data = await response.json()
+            if (data.conflictsFound > 0) {
+                toast.warning(`Обнаружено ${data.conflictsFound} противоречий`)
+            } else {
+                toast.success("Противоречий не найдено")
+            }
+            fetchConflicts(internalAgentId || undefined)
+
+        } catch (error) {
+            toast.error("Ошибка аудита")
+            console.error(error)
+        } finally {
+            setIsAuditRunning(false)
         }
     }
 
-    // Load documents/notes when agent ID becomes available
+    const handleResolveConflict = (conflictId: string) => {
+        setConflicts(prev => prev.filter(c => c.id !== conflictId))
+        fetchDocuments(internalAgentId || undefined) // Refresh docs to show updated content
+    }
+
+    // Debounced search effect
     React.useEffect(() => {
-        const loadData = async () => {
-            if (!internalAgentId) return
-            setIsLoading(true)
-            await Promise.all([fetchDocuments(internalAgentId), fetchNotes(internalAgentId)])
-            setIsLoading(false)
-        }
-        loadData()
-    }, [internalAgentId, fetchDocuments, fetchNotes])
+        if (!internalAgentId) return
+
+        const debounceTimer = setTimeout(() => {
+            setIsSearching(true)
+            fetchDocuments(internalAgentId, searchQuery || undefined)
+        }, 300)
+
+        return () => clearTimeout(debounceTimer)
+    }, [searchQuery, internalAgentId, fetchDocuments])
 
     // Note handlers
     const handleSaveNote = async (noteData: { id?: string, title: string, content: string }) => {
@@ -283,6 +304,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
         try {
             const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
             if (!orchestratorUrl) {
                 toast.error("Orchestrator URL not configured")
                 return
@@ -301,6 +323,26 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
             )
 
             if (response.ok) {
+                // Also vectorize the note for RAG
+                if (gatewayUrl) {
+                    try {
+                        await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                agentId: internalAgentId,
+                                userId: session?.user?.id,
+                                filename: `note_${noteData.title}`,
+                                fileSize: noteData.content.length,
+                                mimeType: 'text/plain',
+                                chunks: [{ index: 0, text: noteData.content }],
+                            }),
+                        })
+                    } catch (vecErr) {
+                        console.warn('Note vectorization failed:', vecErr)
+                    }
+                }
+
                 toast.success(isEdit ? "Заметка обновлена" : "Заметка создана")
                 setIsNoteDialogOpen(false)
                 setSelectedNote(null)
@@ -379,6 +421,47 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
         setImportingItem(item.id)
         try {
+            // Check if this is a NOTE type - import as agent note
+            if (item.type?.toUpperCase() === 'NOTE') {
+                const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+                const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+                if (!orchestratorUrl) {
+                    toast.error("Orchestrator URL not configured")
+                    return
+                }
+
+                // Create as agent note
+                const noteResponse = await fetch(`${orchestratorUrl}/api/v1/agents/${internalAgentId}/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: item.name, content: item.content || '' }),
+                })
+
+                if (!noteResponse.ok) throw new Error('Failed to create note')
+
+                // Also vectorize for RAG
+                if (gatewayUrl && item.content) {
+                    await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            agentId: internalAgentId,
+                            userId: session?.user?.id,
+                            filename: `note_${item.name}`,
+                            fileSize: item.content.length,
+                            mimeType: 'text/plain',
+                            chunks: [{ index: 0, text: item.content }],
+                        }),
+                    })
+                }
+
+                toast.success('Заметка импортирована!')
+                setIsLibraryDialogOpen(false)
+                fetchNotes()
+                return
+            }
+
+            // Regular file import
             const chunks = await getLibraryItemChunks(item.id)
             if (!chunks || chunks.length === 0) {
                 toast.error("Файл не содержит чанков")
@@ -451,6 +534,17 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }
 
+    // Apply type filter to documents
+    const filteredDocuments = React.useMemo(() => {
+        return documents.filter(doc => {
+            if (filterType === 'all') return true
+            if (filterType === 'document') return ['pdf', 'docx', 'txt', 'md'].includes(doc.type)
+            if (filterType === 'image') return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type)
+            if (filterType === 'note') return doc.type === 'note'
+            return true
+        })
+    }, [documents, filterType])
+
     // File click handler
     const handleFileClick = async (doc: Document) => {
         if (doc.type === 'note') {
@@ -467,9 +561,19 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                     const response = await fetch(`${gatewayUrl}/api/v1/agents/${internalAgentId}/documents/${doc.id}`)
                     if (response.ok) {
                         const data = await response.json()
-                        // Combine chunks into text
-                        const content = (data.chunks || []).map((c: any) => c.text || c.content).join('\n\n')
-                        setEditingFile({ ...doc, content })
+                        // Map chunks to format expected by FileEditorDialog
+                        const chunks = (data.chunks || []).map((c: any, index: number) => ({
+                            id: c.id || `chunk-${index}`,
+                            content: c.text || c.content || '',
+                            chunkIndex: index
+                        }))
+                        // Pass chunks directly to the editor
+                        setEditingFile({
+                            ...doc,
+                            chunks,
+                            chunksCount: chunks.length,
+                            isAgentDocument: true // Flag to indicate this is from agent API
+                        })
                     } else {
                         setEditingFile(doc) // Fallback
                     }
@@ -510,6 +614,23 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         }
     }
 
+    const noteDocs = notes.map(n => ({
+        id: n.id,
+        name: n.title,
+        type: 'note' as const,
+        size: '-',
+        chunksCount: 1,
+        tokensUsage: 0,
+        status: 'ready' as const,
+        updatedAt: 'Только что',
+        content: n.content
+    }))
+
+    // Filter conflicts: Only show KB contradictions (audit) in this view
+    const kbConflicts = React.useMemo(() => {
+        return conflicts.filter(c => !Array.isArray(c.details))
+    }, [conflicts])
+
     // Loading state
     if (isLoading) {
         return (
@@ -527,18 +648,6 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
         )
     }
 
-    const noteDocs = notes.map(n => ({
-        id: n.id,
-        name: n.title,
-        type: 'note' as const,
-        size: '-',
-        chunksCount: 1,
-        tokensUsage: 0,
-        status: 'ready' as const,
-        updatedAt: 'Только что',
-        content: n.content
-    }))
-
     return (
         <div
             className="flex flex-col min-h-full w-full relative bg-background"
@@ -546,6 +655,8 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
             onDragLeave={handleGlobalDragLeave}
             onDrop={handleGlobalDrop}
         >
+
+
             {/* Drag Overlay */}
             {isDraggingGlobal && (
                 <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center pointer-events-none transition-all duration-300">
@@ -590,6 +701,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                 onOpenChange={(open) => !open && setEditingFile(null)}
                 file={editingFile}
                 onSave={handleSaveFile}
+                agentId={internalAgentId || undefined}
             />
 
             <TableEditorDialog
@@ -597,6 +709,17 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                 onOpenChange={(open) => !open && setEditingTable(null)}
                 file={editingTable}
                 onSave={(id, data) => setEditingTable(null)}
+            />
+
+            <ConflictResolverDialog
+                open={isConflictDialogOpen}
+                onOpenChange={(open) => {
+                    setIsConflictDialogOpen(open)
+                    if (!open) setSelectedConflict(null)
+                }}
+                conflict={selectedConflict}
+                onResolve={handleResolveConflict}
+                agentId={internalAgentId || ''}
             />
 
             {/* Library Import Dialog */}
@@ -626,7 +749,7 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                                         <div>
                                             <p className="font-medium">{item.name}</p>
                                             <p className="text-sm text-muted-foreground">
-                                                {item._count.chunks} чанков
+                                                {item._count.chunks} чанков • {item.fileSize ? formatBytes(item.fileSize) : '-'}
                                             </p>
                                         </div>
                                         <Badge variant={importingItem === item.id ? "secondary" : "outline"}>
@@ -641,72 +764,144 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
             </Dialog>
 
             {/* Header Section */}
-            <div className="relative bg-background flex-none p-6 pb-2 space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-                                {agentName ? `agent — ${agentName}` : 'База знаний агента'}
-                            </h1>
-                            {!internalAgentId && !isLoading && (
-                                <Badge variant="destructive" className="animate-pulse">
-                                    Ошибка подключения
-                                </Badge>
-                            )}
+            {!hideHeader && (
+                <div className="relative bg-background flex-none p-6 pb-2 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-3">
+                                <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+                                    {agentName ? `agent — ${agentName}` : 'База знаний агента'}
+                                </h1>
+                                {!internalAgentId && !isLoading && (
+                                    <Badge variant="destructive" className="animate-pulse">
+                                        Ошибка подключения
+                                    </Badge>
+                                )}
+                            </div>
+                            <p className="text-zinc-500 mt-2">
+                                Управляйте документами и заметками, которые формируют знания вашего агента.
+                            </p>
                         </div>
-                        <p className="text-zinc-500 mt-2">
-                            Управляйте документами и заметками, которые формируют знания вашего агента.
-                        </p>
                     </div>
-                </div>
 
-                <div className="flex items-center justify-end gap-4">
-                    <div className="flex items-center gap-3">
-                        <Input
-                            placeholder="Поиск файлов..."
-                            value={searchQuery}
-                            onChange={handleSearch}
-                            className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
-                        />
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm">
-                            <Filter className="h-4 w-4 mr-2" />
-                            Фильтр
-                        </Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
-                                    <Plus className="h-4 w-4 mr-1.5" />
-                                    Добавить
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
-                                <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
-                                    Действия
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
-                                    <div className="mr-3 text-zinc-500">
-                                        <UploadCloud className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Загрузить файлы</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
-                                    <div className="mr-3 text-amber-600">
-                                        <Sparkles className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Создать заметку</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                <DropdownMenuItem onClick={handleOpenLibrary} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
-                                    <div className="mr-3 text-blue-600">
-                                        <BookOpen className="h-4 w-4" />
-                                    </div>
-                                    <span className="font-medium">Импорт из библиотеки</span>
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                    <div className="flex items-center justify-end gap-4">
+                        <div className="flex items-center gap-3">
+                            <Input
+                                placeholder="Поиск файлов..."
+                                value={searchQuery}
+                                readOnly
+                                className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
+                            />
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className={cn(
+                                        "h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm",
+                                        filterType !== 'all' && "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:border-zinc-800 hover:text-white"
+                                    )}>
+                                        <Filter className="h-4 w-4 mr-2" />
+
+                                        {filterType === 'all' ? 'Все типы' :
+                                            filterType === 'document' ? 'Документы' :
+                                                filterType === 'image' ? 'Изображения' :
+                                                    filterType === 'note' ? 'Заметки' : 'Все типы'}
+                                        <ChevronDown className="h-4 w-4 ml-2" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-zinc-100">
+                                    <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                        Тип контента
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-zinc-100")}
+                                    >
+                                        <div className="flex items-center gap-3 w-full">
+                                            <Filter className="h-4 w-4 text-zinc-500" />
+                                            <span className="font-medium">Все типы</span>
+                                            {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                        </div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-zinc-100")}
+                                    >
+                                        <div className="flex items-center gap-3 w-full">
+                                            <FileText className="h-4 w-4 text-blue-500" />
+                                            <span className="font-medium">Документы</span>
+                                            {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                        </div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-zinc-100")}
+                                    >
+                                        <div className="flex items-center gap-3 w-full">
+                                            <Image className="h-4 w-4 text-purple-500" />
+                                            <span className="font-medium">Изображения</span>
+                                            {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                        </div>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
+                                        <Plus className="h-4 w-4 mr-1.5" />
+                                        Добавить
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
+                                    <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                        Действия
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                        <div className="mr-3 text-zinc-500">
+                                            <UploadCloud className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">Загрузить файлы</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                        <div className="mr-3 text-amber-600">
+                                            <Sparkles className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">Создать заметку</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                                    <DropdownMenuItem onClick={handleOpenLibrary} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                        <div className="mr-3 text-blue-600">
+                                            <BookOpen className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium">Импорт из библиотеки</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
+                    {kbConflicts.length > 0 && (
+                        <div className="flex gap-2">
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-9 rounded-xl shadow-sm animate-in fade-in zoom-in"
+                                onClick={() => {
+                                    setSelectedConflict(kbConflicts[0])
+                                    setIsConflictDialogOpen(true)
+                                }}
+                            >
+                                <Zap className="h-4 w-4 mr-2" />
+                                {kbConflicts.length} Проблем
+                            </Button>
+                        </div>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 text-zinc-500 hover:text-zinc-900"
+                        onClick={handleRunAudit}
+                        disabled={isAuditRunning}
+                    >
+                        {isAuditRunning ? <Sparkles className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                        Аудит
+                    </Button>
                 </div>
-            </div>
+            )}
 
             {/* Content Area */}
             <div className="flex-1 px-6 pb-20">
@@ -737,13 +932,13 @@ export function AgentKnowledgeView({ agentId }: AgentKnowledgeViewProps) {
                     {/* Documents Table */}
                     <div className="pb-10">
                         <DocumentsTable
-                            docs={documents}
+                            docs={filteredDocuments}
                             onRowClick={handleFileClick}
                             onDelete={(doc) => handleDeleteDocument(doc.id)}
                         />
                     </div>
                 </div>
             </div>
-        </div >
+        </div>
     )
 }

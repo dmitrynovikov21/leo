@@ -35,9 +35,9 @@ export function TestResultScorecard({ report }: { report: TestReport }) {
     }
 
     const getScoreBadge = (score: number) => {
-        if (score >= 90) return <Badge className="bg-emerald-500 hover:bg-emerald-600">Excellent</Badge>
-        if (score >= 70) return <Badge className="bg-amber-500 hover:bg-amber-600">Good</Badge>
-        return <Badge variant="destructive">Needs Work</Badge>
+        if (score >= 90) return <Badge className="bg-emerald-500 hover:bg-emerald-600">Отлично</Badge>
+        if (score >= 70) return <Badge className="bg-amber-500 hover:bg-amber-600">Хорошо</Badge>
+        return <Badge variant="destructive">Требует доработки</Badge>
     }
 
     return (
@@ -48,7 +48,7 @@ export function TestResultScorecard({ report }: { report: TestReport }) {
                     <div className="flex flex-col items-center justify-center text-center space-y-2">
                         <div className="flex items-center gap-2 text-muted-foreground uppercase tracking-widest text-xs font-semibold">
                             <Award className="h-4 w-4" />
-                            Quality Score
+                            Качество ответов
                         </div>
                         <div className={cn("text-5xl font-bold tabular-nums", getScoreColor(report.score))}>
                             {report.score}/100
@@ -56,7 +56,7 @@ export function TestResultScorecard({ report }: { report: TestReport }) {
                         <div className="flex items-center gap-2 mt-2">
                             {getScoreBadge(report.score)}
                             <span className="text-sm text-muted-foreground">
-                                Passed {report.passedCount} of {report.totalCount} checks
+                                Пройдено {report.passedCount} из {report.totalCount} проверок
                             </span>
                         </div>
                     </div>
@@ -65,7 +65,7 @@ export function TestResultScorecard({ report }: { report: TestReport }) {
 
             {/* BREAKDOWN */}
             <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-muted-foreground px-1">Detailed Breakdown</h3>
+                <h3 className="text-sm font-semibold text-muted-foreground px-1">Детальный разбор</h3>
                 <Accordion type="single" collapsible className="w-full">
                     {report.results.map((result, index) => (
                         <AccordionItem
@@ -91,7 +91,7 @@ export function TestResultScorecard({ report }: { report: TestReport }) {
                             <AccordionContent className="pt-0 pb-4 space-y-4">
                                 <div className="pl-8 space-y-3">
                                     <div className="space-y-1">
-                                        <span className="text-xs font-semibold text-muted-foreground uppercase">Agent Answer</span>
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase">Ответ агента</span>
                                         <div className="p-3 rounded-md bg-muted/50 text-sm italic">
                                             "{result.answer}"
                                         </div>
@@ -99,7 +99,7 @@ export function TestResultScorecard({ report }: { report: TestReport }) {
 
                                     <div className="space-y-1">
                                         <span className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                                            <AlertTriangle className="h-3 w-3" /> Judge Reasoning
+                                            <AlertTriangle className="h-3 w-3" /> Обоснование
                                         </span>
                                         <p className="text-sm text-muted-foreground">
                                             {result.reasoning}

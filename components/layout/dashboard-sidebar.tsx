@@ -105,7 +105,7 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                       className="stroke-muted-foreground"
                     />
                   )}
-                  <span className="sr-only">Toggle Sidebar</span>
+                  <span className="sr-only">Переключить боковую панель</span>
                 </Button>
               </div>
 
@@ -192,9 +192,9 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col gap-4 items-center">
-                    <BalanceWidget compactMode={true} />
-                    <UserAccountNav side="right" align="start" />
+                  <div className="flex flex-col gap-4 items-center w-full">
+                    <BalanceWidget compactMode={true} collapsed={true} />
+                    <UserAccountNav side="right" align="start" collapsed={true} />
                   </div>
                 )}
               </div>
@@ -221,7 +221,7 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
             className="size-9 shrink-0 md:hidden"
           >
             <Menu className="size-5" />
-            <span className="sr-only">Toggle navigation menu</span>
+            <span className="sr-only">Меню навигации</span>
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col p-0">

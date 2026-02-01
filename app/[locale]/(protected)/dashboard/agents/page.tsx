@@ -16,7 +16,7 @@ export default function AgentsPage() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-1 flex-col gap-8 p-6">
+            <div className="flex flex-1 flex-col gap-6 p-6">
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
                         <Skeleton className="h-8 w-48" />
@@ -33,7 +33,7 @@ export default function AgentsPage() {
     }
 
     return (
-        <div className="flex flex-1 flex-col gap-8 p-6">
+        <div className="flex flex-1 flex-col gap-6 p-6">
 
             {/* Page Header */}
             <div className="flex items-center justify-between">
