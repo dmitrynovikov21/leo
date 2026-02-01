@@ -127,5 +127,39 @@ This project was inspired by shadcn's [Taxonomy](https://github.com/shadcn-ui/ta
 - Steven Tey ([@steventey](https://twitter.com/steventey))
 - Antonio Erdeljac ([@YTCodeAntonio](https://twitter.com/AntonioErdeljac))
 
-логин и пароль админа
-admin@example.com / admin123
+## 🤖 Project Context for AI Agents
+
+### Overview
+This is the **Leo** project, a SaaS application built with Next.js 14, serving as an Agent Gateway. It uses a Dockerized architecture with a Next.js frontend/backend and a PostgreSQL database.
+
+### System Architecture
+- **Frontend/Backend**: Next.js 14 (App Router), deployed as a Docker container (`leo-app`).
+- **Database**: PostgreSQL 16, deployed as a Docker container (`leo-db`).
+- **ORM**: Prisma is used for database interactions.
+- **Authentication**: Auth.js v5.
+
+### Deployment Process
+The project uses a custom bash script (`deploy.sh`) for deployment to a VPS.
+
+**Deployment Steps:**
+1.  **Configuration**: The script uses `.env.prod` for production variables.
+2.  **Execution**: Run `./deploy.sh`.
+3.  **Process**:
+    -   Syncs code to the server via `rsync`.
+    -   Builds Docker images using `docker-compose.prod.yml`.
+    -   Starts services (`app` and `db`).
+    -   Runs Prisma migrations automatically.
+
+**Server Details:**
+-   **Target**: `144.124.249.196` (defined in `deploy.sh`).
+-   **Remote User**: `root`.
+-   **Remote Path**: `/root/leo`.
+
+### Key Commands
+-   **Local Dev**: `npm run dev` or `docker compose up`.
+-   **Deployment**: `./deploy.sh`.
+-   **Database Studio**: `npx prisma studio`.
+
+### Admin Credentials (Dev/Test)
+-   **Email**: `admin@example.com`
+-   **Password**: `admin123`

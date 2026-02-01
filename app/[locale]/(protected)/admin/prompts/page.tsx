@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { toast } from "sonner"
-import { Loader2, Pencil, Save, Sparkles, ToggleLeft, ToggleRight, Code, Info } from "lucide-react"
+import { Loader2, Pencil, Save, Sparkles, ToggleLeft, ToggleRight, Code, Info, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -65,6 +65,34 @@ export default function AdminPromptsPage() {
     React.useEffect(() => {
         loadPrompts()
     }, [loadPrompts])
+
+    const [isResettingCache, setIsResettingCache] = React.useState(false)
+
+    const handleResetCache = async () => {
+        setIsResettingCache(true)
+        try {
+            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
+            if (!gatewayUrl) {
+                toast.error("Gateway URL не настроен")
+                return
+            }
+
+            const res = await fetch(`${gatewayUrl}/api/v1/system-prompts/refresh`, {
+                method: 'POST'
+            })
+
+            if (res.ok) {
+                toast.success("Кеш промптов успешно сброшен")
+            } else {
+                throw new Error("Failed to refresh cache")
+            }
+        } catch (error) {
+            console.error("Error resetting cache:", error)
+            toast.error("Не удалось сбросить кеш")
+        } finally {
+            setIsResettingCache(false)
+        }
+    }
 
     const handleSeedDefaults = async () => {
         setIsSeeding(true)
@@ -161,18 +189,32 @@ export default function AdminPromptsPage() {
                         Редактирование глобальных промптов для AI-генерации
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={handleSeedDefaults}
-                    disabled={isSeeding}
-                >
-                    {isSeeding ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Sparkles className="mr-2 h-4 w-4" />
-                    )}
-                    Добавить стандартные
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleResetCache}
+                        disabled={isResettingCache}
+                    >
+                        {isResettingCache ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        Сбросить кеш
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleSeedDefaults}
+                        disabled={isSeeding}
+                    >
+                        {isSeeding ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Sparkles className="mr-2 h-4 w-4" />
+                        )}
+                        Добавить стандартные
+                    </Button>
+                </div>
             </div>
 
             {/* Prompts List */}
