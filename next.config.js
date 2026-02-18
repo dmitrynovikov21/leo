@@ -31,7 +31,8 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ["@prisma/client"],
+    // serverComponentsExternalPackages is moved to top-level in newer Next.js but still supported in experimental for some versions
+    serverComponentsExternalPackages: ["@prisma/client", "ssh2", "cpu-features", "dockerode"],
   },
   output: "standalone",
 };

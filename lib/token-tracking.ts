@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { calculatePlatformTokensFromLlm } from '@/lib/token-rates'
 import { deductTokens } from '@/lib/balance'
+import { getBillingSystem, getUserBillingType } from '@/lib/billing-adapter'
+import { calculateLlmPuCost } from '@/lib/pu-calculator'
 import { Decimal } from '@prisma/client/runtime/library'
 import { TransactionType } from '@prisma/client'
 
@@ -90,8 +92,13 @@ export async function trackTokenUsage(params: TrackTokenUsageParams): Promise<vo
   // 1. Calculate real cost in USD
   const realCostUsd = await calculateRealCost(model, promptTokens, completionTokens)
 
-  // 2. Calculate platform tokens to charge
-  const platformTokensCharged = await calculatePlatformTokens(totalLlmTokens)
+  // 2. Calculate Charges (PU System Forced)
+  // const billingType = await getUserBillingType(userId) // Always 'PU' now
+
+  // Calculate PU
+  const chargedAmount = calculateLlmPuCost(promptTokens, completionTokens)
+  // Store PU amount in 'platformTokensCharged' column
+  const platformTokensForRecord = chargedAmount
 
   // 3. Create token usage record
   const tokenUsage = await prisma.tokenUsage.create({
@@ -104,17 +111,17 @@ export async function trackTokenUsage(params: TrackTokenUsageParams): Promise<vo
       totalTokens: totalLlmTokens,
       responseTimeMs,
       isTest,
-      platformTokensCharged: new Decimal(platformTokensCharged),
+      platformTokensCharged: new Decimal(platformTokensForRecord),
       realCostUsd: new Decimal(realCostUsd),
     },
   })
 
   // 4. Deduct tokens from user balance (skip for test requests)
   if (!isTest) {
-    await deductTokens({
-      userId,
-      amount: platformTokensCharged,
-      description: `Token usage: ${model} (${totalLlmTokens} tokens)`,
+    const billing = await getBillingSystem(userId)
+    await billing.deductUsage(userId, chargedAmount, {
+      source: 'LLM_USAGE',
+      description: `Target: ${model} (${totalLlmTokens} tokens)`,
       metadata: {
         model,
         promptTokens,
@@ -123,6 +130,7 @@ export async function trackTokenUsage(params: TrackTokenUsageParams): Promise<vo
         tokenUsageId: tokenUsage.id,
         agentId,
         realCostUsd,
+        billingType: 'PU'
       },
     })
   }

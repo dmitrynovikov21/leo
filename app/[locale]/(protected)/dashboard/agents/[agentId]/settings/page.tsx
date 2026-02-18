@@ -29,8 +29,17 @@ export default function AgentSettingsPage() {
     const autosaveTimerRef = React.useRef<NodeJS.Timeout | null>(null)
     const AUTOSAVE_INTERVAL = 30000 // 30 seconds
 
+    // Snapshot of latest data for save-on-unmount
+    const latestDataRef = React.useRef<{ general: any; schedule: any } | null>(null)
+
     // Track changes for autosave
     const handleChange = React.useCallback(() => {
+        // Snapshot current data for save-on-unmount
+        latestDataRef.current = {
+            general: generalSettingsRef.current?.getData(),
+            schedule: scheduleRef.current?.getData(),
+        }
+
         // Reset autosave timer
         if (autosaveTimerRef.current) {
             clearTimeout(autosaveTimerRef.current)
@@ -41,11 +50,49 @@ export default function AgentSettingsPage() {
         }, AUTOSAVE_INTERVAL)
     }, [])
 
-    // Cleanup on unmount
+    // Cleanup on unmount + save unsaved changes
     React.useEffect(() => {
         return () => {
             if (autosaveTimerRef.current) {
                 clearTimeout(autosaveTimerRef.current)
+            }
+            // Save on unmount if there are unsaved changes (fire-and-forget)
+            const data = latestDataRef.current
+            if (!data) return
+
+            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
+            if (!orchestratorUrl) return
+
+            if (data.general) {
+                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: data.general.name,
+                        description: data.general.description,
+                        avatarEmoji: data.general.emoji,
+                    }),
+                }).catch(() => {})
+            }
+
+            if (data.schedule?.schedule) {
+                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/schedule`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        schedule: data.schedule.schedule,
+                        message: data.schedule.offlineMessage,
+                        holidays: data.schedule.holidays,
+                    }),
+                }).catch(() => {})
+            }
+
+            if (data.schedule?.bufferSeconds !== undefined) {
+                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ debounceMs: data.schedule.bufferSeconds * 1000 }),
+                }).catch(() => {})
             }
         }
     }, [])
@@ -101,6 +148,9 @@ export default function AgentSettingsPage() {
             }
 
             await refreshAgents()
+
+            // Clear snapshot so unmount doesn't re-save
+            latestDataRef.current = null
 
             if (!silent) {
                 toast.success("Все настройки сохранены")

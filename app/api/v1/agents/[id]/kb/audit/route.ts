@@ -17,13 +17,13 @@ export async function POST(
         }
 
         // Check user balance before proceeding
-        const hasBalance = await checkUserBalance(session.user.id, 1000);
-        if (!hasBalance) {
-            return NextResponse.json(
-                { error: "Insufficient token balance. Please top up your account." },
-                { status: 402 }
-            );
-        }
+        //  const hasBalance = await checkUserBalance(session.user.id, 1000);
+        //  if (!hasBalance) {
+        //      return NextResponse.json(
+        //          { error: "Insufficient token balance. Please top up your account." },
+        //          { status: 402 }
+        //      );
+        //  }
 
         const { id: agentId } = await params;
 

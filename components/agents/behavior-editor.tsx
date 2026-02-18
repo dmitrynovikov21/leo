@@ -115,12 +115,34 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     const autosaveTimerRef = React.useRef<NodeJS.Timeout | null>(null)
     const AUTOSAVE_INTERVAL = 30000 // 30 seconds
     const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false)
+    const hasUnsavedChangesRef = React.useRef(false)
 
-    // Cleanup autosave timer on unmount
+    // Keep ref in sync with state for cleanup access
+    React.useEffect(() => {
+        hasUnsavedChangesRef.current = hasUnsavedChanges
+    }, [hasUnsavedChanges])
+
+    // Cleanup autosave timer on unmount + save unsaved changes
     React.useEffect(() => {
         return () => {
             if (autosaveTimerRef.current) {
                 clearTimeout(autosaveTimerRef.current)
+            }
+            // Save on unmount if there are unsaved changes (fire-and-forget)
+            if (hasUnsavedChangesRef.current && orchestratorUrl) {
+                const data = form.getValues()
+                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        displayName: data.displayName,
+                        avatarEmoji: data.avatarEmoji,
+                        temperature: data.temperature,
+                        tone: data.tone,
+                        guardrails: data.guardrails,
+                        welcomeMessage: data.welcomeMessage,
+                    }),
+                }).catch(() => {})
             }
         }
     }, [])

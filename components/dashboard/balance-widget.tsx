@@ -69,7 +69,7 @@ export function BalanceWidget({
 
     if (collapsed) {
         return (
-            <Link href="/billing" className="w-full flex justify-center">
+            <Link href="/dashboard/billing" className="w-full flex justify-center">
                 <div
                     className={cn(
                         "flex h-9 w-9 items-center justify-center rounded-lg border transition-colors hover:bg-muted relative",
@@ -93,7 +93,7 @@ export function BalanceWidget({
 
     if (compactMode) {
         return (
-            <Link href="/billing">
+            <Link href="/dashboard/billing">
                 <div
                     className={cn(
                         "flex items-center justify-between rounded-lg border px-3 py-2 transition-colors hover:bg-muted",
@@ -158,7 +158,7 @@ export function BalanceWidget({
                         </p>
                     )}
 
-                    <Link href="/billing" className="block">
+                    <Link href="/dashboard/billing" className="block">
                         <Button className="w-full" size="sm">
                             <CreditCard className="mr-2 h-4 w-4" />
                             {t('topUpBalance')}

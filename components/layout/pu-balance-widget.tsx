@@ -47,7 +47,7 @@ export default function PuBalanceWidget() {
         : 'bg-green-100 text-green-800'
 
   return (
-    <Link href="/billing">
+    <Link href="/dashboard/billing">
       <div className={`px-3 py-2 rounded-lg cursor-pointer hover:opacity-80 transition-opacity ${statusColor}`}>
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4" />

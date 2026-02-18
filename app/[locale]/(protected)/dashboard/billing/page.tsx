@@ -4,6 +4,7 @@ import { constructMetadata } from "@/lib/utils";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PaymentButton } from "@/components/billing/payment-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CreditCard, Check, Zap, FileText, Download } from "lucide-react";
@@ -25,12 +26,6 @@ export const metadata = constructMetadata({
 
 // Mock Data removed
 
-
-const transactions = [
-  { id: 1, date: "10 Дек, 2025", method: "card", description: "Visa •••• 4242", amount: 5000, status: "succeeded" },
-  { id: 2, date: "01 Дек, 2025", method: "invoice", description: "Счет #1024", amount: 15000, status: "processing" },
-  { id: 3, date: "15 Ноя, 2025", method: "usage", description: "Ежемесячный расход", amount: -2340, status: "completed" },
-];
 
 import { prisma } from "@/lib/db";
 
@@ -111,8 +106,8 @@ export default async function BillingPage() {
         agentId: { not: null }
       }
     }),
-    // Recent Transactions
-    prisma.tokenTransaction.findMany({
+    // Recent PU Transactions
+    prisma.puTransaction.findMany({
       where: { userId: user?.id },
       orderBy: { createdAt: 'desc' },
       take: 10
@@ -178,29 +173,30 @@ export default async function BillingPage() {
   // Format 1.2M style
   const formattedTotalTokens = formatTokens(totalTokensUsed);
 
-  // Map transactions
+  // Map PU transactions
   const transactions = dbTransactions.map(tx => {
     let method = 'usage';
-    let description = 'Использование ресурсов';
-    // @ts-ignore - TransactionType enum might be 'TOPUP' etc.
-    if (tx.type === 'TOPUP') {
-      method = 'card'; // Assume card for now or check metadata
-      description = 'Пополнение баланса';
-    } else if (tx.type === 'DEDUCTION') {
+    let description = tx.description || 'Использование ресурсов';
+
+    if (tx.type === 'SUBSCRIPTION_GRANT' || tx.type === 'PACK_TOPUP') {
+      method = 'card';
+      description = tx.description || 'Пополнение баланса';
+    } else if (tx.type === 'OVERAGE_DEDUCTION') {
       method = 'usage';
-      description = 'Списание за использование';
+      description = tx.description || 'Списание за использование';
     } else if (tx.type === 'REFUND') {
       method = 'invoice';
-      description = 'Возврат средств';
-    } else if (tx.description) {
-      description = tx.description;
+      description = tx.description || 'Возврат средств';
+    } else if (tx.type === 'ADMIN_ADJUSTMENT') {
+      method = 'card';
+      description = tx.description || 'Корректировка баланса';
     }
 
     return {
       id: tx.id,
       date: tx.createdAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }),
-      amount: tx.amount.toNumber(),
-      status: 'success', // Transactions in this table are committed
+      amount: tx.puAmount.toNumber(),
+      status: 'success',
       method,
       description
     };
@@ -248,18 +244,18 @@ export default async function BillingPage() {
       description,
       features,
       active: validation?.subscription?.planId === plan.id,
-      recommended
+      recommended,
+      amount: plan.priceMonthlyRub.toNumber() // Raw amount for payment
     };
   });
 
-  // Calculate balance from DB if possible or use field
-  const balance = validation?.tokenBalance ? validation.tokenBalance.toNumber() : 0;
+  // Use only PU balance
   // @ts-ignore
   const puBalance = validation?.subscription?.puBalance ? Number(validation.subscription.puBalance) : 0;
 
-  const lowBalanceThreshold = 500;
-  const isLowBalance = puBalance < 50; // PU threshold lower?
-  const runwayDays = Math.floor(puBalance / 5); // Rough estimate
+  const lowBalanceThreshold = 50;
+  const isLowBalance = puBalance < lowBalanceThreshold;
+  const runwayDays = Math.floor(puBalance / 100);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
@@ -293,12 +289,6 @@ export default async function BillingPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {balance > 0 && (
-                <div className="flex items-center gap-2 mb-4 p-2 bg-zinc-50 rounded-lg border border-zinc-100">
-                  <div className="h-2 w-2 rounded-full bg-amber-400"></div>
-                  <span className="text-xs text-zinc-500 font-medium">Legacy Tokens: <span className="text-zinc-900 font-bold">{balance.toLocaleString()}</span></span>
-                </div>
-              )}
               <p className="text-sm text-zinc-500 font-medium mb-4">
                 {t('estimatedRunway')}: ~{runwayDays} {t('days')}
               </p>
@@ -371,17 +361,13 @@ export default async function BillingPage() {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button
-                    variant={plan.active ? "secondary" : "outline"}
-                    className={cn(
-                      "w-full h-11 rounded-xl font-semibold shadow-sm",
-                      plan.active
-                        ? "bg-white text-zinc-900 hover:bg-zinc-100"
-                        : "border-zinc-200 hover:bg-zinc-50 text-zinc-900"
-                    )}
-                  >
-                    {plan.active ? "Текущий план" : "Перейти"}
-                  </Button>
+                  <PaymentButton
+                    planId={plan.id}
+                    amount={plan.amount}
+                    planName={plan.name}
+                    isCurrent={plan.active}
+                    className="w-full h-11 rounded-xl font-semibold shadow-sm"
+                  />
                 </CardFooter>
               </Card>
             ))}
@@ -482,7 +468,7 @@ export default async function BillingPage() {
                         "font-bold tabular-nums text-sm",
                         tx.amount > 0 ? "text-green-600" : "text-zinc-900"
                       )}>
-                        {tx.amount > 0 ? '+' : ''}₽ {Math.abs(tx.amount).toLocaleString()}
+                        {tx.amount > 0 ? '+' : ''}{Math.abs(tx.amount).toLocaleString()} PU
                       </span>
                     </TableCell>
                     <TableCell className="text-right pr-6">

@@ -118,15 +118,21 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
                                 </TableCell>
                                 <TableCell className="text-zinc-500 text-sm font-mono">{doc.size}</TableCell>
                                 <TableCell>
-                                    <Badge variant={(doc.status === 'ready' || doc.status === 'vectorized') ? 'default' : 'secondary'} className={cn(
+                                    <Badge variant={(doc.status === 'ready' || doc.status === 'vectorized') ? 'default' : doc.status === 'error' ? 'destructive' : 'secondary'} className={cn(
                                         "rounded-lg px-2 py-0.5 font-medium text-xs shadow-none border",
-                                        (doc.status === 'ready' || doc.status === 'vectorized') ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                        (doc.status === 'ready' || doc.status === 'vectorized') && "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200",
+                                        doc.status === 'error' && "bg-red-50 text-red-700 hover:bg-red-100 border-red-200",
+                                        (doc.status === 'processing' || doc.status === 'pending') && "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
                                     )}>
-                                        {(doc.status === 'ready' || doc.status === 'vectorized') ? 'Индексирован' : 'Обработка'}
+                                        {(doc.status === 'ready' || doc.status === 'vectorized') ? 'Индексирован' : doc.status === 'error' ? 'Ошибка' : 'Обработка...'}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-sm max-w-[250px]">
-                                    {doc.aiMetadata ? (
+                                    {doc.status === 'error' && doc.aiMetadata?.error ? (
+                                        <span className="text-red-600 text-sm">
+                                            {doc.aiMetadata.error}
+                                        </span>
+                                    ) : doc.aiMetadata?.summary ? (
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
@@ -145,6 +151,8 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
                                                 </TooltipContent>
                                             </Tooltip>
                                         </TooltipProvider>
+                                    ) : doc.status === 'error' ? (
+                                        <span className="text-red-500 text-sm">Ошибка обработки</span>
                                     ) : (
                                         <span className="text-zinc-400 italic text-sm">
                                             Описание будет сгенерировано после обработки...

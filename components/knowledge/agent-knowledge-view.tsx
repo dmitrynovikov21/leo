@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 
 import { getLibraryItems, getLibraryItemChunks, type LibraryItemWithChunks } from "@/actions/library"
-import { getAgentDocuments } from "@/actions/agent-knowledge"
+import { getAgentDocuments, cleanupStalePendingDocs } from "@/actions/agent-knowledge"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,11 +46,12 @@ interface Document {
     size: string
     chunksCount: number
     tokensUsage: number
-    status: 'ready' | 'processing' | 'error' | 'vectorized'
+    status: 'ready' | 'processing' | 'error' | 'vectorized' | 'pending'
     updatedAt: string
     errorMessage?: string
     parentId?: string | null
     content?: string
+    aiMetadata?: { summary?: string; error?: string; [key: string]: any } | null
 }
 
 // Note type for API
@@ -141,19 +142,28 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
     // Get agent from shared context (same as layout)
     const { agents } = useUserData()
 
+    const initialLoadDone = React.useRef(false)
+
     React.useEffect(() => {
         const agent = agents.find(a => a.id === agentId)
         if (agent) {
             setInternalAgentId(agent.id)
             setAgentName(agent.name)
 
-            setIsLoading(true)
+            // Cleanup stale PENDING docs on mount
+            cleanupStalePendingDocs(agent.id).catch(() => {})
+
+            // Only show skeletons on first load, not on refreshes
+            if (!initialLoadDone.current) {
+                setIsLoading(true)
+            }
             Promise.all([
                 fetchDocuments(agent.id),
                 fetchNotes(agent.id),
                 fetchConflicts(agent.id)
             ]).finally(() => {
                 setIsLoading(false)
+                initialLoadDone.current = true
             })
         }
     }, [agents, agentId, lastUpdated])
@@ -240,6 +250,25 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             console.error('Error fetching conflicts:', error)
         }
     }, [internalAgentId])
+
+    // Polling for pending documents or docs awaiting metadata
+    React.useEffect(() => {
+        if (!internalAgentId) return
+
+        const needsPolling = documents.some(d =>
+            d.status === 'processing' ||
+            d.status === 'pending' ||
+            ((d.status === 'vectorized' || d.status === 'ready') && !d.aiMetadata?.summary)
+        )
+
+        if (needsPolling) {
+            const timer = setInterval(() => {
+                fetchDocuments(internalAgentId, searchQuery || undefined)
+            }, 3000)
+
+            return () => clearInterval(timer)
+        }
+    }, [internalAgentId, documents, searchQuery, fetchDocuments])
 
     // Load documents/notes when agent ID becomes available - consolidated with the main effect above or handled by fetch calls
     // But we need to handle initial load carefully

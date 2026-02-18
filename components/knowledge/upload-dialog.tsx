@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UploadCloud, FileText, Check } from "lucide-react"
-import { useSession } from "next-auth/react"
+import { UploadCloud, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -13,9 +12,10 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-import { createLibraryItem } from "@/actions/library"
 import { toast } from "sonner"
 
 interface UploadDialogProps {
@@ -28,7 +28,6 @@ interface UploadDialogProps {
 }
 
 export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setControlledOpen, externalFiles, agentId, onUploadComplete }: UploadDialogProps) {
-    const { data: session } = useSession()
     const [internalOpen, setInternalOpen] = React.useState(false)
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? controlledOpen : internalOpen
@@ -38,6 +37,8 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     const [isUploaded, setIsUploaded] = React.useState(false)
     const [isProcessing, setIsProcessing] = React.useState(false)
     const [progress, setProgress] = React.useState(0)
+    const [activeTab, setActiveTab] = React.useState("files")
+    const [websiteUrl, setWebsiteUrl] = React.useState("")
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     // Track processed files to prevent duplicates
@@ -56,201 +57,80 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     }, [externalFiles])
 
     const processFile = async (file: File) => {
-        const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-
-        let chunks: { content: string; index: number; metadata?: any }[] = []
-        let content = ""
-
-        // Always try to parse through Gateway first
-        if (gatewayUrl) {
+        // Send file directly to server action — parsing happens server-side
+        if (agentId) {
             try {
                 const formData = new FormData()
                 formData.append('file', file)
 
-                const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
-                    method: 'POST',
-                    body: formData,
+                const { uploadAgentDocument } = await import('@/actions/agent-knowledge')
+                const result = await uploadAgentDocument({ agentId, file: formData })
+
+                if (!result.success) {
+                    if (result.error?.includes('Недостаточно PU')) {
+                        toast.error("Недостаточно PU баланса", {
+                            description: "Пожалуйста, пополните баланс перед загрузкой файлов."
+                        })
+                    } else {
+                        toast.error(`Ошибка загрузки: ${result.error}`)
+                    }
+                    throw new Error(result.error)
+                }
+
+                toast.info(`Файл загружен`, {
+                    description: `Обработка "${file.name}" запущена в фоне...`
                 })
 
-                if (parseResponse.ok) {
-                    const parseData = await parseResponse.json()
-                    chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
-                        content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
-                        index,
-                        metadata: { fileName: file.name, ...(chunk.metadata || {}) }
-                    }))
-                    content = chunks.map(c => c.content).join('\n\n')
-                } else {
-                    console.warn('Gateway parse failed, falling back to local processing')
-                }
             } catch (err) {
-                console.warn('Gateway unavailable, falling back to local processing:', err)
-            }
-        }
-
-        // Fallback: local processing for text files
-        if (chunks.length === 0) {
-            if (file.type === "text/plain" || file.name.endsWith(".md")) {
-                content = await file.text()
-            } else {
-                content = `Файл ${file.name} требует обработки через OCR/Parser.`
-            }
-            chunks = [{
-                content: content.slice(0, 2000) || "Empty content",
-                index: 0,
-                metadata: { fileName: file.name }
-            }]
-        }
-
-        // If agentId is provided, vectorize for agent
-        if (agentId && gatewayUrl) {
-            const vectorizeResponse = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    agentId,
-                    userId: session?.user?.id,
-                    filename: file.name,
-                    fileSize: file.size,
-                    mimeType: file.type || 'application/octet-stream',
-                    chunks: chunks.map(c => ({ index: c.index, text: c.content })),
-                }),
-            })
-
-            if (!vectorizeResponse.ok) {
-                const errorText = await vectorizeResponse.text()
-                let errorDetails: any = null
-                try {
-                    errorDetails = JSON.parse(errorText)
-                } catch (e) { }
-
-                if (errorDetails && errorDetails.error === "Insufficient PU balance") {
-                    toast.error("Недостаточно PU баланса", {
-                        description: `Требуется: ${Number(errorDetails.required).toFixed(3)} PU. Доступно: ${Number(errorDetails.current).toFixed(3)} PU.`
-                    })
-                    throw new Error("Insufficient PU balance")
-                }
-
-                throw new Error(`Failed to vectorize: ${errorText}`)
-            }
-
-            // Trigger AI metadata generation in background
-            const vectorizeData = await vectorizeResponse.json()
-            console.log('[UploadDialog] Vectorize response:', vectorizeData)
-
-            // Gateway returns knowledgeBaseId for agent documents
-            const documentId = vectorizeData.documentId || vectorizeData.id || vectorizeData.document_id || vectorizeData.knowledgeBaseId
-
-            if (documentId && content) {
-                try {
-                    console.log('[UploadDialog] Generating metadata for:', documentId)
-                    await fetch('/api/ai/generate-metadata', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            documentId,
-                            filename: file.name,
-                            textContent: content,
-                            isLibraryItem: false,
-                        }),
-                    })
-                } catch (err) {
-                    console.warn('AI metadata generation failed:', err)
-                }
-            } else {
-                console.warn('[UploadDialog] Metadata generation skipped. Missing ID or content.', { documentId, contentLength: content?.length, vectorizeData })
+                throw err
             }
         } else {
-            // Save to global library (with smart file charging)
-            const result = await createLibraryItem({
-                name: file.name,
-                type: 'FILE',
-                content: content,
-                fileSize: file.size,
-                mimeType: file.type || 'application/octet-stream',
-                chunks
-            })
+            // Global library upload
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
 
-            // Handle charge result
-            if (!result.success) {
-                // Try to parse JSON error (if coming from Gateway/Billing)
-                let errorDetails: any = null;
-                try {
-                    if (result.error && result.error.trim().startsWith('{')) {
-                        errorDetails = JSON.parse(result.error);
+                const { uploadLibraryDocument } = await import('@/actions/library')
+                const result = await uploadLibraryDocument({ file: formData })
+
+                if (!result.success) {
+                    if (result.error?.includes('Недостаточно PU')) {
+                        toast.error("Недостаточно PU баланса", {
+                            description: "Пожалуйста, пополните баланс перед загрузкой файлов."
+                        })
+                    } else {
+                        toast.error(`Ошибка загрузки: ${result.error}`)
                     }
-                } catch (e) {
-                    // Not a JSON error
+                    throw new Error(result.error)
                 }
 
-                if (errorDetails && errorDetails.error === "Insufficient PU balance") {
-                    toast.error("Недостаточно PU баланса", {
-                        description: `Требуется: ${Number(errorDetails.required).toFixed(3)} PU. Доступно: ${Number(errorDetails.current).toFixed(3)} PU.`
-                    });
-                }
-                // Legacy check
-                else if (result.error?.includes('Недостаточно PU')) {
-                    toast.error(`${result.error}`, {
-                        description: `Файл "${file.name}" требует ${result.requiredPu?.toFixed(4)} PU`
-                    })
-                } else {
-                    toast.error(`Ошибка загрузки: ${result.error}`)
-                }
-                throw new Error(result.error)
-            }
-
-            // Show charge info
-            if (result.puCharged && result.puCharged > 0) {
-                toast.info(`Файл загружен`, {
-                    description: `"${file.name}": ${result.puCharged.toFixed(4)} PU (${result.chargeInfo?.reason || 'новый файл'})`
+                toast.info(`Файл добавлен`, {
+                    description: `"${file.name}" обрабатывается в фоне...`
                 })
-            }
 
-            // Trigger AI metadata generation for library item and wait for it
-            if (result.success && result.item?.id && content) {
-                try {
-                    await fetch('/api/ai/generate-metadata', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            documentId: result.item.id,
-                            filename: file.name,
-                            textContent: content,
-                            isLibraryItem: true,
-                        }),
-                    })
-                } catch (err) {
-                    console.warn('AI metadata generation failed:', err)
-                }
+            } catch (err) {
+                throw err
             }
         }
     }
 
     const handleFiles = async (files: File[]) => {
-        setIsProcessing(true)
-        setProgress(0)
-
-        if (!open) setOpen(true)
+        // Close dialog immediately, upload in background
+        setOpen(false)
+        toast.info(`Загрузка ${files.length} файл(ов)...`)
 
         try {
-            const totalFiles = files.length
-            for (let i = 0; i < totalFiles; i++) {
-                await processFile(files[i])
-                setProgress(Math.round(((i + 1) / totalFiles) * 100))
+            for (const file of files) {
+                await processFile(file)
             }
-
-            setIsUploaded(true)
-            toast.success("Файлы успешно загружены")
+            toast.success("Файлы загружены, обработка идёт в фоне")
             onUploadComplete?.()
         } catch (error) {
             console.error("Upload failed:", error)
-            // If the error was already handled (e.g. insufficient PU), don't show generic error
-            if (error instanceof Error && (error.message === "Insufficient PU balance" || error.message.includes('Недостаточно PU'))) {
+            if (error instanceof Error && (error.message.includes('Недостаточно PU'))) {
                 return
             }
-            toast.error("Недостаточно загрузить некоторые файлы")
-        } finally {
-            setIsProcessing(false)
+            toast.error("Не удалось загрузить некоторые файлы")
         }
     }
 
@@ -291,8 +171,57 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
         // Force reset when opened manually
         if (open && !externalFiles) {
             setIsUploaded(false)
+            setActiveTab("files")
+            setWebsiteUrl("")
         }
     }, [open, externalFiles])
+
+    const handleScrape = async () => {
+        if (!websiteUrl) return
+
+        setIsProcessing(true)
+        setProgress(10)
+
+        try {
+            if (agentId) {
+                // Async scraping for agents
+                const { asyncScrapeAgentWebsite } = await import('@/actions/agent-knowledge')
+                const result = await asyncScrapeAgentWebsite(agentId, websiteUrl)
+
+                if (result.success) {
+                    toast.info(`Скрапинг запущен`, {
+                        description: `Сайт будет добавлен в базу в фоновом режиме...`
+                    })
+                    setIsProcessing(false)
+                    setOpen(false)
+                    onUploadComplete?.()
+                    return
+                } else {
+                    throw new Error(result.error)
+                }
+            }
+
+            // Async scraping for global library
+            const { asyncScrapeLibraryWebsite } = await import('@/actions/library')
+            const libResult = await asyncScrapeLibraryWebsite(websiteUrl)
+
+            if (libResult.success) {
+                toast.info(`Скрапинг запущен`, {
+                    description: `Сайт будет добавлен в библиотеку в фоновом режиме...`
+                })
+                setIsProcessing(false)
+                setOpen(false)
+                onUploadComplete?.()
+                return
+            } else {
+                throw new Error(libResult.error)
+            }
+        } catch (error) {
+            console.error("Scrape failed:", error)
+            toast.error(error instanceof Error ? error.message : "Не удалось получить контент, попробуйте еще раз")
+            setIsProcessing(false)
+        }
+    }
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -324,32 +253,68 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                                 Лимит размера файла — 50 МБ.
                             </DialogDescription>
                         </DialogHeader>
-                        <div
-                            className={cn(
-                                "border-2 border-dashed rounded-lg p-10 flex flex-col items-center justify-center gap-4 transition-colors cursor-pointer",
-                                isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
-                            )}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <input
-                                type="file"
-                                className="hidden"
-                                ref={fileInputRef}
-                                onChange={handleFileInput}
-                                multiple
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.json,.html,.htm,.pptx,.ppt,.txt,.md,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.gif"
-                            />
-                            <div className="p-4 rounded-full bg-muted/50">
-                                <UploadCloud className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                            <div className="text-center space-y-1">
-                                <p className="text-sm font-medium">Перетащите файлы сюда</p>
-                                <p className="text-xs text-muted-foreground">или нажмите для выбора</p>
-                            </div>
-                        </div>
+
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="files">Файлы</TabsTrigger>
+                                <TabsTrigger value="website">Веб-сайт</TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="files" className="mt-4">
+                                <div
+                                    className={cn(
+                                        "border-2 border-dashed rounded-lg p-10 flex flex-col items-center justify-center gap-4 transition-colors cursor-pointer",
+                                        isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+                                    )}
+                                    onDragOver={handleDragOver}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={handleDrop}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        ref={fileInputRef}
+                                        onChange={handleFileInput}
+                                        multiple
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.json,.html,.htm,.pptx,.ppt,.txt,.md,.png,.jpg,.jpeg,.webp,.bmp,.tiff,.gif"
+                                    />
+                                    <div className="p-4 rounded-full bg-muted/50">
+                                        <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <p className="text-sm font-medium">Перетащите файлы сюда</p>
+                                        <p className="text-xs text-muted-foreground">или нажмите для выбора</p>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="website" className="mt-4 space-y-4">
+                                <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        Введите адрес веб-сайта для скачивания содержимого.
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            placeholder="https://example.com"
+                                            value={websiteUrl}
+                                            onChange={(e) => setWebsiteUrl(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleScrape()
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                <Button
+                                    className="w-full"
+                                    onClick={handleScrape}
+                                    disabled={!websiteUrl || isProcessing}
+                                >
+                                    <UploadCloud className="mr-2 h-4 w-4" />
+                                    Спарсить и добавить
+                                </Button>
+                            </TabsContent>
+                        </Tabs>
                     </>
                 ) : (
                     <>

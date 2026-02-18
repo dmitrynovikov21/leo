@@ -13,6 +13,7 @@ import { Check, Zap } from "lucide-react"
 
 import { useUser } from "@/components/providers/user-data-provider"
 import { Skeleton } from "@/components/ui/skeleton"
+import { YpmnButton } from "@/components/forms/YpmnButton"
 
 export function BillingTab() {
     const { userData, isLoading } = useUser()
@@ -99,6 +100,29 @@ export function BillingTab() {
                         Отменить подписку
                     </Button>
                 </CardFooter>
+            </Card>
+
+            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                <CardHeader>
+                    <CardTitle className="text-xl font-bold text-zinc-900">Пополнение баланса (PU)</CardTitle>
+                    <CardDescription className="text-zinc-500">Пополните баланс для использования AI моделей.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6">
+                    <div className="flex items-center justify-between border border-zinc-200 p-4 rounded-xl bg-zinc-50/50">
+                        <div className="flex items-center gap-4">
+                            <div className="font-bold text-lg text-zinc-900">100 PU</div>
+                            <div className="text-sm font-medium text-zinc-500">100 RUB</div>
+                        </div>
+                        <YpmnButton amount={100} label="Купить (100₽)" className="rounded-xl" />
+                    </div>
+                    <div className="flex items-center justify-between border border-zinc-200 p-4 rounded-xl bg-zinc-50/50">
+                        <div className="flex items-center gap-4">
+                            <div className="font-bold text-lg text-zinc-900">500 PU</div>
+                            <div className="text-sm font-medium text-zinc-500">500 RUB</div>
+                        </div>
+                        <YpmnButton amount={500} label="Купить (500₽)" className="rounded-xl" />
+                    </div>
+                </CardContent>
             </Card>
 
             <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">

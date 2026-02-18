@@ -427,6 +427,7 @@ model LibraryItem {
   fileUrl   String?  @map("file_url") // for files
   fileSize  Int?     @map("file_size")
   mimeType  String?  @map("mime_type")
+  status    KnowledgeStatus @default(PENDING)
   aiMetadata Json?   @map("ai_metadata") // AI-generated file passport
   createdAt DateTime @default(now()) @map("created_at")
 

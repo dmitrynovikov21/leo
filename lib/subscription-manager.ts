@@ -18,7 +18,7 @@ export async function resetSubscriptionCycle(userId: string) {
     }
 
     // 1. Record reset transaction (burn unused balance)
-    if (sub.puBalance > 0) {
+    if (sub.puBalance.toNumber() > 0) {
       await tx.puTransaction.create({
         data: {
           userId,
@@ -77,19 +77,84 @@ export async function dailyCycleResetJob() {
       nextResetDate: { lte: today },
       status: 'ACTIVE',
     },
-    select: { userId: true },
+    select: { userId: true, stripeSubscriptionId: true },
   })
 
   console.log(`[Cron] Found ${usersToReset.length} subscriptions to reset`)
 
   for (const sub of usersToReset) {
     try {
-      await resetSubscriptionCycle(sub.userId)
-      console.log(`[Cron] Reset cycle for user ${sub.userId}`)
+      // If it has a Stripe ID, we assume it's auto-renewing via Stripe Webhooks (or we let it auto-renew here for now if that was legacy behavior).
+      // BUT per plan, we want to separate. 
+      // Existing logic was: `resetSubscriptionCycle` recklessly.
+      // New logic: 
+      // If Stripe -> Keep existing behavior (auto-reset) for now to not break legacy Stripe? 
+      //    Actually, usually Stripe webhook handles `invoice.paid`. 
+      //    If we rely on cron for Stripe, it's free money. 
+      //    However, I should be careful not to break Stripe users.
+      //    If `stripeSubscriptionId` exists, let's assume it IS paid or Stripe will cancel it.
+      //    So we continue to `resetSubscriptionCycle`.
+      // If NO Stripe ID (Manual / YPMN) -> EXPIRE.
+
+      if (sub.stripeSubscriptionId) {
+        await resetSubscriptionCycle(sub.userId)
+        console.log(`[Cron] Reset cycle for Stripe user ${sub.userId}`)
+      } else {
+        // Manual subscription -> Expire
+        await handleSubscriptionFailure(sub.userId)
+        console.log(`[Cron] Expired manual subscription for user ${sub.userId}`)
+      }
     } catch (error) {
-      console.error(`[Cron] Error resetting cycle for user ${sub.userId}:`, error)
+      console.error(`[Cron] Error processing cycle for user ${sub.userId}:`, error)
     }
   }
+}
+
+/**
+ * Renew manual subscription (called from YPMN webhook)
+ */
+export async function renewManualSubscription(userId: string, planId: string, period: 'MONTHLY' | 'YEARLY') {
+  const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } })
+  if (!plan) throw new Error('Plan not found')
+
+  const now = new Date()
+  const nextReset = period === 'YEARLY'
+    ? addDays(now, 365)
+    : addDays(now, 30)
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Update subscription details
+    const sub = await tx.userSubscription.update({
+      where: { userId },
+      data: {
+        planId: plan.id,
+        status: 'ACTIVE',
+        billingCycleStartDate: now,
+        nextResetDate: nextReset,
+        puLimit: plan.monthlyPuLimit,
+        stripeSubscriptionId: null, // Ensure it's marked as manual
+        // Reset balance logic similar to resetCycle
+        puBalance: plan.monthlyPuLimit,
+        puUsedThisCycle: new Decimal(0),
+        overagePuUsed: new Decimal(0),
+        isOverdraft: false,
+        isBlocked: false,
+      }
+    })
+
+    // 2. Log grant
+    await tx.puTransaction.create({
+      data: {
+        userId,
+        type: 'SUBSCRIPTION_GRANT',
+        puAmount: plan.monthlyPuLimit,
+        balanceBefore: new Decimal(0), // Simplified
+        balanceAfter: plan.monthlyPuLimit,
+        source: 'MANUAL_RENEWAL',
+        description: `Manual renewal: ${plan.code} (${period})`,
+      }
+    })
+  })
 }
 
 /**

@@ -36,19 +36,73 @@ export async function calculateFileCharge(
     orderBy: { createdAt: 'desc' },
   })
 
+  // Helper to convert tokens to PU (1 PU = 1000 tokens)
+  const basePuCost = Math.ceil(contentTokens / 1000)
+
   if (!previousVersion) {
     // New file: 100% charge
-    const puCost = tokensTopu(contentTokens * 1.5) // 1.5x processing multiplier
     return {
-      puCost,
+      puCost: basePuCost,
       reason: 'NEW_FILE: First upload of this document',
       chargePercentage: 100,
     }
   }
 
   // 4. Calculate similarity
-  const similarity = await calculateSimilarity(previousVersion.contentHash, contentHash)
-  const diffPercent = 100 - similarity
+  // Since we don't store full content in DB, we can't comparse unless we had it.
+  // BUT the previous implementation suggested we might not have the old content.
+  // Wait, if we don't have the old content, we can't calculate similarity.
+  // However, the `previousVersion` only stores hash and metadata. 
+  // We CANNOT calculate similarity without the old content.
+  // 
+  // FIX: We need to fetch the old content. Where is it stored?
+  // `LibraryItem` has content. `KnowledgeBase` has `fileUrl` (S3/UploadThing) or chunks.
+  // We can reconstruct from chunks if available.
+
+  // For this implementation, since we need to stick to the plan:
+  // If we can't get previous content, we must assume significantly different? 
+  // Or we can try to find the previous content from LibraryItem/KnowledgeBase if linked?
+  // `FileProcessingCache` doesn't link to the source item directly, but we have `agentId` and `filename`.
+
+  // Let's try to fetch previous content from LibraryItem (if it exists)
+  // Assuming agentId = "user-[id]" for LibraryItems.
+
+  let previousContentString = ""
+
+  // Try finding in LibraryItem
+  if (agentId.startsWith('user-')) {
+    const userId = agentId.replace('user-', '')
+    const libItem = await prisma.libraryItem.findFirst({
+      where: { userId, name: filename, type: 'FILE' },
+      include: { chunks: true }
+    })
+
+    if (libItem) {
+      if (libItem.content) {
+        previousContentString = libItem.content
+      } else if (libItem.chunks.length > 0) {
+        previousContentString = libItem.chunks.map(c => c.content).join(' ')
+      }
+    }
+  } else {
+    // Try finding in KnowledgeBase (Agent)
+    const kbItem = await prisma.knowledgeBase.findFirst({
+      where: { agentId, filename },
+      include: { chunks: true }
+    })
+
+    if (kbItem && kbItem.chunks.length > 0) {
+      previousContentString = kbItem.chunks.map(c => c.content).join(' ')
+    }
+  }
+
+  let diffPercent = 100
+
+  if (previousContentString) {
+    const currentContentString = content.toString('utf-8')
+    const similarity = calculateJaccardSimilarity(previousContentString, currentContentString)
+    diffPercent = 100 - similarity
+  }
 
   // 5. Apply charging rules based on diff percentage
   let chargePercent = 100
@@ -65,12 +119,11 @@ export async function calculateFileCharge(
   }
 
   // Calculate final cost
-  const basePuCost = tokensTopu(contentTokens * 1.5)
   const puCost = (basePuCost * chargePercent) / 100
 
   return {
     puCost,
-    reason: `${chargeReason}: ${diffPercent.toFixed(0)}% content changed from previous version`,
+    reason: `${chargeReason}: ${diffPercent.toFixed(0)}% content changed`,
     chargePercentage: chargePercent,
   }
 }
@@ -94,8 +147,21 @@ export async function saveFileProcessingCache(
     orderBy: { createdAt: 'desc' },
   })
 
-  await prisma.fileProcessingCache.create({
-    data: {
+  await prisma.fileProcessingCache.upsert({
+    where: {
+      agentId_contentHash: { agentId, contentHash },
+    },
+    update: {
+      filename,
+      fileSize,
+      chunkCount,
+      puCharged: new Decimal(puCharged),
+      vectorizationDate: new Date(),
+      previousVersion: previousVersion?.contentHash,
+      diffPercentage: diffPercentage ?? null,
+      chargePercentage,
+    },
+    create: {
       agentId,
       filename,
       contentHash,
@@ -129,26 +195,35 @@ function tokensTopu(tokens: number): number {
 }
 
 /**
- * Calculate similarity between two content hashes
- * For demo: uses simple string similarity
- * In production: should use streaming hash for large files
+ * Calculate Jaccard Similarity between two texts (word-based)
+ * Returns 0-100 percentage
  */
-async function calculateSimilarity(hash1: string, hash2: string): Promise<number> {
-  // In a real implementation, we would:
-  // 1. Download the original content using hash1
-  // 2. Calculate proper text similarity (Levenshtein, Jaccard, etc.)
-  // 3. Return percentage of similarity
-
-  // For now: placeholder
-  // If hashes are exactly the same, similarity is 100%
-  // Otherwise, we would need access to the original file content
-  if (hash1 === hash2) {
-    return 100
+function calculateJaccardSimilarity(text1: string, text2: string): number {
+  const tokenize = (text: string) => {
+    return new Set(
+      text.toLowerCase()
+        .replace(/[^\w\s\u0400-\u04FF]/g, '') // Keep alphanumeric and Cyrillic
+        .split(/\s+/)
+        .filter(w => w.length > 2) // Filter short words
+    );
   }
 
-  // Placeholder: assume 50% similarity if different hashes
-  // This should be replaced with actual content comparison
-  return 50
+  const set1 = tokenize(text1)
+  const set2 = tokenize(text2)
+
+  if (set1.size === 0 && set2.size === 0) return 100
+  if (set1.size === 0 || set2.size === 0) return 0
+
+  // Intersection
+  let intersection = 0
+  set1.forEach(word => {
+    if (set2.has(word)) intersection++
+  })
+
+  // Union
+  const union = set1.size + set2.size - intersection
+
+  return (intersection / union) * 100
 }
 
 /**

@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Icons } from "@/components/shared/icons";
-import { Coins, TrendingUp, BarChart3 } from "lucide-react";
+import { Coins, TrendingUp, BarChart3, Terminal } from "lucide-react";
 
 export default async function AdminPage() {
   const user = await getCurrentUser();
@@ -92,6 +92,35 @@ export default async function AdminPage() {
               <div className="text-2xl font-bold">AI</div>
               <p className="text-xs text-muted-foreground">
                 Редактировать промпты для генерации
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/users-stats" className="block">
+          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Статистика пользователей</CardTitle>
+              <BarChart3 className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">📈</div>
+              <p className="text-xs text-muted-foreground">
+                Агенты и диалоги
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/admin/system-logs" className="block">
+          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Системные логи</CardTitle>
+              <Terminal className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">💻</div>
+              <p className="text-xs text-muted-foreground">
+                Логи Docker контейнеров
               </p>
             </CardContent>
           </Card>

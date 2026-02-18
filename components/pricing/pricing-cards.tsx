@@ -13,6 +13,7 @@ import { BillingFormButton } from "@/components/forms/billing-form-button";
 import { ModalContext } from "@/components/modals/providers";
 import { HeaderSection } from "@/components/shared/header-section";
 import { Icons } from "@/components/shared/icons";
+import { YpmnButton } from "@/components/forms/YpmnButton";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 
 interface PricingCardsProps {
@@ -112,27 +113,45 @@ export function PricingCards({ userId, subscriptionPlan }: PricingCardsProps) {
                 Перейти в панель
               </Link>
             ) : (
-              <BillingFormButton
-                year={isYearly}
-                offer={offer}
-                subscriptionPlan={subscriptionPlan}
-              />
+
+              <div className="space-y-2">
+                <BillingFormButton
+                  year={isYearly}
+                  offer={offer}
+                  subscriptionPlan={subscriptionPlan}
+                />
+                <YpmnButton
+                  amount={offer.prices[isYearly ? 'yearly' : 'monthly'] * 100}
+                  planId={`${offer.title.toUpperCase()}:${isYearly ? 'YEARLY' : 'MONTHLY'}`}
+                  label={`Картой РФ (${offer.prices[isYearly ? 'yearly' : 'monthly'] * 100}₽)`}
+                  className="w-full rounded-full"
+                />
+              </div>
             )
           ) : (
-            <Button
-              variant={
-                offer.title.toLocaleLowerCase() === "pro"
-                  ? "default"
-                  : "outline"
-              }
-              rounded="full"
-              onClick={() => setShowSignInModal(true)}
-            >
-              Войти
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant={
+                  offer.title.toLocaleLowerCase() === "pro"
+                    ? "default"
+                    : "outline"
+                }
+                rounded="full"
+                className="w-full"
+                onClick={() => setShowSignInModal(true)}
+              >
+                Войти
+              </Button>
+              <YpmnButton
+                amount={offer.prices[isYearly ? 'yearly' : 'monthly'] * 100}
+                planId={`${offer.title.toUpperCase()}:${isYearly ? 'YEARLY' : 'MONTHLY'}`}
+                label={`Картой РФ (${offer.prices[isYearly ? 'yearly' : 'monthly'] * 100}₽)`}
+                className="w-full rounded-full"
+              />
+            </div>
           )}
         </div>
-      </div>
+      </div >
     );
   };
 

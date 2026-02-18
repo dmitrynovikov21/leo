@@ -11,6 +11,7 @@ import { Coins, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import TopupUserDialog from './components/topup-user-dialog'
 import TransactionHistoryDialog from './components/transaction-history-dialog'
+import { UserSubscriptionSelect } from './components/user-subscription-select'
 
 interface User {
   id: string
@@ -20,6 +21,11 @@ interface User {
   createdAt: Date
   lastTransaction: Date | null
   lastTransactionType: string | null
+  subscription?: {
+    planId: string
+    planCode: string
+    status: string
+  } | null
 }
 
 export default function UsersBalancePage() {
@@ -149,6 +155,7 @@ export default function UsersBalancePage() {
                   <TableRow>
                     <TableHead>Электронная почта</TableHead>
                     <TableHead>Имя</TableHead>
+                    <TableHead>Подписка</TableHead>
                     <TableHead className='text-right'>Баланс</TableHead>
                     <TableHead>Создано</TableHead>
                     <TableHead>Последняя транзакция</TableHead>
@@ -160,6 +167,13 @@ export default function UsersBalancePage() {
                     <TableRow key={user.id}>
                       <TableCell className='font-medium'>{user.email || 'Н/Д'}</TableCell>
                       <TableCell>{user.name || 'Н/Д'}</TableCell>
+                      <TableCell>
+                        <UserSubscriptionSelect
+                          userId={user.id}
+                          currentPlanId={user.subscription?.planId}
+                          currentPlanCode={user.subscription?.planCode}
+                        />
+                      </TableCell>
                       <TableCell className='text-right'>
                         <div className='flex items-center justify-end gap-1'>
                           <Coins className='h-4 w-4 text-yellow-600' />

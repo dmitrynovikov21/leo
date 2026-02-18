@@ -28,10 +28,13 @@ services:
       target: runner
     container_name: leo-app
     restart: unless-stopped
+    user: root
     ports:
       - "3000:3000"
     env_file:
       - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy

@@ -4,7 +4,7 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, ChevronDown, Check, Plus, Trash2, FileText, Image } from "lucide-react"
 
-import { createLibraryItem, getLibraryItems, deleteLibraryItem, updateLibraryItem, clearLibrary, type LibraryItemWithChunks } from "@/actions/library"
+import { createLibraryItem, getLibraryItems, deleteLibraryItem, updateLibraryItem, clearLibrary, cleanupStalePendingLibraryItems, type LibraryItemWithChunks } from "@/actions/library"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -85,7 +85,7 @@ function libraryItemToDocument(item: LibraryItemWithChunks): Document {
         size,
         chunksCount: item._count.chunks,
         tokensUsage: item._count.chunks * 500, // Approximate
-        status: item._count.chunks > 0 ? 'ready' : 'processing',
+        status: (item.status?.toLowerCase() as DocumentStatus) || (item._count.chunks > 0 ? 'ready' : 'processing'),
         updatedAt,
         parentId: null, // No folder structure in current schema
         content: item.content || undefined,
@@ -123,26 +123,42 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     const [isNoteDialogOpen, setIsNoteDialogOpen] = React.useState(false)
     const [selectedNote, setSelectedNote] = React.useState<Document | null>(null)
 
-    // Load documents function (loads all data once, search is client-side)
-    const loadDocuments = React.useCallback(async () => {
+    // Refresh documents silently (no skeleton flash)
+    const refreshDocuments = React.useCallback(async () => {
         try {
-            setIsLoading(true)
             const items = await getLibraryItems()
             const docs = items.map(libraryItemToDocument)
             setDocuments(docs)
         } catch (err) {
             console.error('Failed to load documents:', err)
-            setError('Не удалось загрузить документы')
-            setDocuments([])
-        } finally {
-            setIsLoading(false)
         }
     }, [])
 
-    // Load documents on mount
+    // Initial load with skeleton
     React.useEffect(() => {
-        loadDocuments()
-    }, [loadDocuments])
+        const init = async () => {
+            setIsLoading(true)
+            cleanupStalePendingLibraryItems().catch(() => {})
+            await refreshDocuments()
+            setIsLoading(false)
+        }
+        init()
+    }, [])
+
+    // Polling for pending documents or docs awaiting metadata
+    React.useEffect(() => {
+        const needsPolling = documents.some(doc =>
+            doc.status === 'pending' || doc.status === 'processing' ||
+            ((doc.status === 'vectorized' || doc.status === 'ready') && !doc.aiMetadata?.summary)
+        )
+
+        if (needsPolling && selectedSpace === 'global') {
+            const interval = setInterval(() => {
+                refreshDocuments()
+            }, 3000)
+            return () => clearInterval(interval)
+        }
+    }, [documents, selectedSpace, refreshDocuments])
 
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
@@ -384,7 +400,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                 externalFiles={droppedFiles}
                 agentId={selectedSpace !== 'global' ? selectedSpace : undefined}
                 onUploadComplete={() => {
-                    loadDocuments()
+                    refreshDocuments()
                     setAgentLastUpdated(Date.now())
                 }}
             />

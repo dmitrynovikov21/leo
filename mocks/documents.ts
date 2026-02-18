@@ -1,12 +1,13 @@
-export type DocumentStatus = 'ready' | 'processing' | 'error' | 'vectorized';
+export type DocumentStatus = 'ready' | 'processing' | 'error' | 'vectorized' | 'pending';
 
 // AI Metadata structure for file passport
 export interface AIMetadata {
-    ai_title: string;
-    category: string;
-    summary: string;
-    utility: string;
-    topics: string[];
+    ai_title?: string;
+    category?: string;
+    summary?: string;
+    utility?: string;
+    topics?: string[];
+    error?: string;
 }
 
 export interface Document {

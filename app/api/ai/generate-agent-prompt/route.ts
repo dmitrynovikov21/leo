@@ -45,6 +45,9 @@ export async function POST(req: Request) {
         }
 
         // Check user balance before proceeding
+        // Check user balance before proceeding - DISABLED (Free generation)
+        // Check user balance before proceeding - DISABLED (Free generation)
+        /*
         const billing = await getBillingSystem(session.user.id);
         const hasBalance = await billing.checkBalance(session.user.id, 0.2); // 200 tokens = 0.2 PU
         if (!hasBalance) {
@@ -53,6 +56,7 @@ export async function POST(req: Request) {
                 { status: 402 }
             );
         }
+        */
 
         const body = await req.json();
         const { agentName, agentDescription, quizAnswers } = body;
@@ -108,17 +112,18 @@ export async function POST(req: Request) {
                 const puCost = totalTokens / 1000; // 1 PU = 1000 tokens
 
                 // Track usage
+                // Track usage (isTest: true to prevent auto-deduction in trackTokenUsage)
                 await trackTokenUsage({
                     userId: session.user.id,
                     model: "gpt-4o",
                     promptTokens,
                     completionTokens,
                     responseTimeMs: 0,
-                    isTest: false,
-                    requestType: 'INSTRUCTION_GEN',
+                    isTest: true, // Free generation
                 });
 
-                // Deduct from billing system
+                // Deduct from billing system - DISABLED per request
+                /*
                 await billing.deductUsage(session.user.id, puCost, {
                     source: 'LLM_USAGE',
                     description: `Prompt generation: ${totalTokens} tokens`,
@@ -129,6 +134,7 @@ export async function POST(req: Request) {
                         agentName,
                     },
                 });
+                */
             } catch (trackError) {
                 console.error(`Failed to process token usage for prompt generation:`, trackError);
             }

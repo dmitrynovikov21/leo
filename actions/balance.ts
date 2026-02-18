@@ -3,6 +3,7 @@
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 import { getUserBalance, addTokens, getTransactionHistory } from '@/lib/balance'
+import { addPuBalance, getPuBalance } from '@/lib/pu-balance'
 
 /**
  * Get current user's balance
@@ -14,7 +15,13 @@ export async function getCurrentUserBalance() {
     throw new Error('Unauthorized: User not authenticated')
   }
 
-  const balance = await getUserBalance(session.user.id)
+  let balance = 0
+  try {
+    balance = await getPuBalance(session.user.id)
+  } catch {
+    // Fallback to legacy if no subscription
+    balance = await getUserBalance(session.user.id)
+  }
 
   return {
     userId: session.user.id,
@@ -58,15 +65,16 @@ export async function addBalanceAdmin(params: {
     throw new Error('Amount must be greater than 0')
   }
 
-  await addTokens({
+  // Add to PU balance (primary billing system)
+  await addPuBalance({
     userId: params.userId,
-    amount: params.amount,
-    type: 'ADJUSTMENT',
+    puAmount: params.amount,
+    type: 'ADMIN_ADJUSTMENT',
     description: params.description,
     createdBy: session.user.id,
   })
 
-  const newBalance = await getUserBalance(params.userId)
+  const newBalance = await getPuBalance(params.userId)
 
   return {
     userId: params.userId,
@@ -182,7 +190,7 @@ export async function getAllUsersWithBalances(limit: number = 50, offset: number
 
   const total = await prisma.user.count()
 
-  // Get last transaction for each user
+  // Get last transaction and subscription for each user
   const usersWithLastTx = await Promise.all(
     users.map(async (user) => {
       const lastTransaction = await prisma.tokenTransaction.findFirst({
@@ -191,14 +199,27 @@ export async function getAllUsersWithBalances(limit: number = 50, offset: number
         select: { createdAt: true, type: true },
       })
 
+      const subscription = await prisma.userSubscription.findUnique({
+        where: { userId: user.id },
+        include: { plan: true }
+      })
+
+      // Show PU balance if subscription exists, otherwise legacy token balance
+      const puBalance = subscription ? parseFloat(subscription.puBalance.toString()) : null
+
       return {
         id: user.id,
         email: user.email,
         name: user.name,
-        tokenBalance: parseFloat(user.tokenBalance.toString()),
+        tokenBalance: puBalance ?? parseFloat(user.tokenBalance.toString()),
         createdAt: user.createdAt,
         lastTransaction: lastTransaction?.createdAt || null,
         lastTransactionType: lastTransaction?.type || null,
+        subscription: subscription ? {
+          planId: subscription.planId,
+          planCode: subscription.plan.code,
+          status: subscription.status
+        } : null
       }
     })
   )

@@ -21,7 +21,9 @@ export interface LibraryItemWithChunks {
         summary?: string
         utility?: string
         topics?: string[]
+        error?: string
     } | null
+    status: string
     createdAt: Date
     _count: {
         chunks: number
@@ -127,6 +129,181 @@ export async function clearLibrary() {
     }
 }
 
+export async function uploadLibraryDocument(data: {
+    file: FormData
+}) {
+    const user = await getCurrentUser()
+    if (!user || !user.id) throw new Error("Unauthorized")
+
+    const file = data.file.get('file') as File
+    if (!file) throw new Error("File not found")
+
+    const filename = file.name
+    const fileSize = file.size
+    const mimeType = file.type || 'application/octet-stream'
+
+    try {
+        // Create PENDING record immediately
+        const pendingItem = await prisma.libraryItem.create({
+            data: {
+                userId: user.id,
+                name: filename,
+                type: 'FILE',
+                fileSize,
+                mimeType,
+                status: 'PENDING' as any
+            }
+        })
+
+        // Read file content
+        const arrayBuffer = await file.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+
+        // Background processing
+        processLibraryItemAsync(user.id, pendingItem.id, filename, fileSize, mimeType, { buffer })
+            .catch(err => console.error("[LibraryAsync] Failed:", err))
+
+        return { success: true, status: 'processing', id: pendingItem.id }
+
+    } catch (error) {
+        console.error("Library upload failed:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Upload failed" }
+    }
+}
+
+async function processLibraryItemAsync(
+    userId: string,
+    itemId: string,
+    filename: string,
+    fileSize: number,
+    mimeType: string,
+    data: { buffer?: Buffer; text?: string }
+) {
+    try {
+        console.log(`[LibraryAsync] Starting for ${filename} (${itemId})`)
+        const gatewayUrl = process.env.AI_GATEWAY_URL
+        if (!gatewayUrl) throw new Error("AI Gateway not configured")
+
+        let chunks: any[] = []
+        let textContent = ""
+
+        if (data.buffer) {
+            const parseFormData = new FormData()
+            const blob = new Blob([data.buffer.buffer as ArrayBuffer], { type: mimeType })
+            parseFormData.append('file', blob, filename)
+
+            const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+                method: 'POST',
+                body: parseFormData,
+            })
+
+            if (!parseResponse.ok) throw new Error("Failed to parse document")
+
+            const parseData = await parseResponse.json()
+            chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
+                content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
+                index
+            }))
+            textContent = chunks.map((c: any) => c.content).join('\n\n')
+        } else if (data.text) {
+            textContent = data.text
+            const size = 2000
+            for (let i = 0; i < textContent.length; i += size) {
+                chunks.push({
+                    content: textContent.slice(i, i + size),
+                    index: Math.floor(i / size)
+                })
+            }
+        }
+
+        const contentTokens = Math.ceil(textContent.length / 4)
+        const billing = await getBillingSystem(userId)
+
+        // Calculate Charge
+        const charge = await calculateFileCharge(
+            `user-${userId}`,
+            filename,
+            Buffer.from(textContent),
+            contentTokens
+        )
+
+        const hasBalance = await billing.checkBalance(userId, charge.puCost)
+        if (!hasBalance) throw new Error(`Недостаточно PU. Требуется: ${charge.puCost.toFixed(2)} PU`)
+
+        // Deduct Usage
+        if (charge.puCost > 0) {
+            await billing.deductUsage(userId, charge.puCost, {
+                source: 'FILE_UPLOAD',
+                description: `Загрузка в библиотеку: ${filename}`,
+                metadata: {
+                    libraryItemId: itemId,
+                    fileName: filename,
+                    chargeReason: charge.reason,
+                    chargePercentage: charge.chargePercentage
+                }
+            })
+        }
+
+        // Vectorize & Update existing record
+        // The Gateway's vectorize endpoint for agents creates a KnowledgeBase record.
+        // For LibraryItems, we don't have a direct Gateway endpoint that updates LibraryItem.
+        // However, we can use the same logic: Gateway only returns vectorized status or we do it here.
+        // Actually, the LibraryItem needs the chunks in DB.
+
+        await prisma.$transaction([
+            prisma.libraryChunk.deleteMany({ where: { libraryItemId: itemId } }),
+            prisma.libraryChunk.createMany({
+                data: chunks.map(c => ({
+                    libraryItemId: itemId,
+                    content: c.content,
+                    chunkIndex: c.index,
+                    metadata: {}
+                }))
+            }),
+            prisma.libraryItem.update({
+                where: { id: itemId },
+                data: {
+                    content: textContent,
+                    status: 'VECTORIZED' as any as any
+                }
+            })
+        ])
+
+        // Save Cache
+        const contentHash = crypto.createHash('sha256').update(textContent).digest('hex')
+        await saveFileProcessingCache(
+            `user-${userId}`,
+            filename,
+            contentHash,
+            fileSize,
+            chunks.length,
+            charge.puCost,
+            charge.chargePercentage
+        )
+
+        console.log(`[LibraryAsync] Completed successfully for ${filename}`)
+
+        // Auto-generate metadata
+        try {
+            const { generateDocumentMetadata } = await import('@/actions/agent-knowledge')
+            await generateDocumentMetadata(userId, itemId, filename, textContent, true)
+        } catch (metaErr) {
+            console.warn(`[LibraryAsync] Metadata generation failed for ${filename}:`, metaErr)
+        }
+
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.error(`[LibraryAsync] Failed for ${filename}:`, error)
+        await prisma.libraryItem.update({
+            where: { id: itemId },
+            data: {
+                status: 'ERROR',
+                aiMetadata: { error: errorMsg }
+            }
+        }).catch(() => { })
+    }
+}
+
 export async function createLibraryItem(data: {
     name: string
     type: 'FILE' | 'NOTE'
@@ -142,45 +319,6 @@ export async function createLibraryItem(data: {
     await ensureDevUser(user.id)
 
     try {
-        // Get billing system for user
-        const billing = await getBillingSystem(user.id)
-
-        // For FILES, calculate smart charging cost
-        let puCost = 0
-        let chargeInfo: any = null
-
-        if (data.type === 'FILE' && data.content) {
-            try {
-                // Calculate file charge (duplicate, version, new file, etc.)
-                const content = Buffer.from(data.content)
-                const contentTokens = Math.ceil(data.content.length / 4) // Rough estimation
-
-                const charge = await calculateFileCharge(
-                    `user-${user.id}`, // Use userId as "agentId" for library
-                    data.name,
-                    content,
-                    contentTokens
-                )
-
-                puCost = charge.puCost
-                chargeInfo = charge
-
-                // Check balance before proceeding
-                const hasBalance = await billing.checkBalance(user.id, puCost)
-                if (!hasBalance) {
-                    return {
-                        success: false,
-                        error: `Недостаточно PU. Требуется: ${puCost.toFixed(4)} PU`,
-                        requiredPu: puCost
-                    }
-                }
-            } catch (chargeError) {
-                console.warn('[createLibraryItem] Charge calculation failed, proceeding without cost:', chargeError)
-                puCost = 0 // Continue without charge if calculation fails
-            }
-        }
-
-        // Create library item
         const item = await prisma.libraryItem.create({
             data: {
                 userId: user.id,
@@ -190,6 +328,7 @@ export async function createLibraryItem(data: {
                 fileUrl: data.fileUrl,
                 fileSize: data.fileSize,
                 mimeType: data.mimeType,
+                status: 'VECTORIZED', // Legacy sync created items are ready immediately
                 chunks: {
                     create: data.chunks.map(chunk => ({
                         content: chunk.content,
@@ -200,56 +339,10 @@ export async function createLibraryItem(data: {
             }
         })
 
-        // Deduct PU if applicable
-        if (puCost > 0 && data.type === 'FILE') {
-            try {
-                // Calculate content hash for caching
-                const contentHash = crypto
-                    .createHash('sha256')
-                    .update(data.content || '')
-                    .digest('hex')
-
-                // Deduct PU from user balance
-                await billing.deductUsage(user.id, puCost, {
-                    source: 'FILE_UPLOAD',
-                    description: `Загрузка файла: ${data.name}`,
-                    metadata: {
-                        libraryItemId: item.id,
-                        fileName: data.name,
-                        fileSize: data.fileSize,
-                        chargeReason: chargeInfo?.reason,
-                        chargePercentage: chargeInfo?.chargePercentage,
-                    }
-                })
-
-                // Save to file processing cache
-                await saveFileProcessingCache(
-                    `user-${user.id}`,
-                    data.name,
-                    contentHash,
-                    data.fileSize || 0,
-                    data.chunks.length,
-                    puCost,
-                    chargeInfo?.chargePercentage || 100
-                )
-            } catch (deductError) {
-                console.error('[createLibraryItem] PU deduction failed:', deductError)
-                // Note: Item was already created, but charge failed
-                // In production, might want to rollback or notify admin
-            }
-        }
-
         revalidatePath('/dashboard/knowledge')
-        return {
-            success: true,
-            item,
-            puCharged: puCost,
-            chargeInfo
-        }
+        return { success: true, item }
     } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error("Failed to create library item:", errorMessage)
-        return { success: false, error: `DB Error: ${errorMessage}` }
+        return { success: false, error: String(error) }
     }
 }
 
@@ -366,5 +459,101 @@ export async function updateLibraryItem(id: string, data: { name: string; conten
     } catch (error) {
         console.error("Failed to update library item:", error)
         return { success: false, error: "Failed to update item" }
+    }
+}
+
+// Cleanup stale PENDING library items older than 30 minutes
+export async function cleanupStalePendingLibraryItems() {
+    const user = await getCurrentUser()
+    if (!user || !user.id) return { cleaned: 0 }
+
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
+
+    try {
+        const result = await prisma.libraryItem.updateMany({
+            where: {
+                userId: user.id,
+                status: 'PENDING',
+                createdAt: { lt: thirtyMinutesAgo }
+            },
+            data: { status: 'ERROR' }
+        })
+
+        if (result.count > 0) {
+            console.log(`[Cleanup] Marked ${result.count} stale PENDING library items as ERROR`)
+        }
+
+        return { cleaned: result.count }
+    } catch (error) {
+        console.error("[LibraryCleanup] Failed:", error)
+        return { cleaned: 0 }
+    }
+}
+
+// Async website scraping for global library
+export async function asyncScrapeLibraryWebsite(url: string) {
+    const user = await getCurrentUser()
+    if (!user || !user.id) throw new Error("Unauthorized")
+
+    try {
+        // Create PENDING record immediately
+        const pendingItem = await prisma.libraryItem.create({
+            data: {
+                userId: user.id,
+                name: url,
+                type: 'FILE',
+                mimeType: 'text/html',
+                status: 'PENDING'
+            }
+        })
+
+        // Background task: scrape -> process
+        const runScrapeAndProcess = async () => {
+            try {
+                const { runApifyCrawler } = await import("@/lib/apify")
+                const items = await runApifyCrawler(url)
+
+                if (!items || items.length === 0) throw new Error("Scraping returned no results")
+
+                const combinedText = items
+                    .map((item: any) => item.text || item.markdown || "")
+                    .filter((t: string) => t.length > 0)
+                    .join("\n\n---\n\n")
+
+                if (combinedText.length === 0) throw new Error("Scraped content is empty")
+
+                const title = items[0]?.metadata?.title || items[0]?.title || url
+
+                // Update pending item title
+                await prisma.libraryItem.update({
+                    where: { id: pendingItem.id },
+                    data: { name: title }
+                })
+
+                await processLibraryItemAsync(
+                    user.id!,
+                    pendingItem.id,
+                    title,
+                    combinedText.length,
+                    'text/plain',
+                    { text: combinedText }
+                )
+            } catch (err) {
+                const errorMsg = err instanceof Error ? err.message : String(err)
+                console.error(`[LibraryScrape] Failed for ${url}:`, err)
+                await prisma.libraryItem.update({
+                    where: { id: pendingItem.id },
+                    data: { status: 'ERROR', aiMetadata: { error: errorMsg } }
+                }).catch(() => { })
+            }
+        }
+
+        runScrapeAndProcess().catch(err => console.error("Library scrape background failed:", err))
+
+        return { success: true, status: 'processing', id: pendingItem.id }
+
+    } catch (error) {
+        console.error("Library async scrape failed:", error)
+        return { success: false, error: error instanceof Error ? error.message : "Scrape failed" }
     }
 }
