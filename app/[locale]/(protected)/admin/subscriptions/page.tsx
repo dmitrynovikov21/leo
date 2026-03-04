@@ -49,13 +49,13 @@ export default function AdminSubscriptionsPage() {
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
-      ACTIVE: 'bg-green-100 text-green-800',
-      PAST_DUE: 'bg-orange-100 text-orange-800',
-      CANCELED: 'bg-red-100 text-red-800',
-      FROZEN: 'bg-blue-100 text-blue-800',
-      SUSPENDED: 'bg-gray-100 text-gray-800',
+      ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400',
+      PAST_DUE: 'bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400',
+      CANCELED: 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400',
+      FROZEN: 'bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400',
+      SUSPENDED: 'bg-muted text-muted-foreground',
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+    return colors[status] || 'bg-muted text-muted-foreground'
   }
 
   if (loading) {
@@ -68,7 +68,7 @@ export default function AdminSubscriptionsPage() {
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold">Подписки пользователей</h1>
-        <p className="text-gray-600">Управление подписками и биллингом</p>
+        <p className="text-muted-foreground">Управление подписками и биллингом</p>
       </div>
 
       <Card>
@@ -79,7 +79,7 @@ export default function AdminSubscriptionsPage() {
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-muted border-b border-border">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold">Пользователь</th>
                   <th className="text-left px-4 py-3 font-semibold">Тариф</th>
@@ -91,17 +91,17 @@ export default function AdminSubscriptionsPage() {
               </thead>
               <tbody>
                 {subscriptions.map((sub) => (
-                  <tr key={sub.id} className="border-b hover:bg-gray-50">
+                  <tr key={sub.id} className="border-b border-border hover:bg-muted/50">
                     <td className="px-4 py-3">
                       <div>
                         <p className="font-medium">{sub.userName || sub.userEmail}</p>
-                        <p className="text-sm text-gray-600">{sub.userEmail}</p>
+                        <p className="text-sm text-muted-foreground">{sub.userEmail}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <div>
                         <p className="font-medium">{sub.planName}</p>
-                        <p className="text-sm text-gray-600">{sub.planCode}</p>
+                        <p className="text-sm text-muted-foreground">{sub.planCode}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -109,7 +109,7 @@ export default function AdminSubscriptionsPage() {
                         <p className="font-mono">
                           {sub.puBalance.toFixed(2)} / {sub.puLimit}
                         </p>
-                        <div className="w-32 bg-gray-200 rounded-full h-2 mt-1">
+                        <div className="w-32 bg-muted rounded-full h-2 mt-1">
                           <div
                             className={`h-2 rounded-full ${sub.puBalance < 0 ? 'bg-red-600' : 'bg-green-600'
                               }`}
@@ -128,7 +128,7 @@ export default function AdminSubscriptionsPage() {
                     <td className="px-4 py-3 text-sm">
                       {new Date(sub.nextResetDate).toLocaleDateString('ru-RU')}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-muted-foreground">
                       {new Date(sub.createdAt).toLocaleDateString('ru-RU')}
                     </td>
                   </tr>

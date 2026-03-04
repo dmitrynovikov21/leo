@@ -85,7 +85,7 @@ export default function SystemLogsPage() {
             <div className="flex justify-between items-center shrink-0">
                 <div>
                     <h1 className="text-3xl font-bold">Системные логи</h1>
-                    <p className="text-gray-500">Просмотр логов Docker контейнеров</p>
+                    <p className="text-muted-foreground">Просмотр логов Docker контейнеров</p>
                 </div>
                 <div className="flex gap-2 items-center">
                     <Button

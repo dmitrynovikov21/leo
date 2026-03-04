@@ -39,13 +39,13 @@ export function FilePassportModal({
                             {metadata.ai_title}
                         </DialogTitle>
                         <div className="flex items-center gap-2 mt-2">
-                            <span className="text-zinc-400 text-sm truncate max-w-[200px]">
+                            <span className="text-muted-foreground text-sm truncate max-w-[200px]">
                                 {filename}
                             </span>
-                            <span className="text-zinc-600">•</span>
+                            <span className="text-muted-foreground">•</span>
                             <Badge
                                 variant="secondary"
-                                className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+                                className="bg-card/10 text-white border-white/20 hover:bg-card/20"
                             >
                                 {metadata.category}
                             </Badge>
@@ -57,11 +57,11 @@ export function FilePassportModal({
                 <div className="p-6 space-y-5">
                     {/* Summary Section */}
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-zinc-500">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                             <FileText className="h-4 w-4" />
                             <span className="text-xs font-semibold uppercase tracking-wider">О чем этот файл</span>
                         </div>
-                        <p className="text-zinc-700 leading-relaxed">
+                        <p className="text-foreground leading-relaxed">
                             {metadata.summary}
                         </p>
                     </div>
@@ -81,7 +81,7 @@ export function FilePassportModal({
 
                     {/* Topics Section */}
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-zinc-500">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                             <Tag className="h-4 w-4" />
                             <span className="text-xs font-semibold uppercase tracking-wider">Темы</span>
                         </div>
@@ -90,7 +90,7 @@ export function FilePassportModal({
                                 <Badge
                                     key={index}
                                     variant="outline"
-                                    className="bg-zinc-50 border-zinc-200 text-zinc-700 hover:bg-zinc-100 rounded-lg px-3 py-1"
+                                    className="bg-muted/50 border-border text-foreground hover:bg-muted rounded-lg px-3 py-1"
                                 >
                                     {topic}
                                 </Badge>
@@ -100,7 +100,7 @@ export function FilePassportModal({
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-zinc-100 p-4 bg-zinc-50/50">
+                <div className="border-t border-border p-4 bg-muted/30">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}

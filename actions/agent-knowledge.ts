@@ -360,9 +360,7 @@ async function generateDocumentMetadata(
     const gatewayUrl = process.env.AI_GATEWAY_URL
     if (!gatewayUrl) return
 
-    const snippet = textContent.length <= 3000
-        ? textContent
-        : `${textContent.slice(0, 2000)}\n\n[...]\n\n${textContent.slice(-1000)}`
+    const snippet = textContent
 
     const systemPrompt = await getActivePromptContent("metadata_generation") || FALLBACK_METADATA_PROMPT
 

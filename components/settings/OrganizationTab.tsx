@@ -25,46 +25,46 @@ export function OrganizationTab() {
     return (
         <div className="space-y-6">
             {/* Section 1: General */}
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-zinc-900">Настройки организации</CardTitle>
-                    <CardDescription className="text-zinc-500">Общая информация о вашей компании.</CardDescription>
+                    <CardTitle className="text-xl font-bold text-foreground">Настройки организации</CardTitle>
+                    <CardDescription className="text-muted-foreground">Общая информация о вашей компании.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="org-name" className="text-zinc-700 font-medium">Отображаемое название</Label>
+                        <Label htmlFor="org-name" className="text-foreground font-medium">Отображаемое название</Label>
                         <Input
                             id="org-name"
                             defaultValue="Acme Corp"
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="support-email" className="text-zinc-700 font-medium">Почта поддержки</Label>
+                        <Label htmlFor="support-email" className="text-foreground font-medium">Почта поддержки</Label>
                         <Input
                             id="support-email"
                             defaultValue="support@acme.com"
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end pb-6 px-6">
-                    <Button className="rounded-xl h-10 px-6 font-medium bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm">Сохранить изменения</Button>
+                    <Button className="rounded-xl h-10 px-6 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">Сохранить изменения</Button>
                 </CardFooter>
             </Card>
 
             {/* Section 2: Plan Info */}
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-zinc-900">Текущий тариф</CardTitle>
-                    <CardDescription className="text-zinc-500">Информация о подписке и лимитах.</CardDescription>
+                    <CardTitle className="text-xl font-bold text-foreground">Текущий тариф</CardTitle>
+                    <CardDescription className="text-muted-foreground">Информация о подписке и лимитах.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-8">
                     <div>
-                        <div className="font-bold text-lg text-zinc-900">Пробный период</div>
-                        <p className="text-sm text-zinc-500 font-medium">Истекает через 14 дней</p>
+                        <div className="font-bold text-lg text-foreground">Пробный период</div>
+                        <p className="text-sm text-muted-foreground font-medium">Истекает через 14 дней</p>
                     </div>
-                    <Button variant="outline" className="rounded-xl h-10 border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-medium">
+                    <Button variant="outline" className="rounded-xl h-10 border-border hover:bg-muted text-foreground font-medium">
                         Открыть настройки тарифа <ExternalLink className="ml-2 h-4 w-4" />
                     </Button>
                 </CardContent>
@@ -72,35 +72,35 @@ export function OrganizationTab() {
 
             {/* Section 3 & 4: Team */}
             {/* Section 3 & 4: Team - MUTED
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-zinc-900">Управление командой</CardTitle>
-                    <CardDescription className="text-zinc-500">Приглашайте коллег и управляйте доступами.</CardDescription>
+                    <CardTitle className="text-xl font-bold text-foreground">Управление командой</CardTitle>
+                    <CardDescription className="text-muted-foreground">Приглашайте коллег и управляйте доступами.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pb-8">
                     <div className="flex gap-3">
                         <Input
                             placeholder="name@example.com"
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
-                        <Button className="h-11 rounded-xl px-6 bg-zinc-900 text-white hover:bg-zinc-800">Отправить</Button>
+                        <Button className="h-11 rounded-xl px-6 bg-primary text-primary-foreground hover:bg-primary/90">Отправить</Button>
                     </div>
 
                     <div className="space-y-3">
                         {members.map((member) => (
-                            <div key={member.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100 group">
+                            <div key={member.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-colors border border-transparent hover:border-border group">
                                 <div className="flex items-center gap-4">
-                                    <EmojiAvatar value={member.avatar} size="sm" className="bg-zinc-100 border border-zinc-200" />
+                                    <EmojiAvatar value={member.avatar} size="sm" className="bg-muted border border-border" />
                                     <div>
-                                        <div className="font-semibold text-sm text-zinc-900">{member.name}</div>
-                                        <div className="text-xs text-zinc-500 font-medium">{member.email}</div>
+                                        <div className="font-semibold text-sm text-foreground">{member.name}</div>
+                                        <div className="text-xs text-muted-foreground font-medium">{member.email}</div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Badge variant="secondary" className="bg-zinc-100 text-zinc-600 hover:bg-zinc-200 border-0 rounded-lg h-7 px-3">
+                                    <Badge variant="secondary" className="bg-muted text-muted-foreground hover:bg-zinc-200 border-0 rounded-lg h-7 px-3">
                                         {member.role}
                                     </Badge>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                                         <X size={16} />
                                     </Button>
                                 </div>

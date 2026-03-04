@@ -52,7 +52,7 @@ export function ConflictValueEditor({ value, onSave, className }: ConflictValueE
 
     if (isSaving) {
         return (
-            <div className={cn("flex items-center gap-2 text-sm text-zinc-500 animate-pulse", className)}>
+            <div className={cn("flex items-center gap-2 text-sm text-muted-foreground animate-pulse", className)}>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Сохранение...
             </div>
@@ -66,7 +66,7 @@ export function ConflictValueEditor({ value, onSave, className }: ConflictValueE
                 onChange={(e) => setCurrentValue(e.target.value)}
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
-                className={cn("min-h-[60px] resize-none bg-white text-sm", className)}
+                className={cn("min-h-[60px] resize-none bg-card text-sm", className)}
                 autoFocus
             />
         )
@@ -76,15 +76,15 @@ export function ConflictValueEditor({ value, onSave, className }: ConflictValueE
         <div
             onClick={handleStartEdit}
             className={cn(
-                "group relative cursor-pointer rounded-lg border border-transparent hover:border-zinc-200 hover:bg-white transition-all px-2 py-1 -mx-2",
+                "group relative cursor-pointer rounded-lg border border-transparent hover:border-border hover:bg-card transition-all px-2 py-1 -mx-2",
                 className
             )}
         >
-            <span className="font-mono text-sm text-zinc-900 block break-words">
+            <span className="font-mono text-sm text-foreground block break-words">
                 {value}
             </span>
             <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Pencil className="h-3.5 w-3.5 text-zinc-400" />
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
         </div>
     )

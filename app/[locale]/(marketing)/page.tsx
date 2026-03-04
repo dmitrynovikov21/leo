@@ -1,23 +1,17 @@
-import { infos } from "@/config/landing";
-import BentoGrid from "@/components/sections/bentogrid";
-import Features from "@/components/sections/features";
-import HeroLanding from "@/components/sections/hero-landing";
-import InfoLanding from "@/components/sections/info-landing";
-import Powered from "@/components/sections/powered";
-import PreviewLanding from "@/components/sections/preview-landing";
-import Testimonials from "@/components/sections/testimonials";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
-export default function IndexPage() {
-  return (
-    <>
-      <HeroLanding />
-      <PreviewLanding />
-      <Powered />
-      <BentoGrid />
-      <InfoLanding data={infos[0]} reverse={true} />
-      {/* <InfoLanding data={infos[1]} /> */}
-      <Features />
-      <Testimonials />
-    </>
-  );
+export default async function IndexPage({
+  params,
+}: {
+  params: { locale: string };
+}) {
+  const session = await auth();
+  const locale = params.locale || "ru";
+
+  if (session?.user) {
+    redirect(`/${locale}/dashboard`);
+  } else {
+    redirect(`/${locale}/login`);
+  }
 }

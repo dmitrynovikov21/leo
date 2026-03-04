@@ -138,7 +138,7 @@ export function OverviewDashboard() {
 
     if (isUserLoading || isLoading) {
         return <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-zinc-100 animate-pulse rounded-2xl" />)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-muted animate-pulse rounded-2xl" />)}
         </div>
     }
 

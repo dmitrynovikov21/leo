@@ -31,11 +31,11 @@ export function ActiveChannels({ channels = [] }: ActiveChannelsProps) {
     const t = useTranslations('Dashboard')
 
     return (
-        <Card className="bg-white border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
+        <Card className="bg-card border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
             <CardHeader>
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-zinc-900">{t('activeChannels')}</CardTitle>
-                    <Button variant="default" size="sm" className="bg-zinc-950 hover:bg-zinc-800 text-white rounded-xl h-9 px-4 shadow-none">
+                    <CardTitle className="text-lg font-semibold text-foreground">{t('activeChannels')}</CardTitle>
+                    <Button variant="default" size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-9 px-4 shadow-none">
                         <Settings className="h-4 w-4 mr-2" />
                         {t('manageChannels')}
                     </Button>

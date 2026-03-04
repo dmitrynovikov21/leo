@@ -187,48 +187,48 @@ export function SecurityTab() {
     return (
         <div className="space-y-6">
             {/* Password Card */}
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-zinc-900">Пароль</CardTitle>
-                    <CardDescription className="text-zinc-500">
+                    <CardTitle className="text-xl font-bold text-foreground">Пароль</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                         Измените свой пароль для входа в аккаунт.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="current-password" className="text-zinc-700 font-medium">Текущий пароль</Label>
+                        <Label htmlFor="current-password" className="text-foreground font-medium">Текущий пароль</Label>
                         <Input
                             id="current-password"
                             type="password"
                             value={passwordData.currentPassword}
                             onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="new-password" className="text-zinc-700 font-medium">Новый пароль</Label>
+                        <Label htmlFor="new-password" className="text-foreground font-medium">Новый пароль</Label>
                         <Input
                             id="new-password"
                             type="password"
                             value={passwordData.newPassword}
                             onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="confirm-password" className="text-zinc-700 font-medium">Подтвердите пароль</Label>
+                        <Label htmlFor="confirm-password" className="text-foreground font-medium">Подтвердите пароль</Label>
                         <Input
                             id="confirm-password"
                             type="password"
                             value={passwordData.confirmPassword}
                             onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end pb-6 px-6">
                     <Button
-                        className="rounded-xl h-10 px-6 font-medium bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm"
+                        className="rounded-xl h-10 px-6 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                         onClick={handleUpdatePassword}
                         disabled={isUpdatingPassword}
                     >
@@ -239,24 +239,24 @@ export function SecurityTab() {
             </Card>
 
             {/* Sessions Card */}
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <CardTitle className="text-xl font-bold text-zinc-900">Активные сессии</CardTitle>
-                            <CardDescription className="text-zinc-500">
+                            <CardTitle className="text-xl font-bold text-foreground">Активные сессии</CardTitle>
+                            <CardDescription className="text-muted-foreground">
                                 Устройства, с которых выполнен вход в ваш аккаунт.
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="text-xs font-semibold text-zinc-500 bg-zinc-100 border border-zinc-200/50 px-3 py-1.5 rounded-lg">
+                            <div className="text-xs font-semibold text-muted-foreground bg-muted border border-border px-3 py-1.5 rounded-lg">
                                 {isLoading ? '...' : `${sessions.length} сессий`}
                             </div>
                             {sessions.length > 1 && (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="rounded-lg h-8 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                                    className="rounded-lg h-8 border-red-200 dark:border-red-800 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-300"
                                     onClick={() => setShowLogoutAllDialog(true)}
                                 >
                                     <LogOut className="h-3.5 w-3.5 mr-1.5" />
@@ -269,10 +269,10 @@ export function SecurityTab() {
                 <CardContent className="space-y-2 pb-8">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : sessions.length === 0 ? (
-                        <div className="text-center py-8 text-zinc-500">
+                        <div className="text-center py-8 text-muted-foreground">
                             Нет активных сессий
                         </div>
                     ) : (
@@ -283,17 +283,17 @@ export function SecurityTab() {
                             return (
                                 <div
                                     key={session.id}
-                                    className="flex items-center justify-between py-3 border-b border-zinc-100 last:border-0 hover:bg-zinc-50 transition-colors px-2 rounded-xl -mx-2"
+                                    className="flex items-center justify-between py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors px-2 rounded-xl -mx-2"
                                 >
                                     <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 bg-zinc-100 rounded-xl flex items-center justify-center border border-zinc-200/50">
-                                            <DeviceIcon className="h-6 w-6 text-zinc-500" />
+                                        <div className="h-12 w-12 bg-muted rounded-xl flex items-center justify-center border border-border">
+                                            <DeviceIcon className="h-6 w-6 text-muted-foreground" />
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-zinc-900 text-sm">
+                                            <div className="font-semibold text-foreground text-sm">
                                                 {session.device.os} • {session.device.browser}
                                             </div>
-                                            <div className="text-xs font-medium text-zinc-500">
+                                            <div className="text-xs font-medium text-muted-foreground">
                                                 {session.ipAddress || 'IP неизвестен'} • {' '}
                                                 <span className={isNow ? 'text-green-600' : ''}>
                                                     {formatLastActivity(session.lastActivity)}
@@ -304,7 +304,7 @@ export function SecurityTab() {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        className="rounded-lg h-8 border-zinc-200 text-zinc-700 hover:text-red-600 hover:bg-red-50 hover:border-red-100 bg-white shadow-sm"
+                                        className="rounded-lg h-8 border-border text-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-100 shadow-sm"
                                         onClick={() => handleTerminateSession(session.id)}
                                         disabled={isTerminating === session.id}
                                     >
@@ -323,15 +323,15 @@ export function SecurityTab() {
 
             {/* Logout All Dialog */}
             <Dialog open={showLogoutAllDialog} onOpenChange={setShowLogoutAllDialog}>
-                <DialogContent className="sm:max-w-[400px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                <DialogContent className="sm:max-w-[400px] rounded-2xl p-6 border-border shadow-xl">
                     <DialogHeader className="text-center">
-                        <div className="mx-auto h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+                        <div className="mx-auto h-16 w-16 rounded-full bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center mb-4">
                             <AlertTriangle className="h-8 w-8 text-amber-600" />
                         </div>
-                        <DialogTitle className="text-xl font-bold text-zinc-900">
+                        <DialogTitle className="text-xl font-bold text-foreground">
                             Выйти со всех устройств?
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-500 mt-2">
+                        <DialogDescription className="text-muted-foreground mt-2">
                             Вы будете разлогинены на всех устройствах, включая текущее.
                             Потребуется повторный вход.
                         </DialogDescription>

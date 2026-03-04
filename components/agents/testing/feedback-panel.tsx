@@ -157,11 +157,11 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
     }
 
     return (
-        <div className="flex h-full flex-col border-l border-zinc-100 bg-white relative">
+        <div className="flex h-full flex-col border-l border-border bg-card relative">
             {/* Header */}
-            <div className="flex h-12 items-center justify-between border-b border-zinc-100 px-4">
-                <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Тест-кейсы</span>
-                <Badge variant="secondary" className="bg-zinc-50 text-zinc-600 rounded-md px-2 text-[10px] font-medium border border-zinc-100">
+            <div className="flex h-12 items-center justify-between border-b border-border px-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Тест-кейсы</span>
+                <Badge variant="secondary" className="bg-muted/50 text-muted-foreground rounded-md px-2 text-[10px] font-medium border border-border">
                     {pendingCount} В ОЧЕРЕДИ
                 </Badge>
             </div>
@@ -169,15 +169,15 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
             {/* Content list */}
             <div className="flex-1 overflow-hidden relative">
                 {testCases.length === 0 ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-white">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-card">
                         <button
                             onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
-                            className="h-14 w-14 rounded-full bg-zinc-50 hover:bg-zinc-100 flex items-center justify-center mb-4 transition-all cursor-pointer group shadow-sm hover:shadow-md border border-zinc-100"
+                            className="h-14 w-14 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center mb-4 transition-all cursor-pointer group shadow-sm hover:shadow-md border border-border"
                         >
-                            <Plus className="h-6 w-6 text-zinc-300 group-hover:text-zinc-600 transition-colors" />
+                            <Plus className="h-6 w-6 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
                         </button>
-                        <h3 className="text-sm font-medium text-zinc-900 mb-1">Очередь пуста</h3>
-                        <p className="text-xs text-zinc-400 max-w-[180px] leading-relaxed">
+                        <h3 className="text-sm font-medium text-foreground mb-1">Очередь пуста</h3>
+                        <p className="text-xs text-muted-foreground max-w-[180px] leading-relaxed">
                             Добавьте вопросы и ожидаемые ответы для автотестирования.
                         </p>
                     </div>
@@ -188,7 +188,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                                 <Card
                                     key={item.id}
                                     onClick={() => openEdit(item)}
-                                    className="p-2 bg-white border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.02)] rounded-lg group hover:border-zinc-200 transition-all cursor-pointer hover:shadow-md relative"
+                                    className="p-2 bg-card border-border shadow-[0_2px_8px_rgba(0,0,0,0.02)] rounded-lg group hover:border-border transition-all cursor-pointer hover:shadow-md relative"
                                 >
                                     <div className="flex items-start gap-2.5">
                                         <div className="mt-0.5">
@@ -196,13 +196,13 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                                         </div>
                                         <div className="flex-1 space-y-0.5 min-w-0">
                                             <div className="flex items-center gap-2 mb-0.5">
-                                                <span className="text-[10px] font-mono text-zinc-400">#{idx + 1}</span>
+                                                <span className="text-[10px] font-mono text-muted-foreground">#{idx + 1}</span>
                                                 {getStatusBadge(item)}
                                             </div>
-                                            <p className="text-sm text-zinc-800 leading-snug font-medium break-words whitespace-normal">{item.question}</p>
-                                            <p className="text-[11px] text-zinc-400 break-words whitespace-normal">Ожидается: {item.expectedAnswer}</p>
+                                            <p className="text-sm text-foreground leading-snug font-medium break-words whitespace-normal">{item.question}</p>
+                                            <p className="text-[11px] text-muted-foreground break-words whitespace-normal">Ожидается: {item.expectedAnswer}</p>
                                             {item.actualAnswer && (
-                                                <p className="text-[11px] text-zinc-500 break-words whitespace-normal mt-1 pt-1 border-t border-zinc-50">
+                                                <p className="text-[11px] text-muted-foreground break-words whitespace-normal mt-1 pt-1 border-t border-zinc-50">
                                                     Ответ: {item.actualAnswer}
                                                 </p>
                                             )}
@@ -212,7 +212,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-5 w-5 text-zinc-300 hover:text-zinc-600"
+                                                className="h-5 w-5 text-muted-foreground/60 hover:text-muted-foreground"
                                                 onClick={(e) => { e.stopPropagation(); openEdit(item); }}
                                             >
                                                 <Edit2 className="h-3 w-3" />
@@ -220,7 +220,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-5 w-5 text-zinc-300 hover:text-red-500"
+                                                className="h-5 w-5 text-muted-foreground/60 hover:text-red-500"
                                                 onClick={(e) => { e.stopPropagation(); handleRemoveTestCase(item.id); }}
                                             >
                                                 <Trash2 className="h-3 w-3" />
@@ -233,7 +233,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-full text-xs text-zinc-400 hover:text-zinc-900 border border-dashed border-zinc-200 hover:border-zinc-300 h-8 font-normal rounded-lg hover:bg-zinc-50"
+                                className="w-full text-xs text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-border h-8 font-normal rounded-lg hover:bg-muted/50"
                                 onClick={() => { setEditingItem(null); setIsAddOpen(true); }}
                             >
                                 <Plus className="h-3 w-3 mr-2" /> Добавить тест-кейс
@@ -246,7 +246,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
             {/* Floating Footer Action - Run Tests */}
             <div className="absolute bottom-6 left-0 right-0 flex justify-center px-6 pointer-events-none z-10">
                 <Button
-                    className="rounded-full shadow-2xl shadow-zinc-900/20 h-11 px-6 gap-2 font-medium bg-zinc-900 text-white hover:bg-zinc-800 backdrop-blur-md pointer-events-auto transition-all hover:scale-[1.02] active:scale-[0.98] border border-white/10"
+                    className="rounded-full shadow-2xl shadow-zinc-900/20 h-11 px-6 gap-2 font-medium bg-primary text-primary-foreground hover:bg-primary/90 backdrop-blur-md pointer-events-auto transition-all hover:scale-[1.02] active:scale-[0.98] border border-white/10"
                     disabled={pendingCount === 0 || isRunning}
                     onClick={onRunTests}
                 >
@@ -260,7 +260,7 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
                             <Play className="h-4 w-4" />
                             Запустить тесты
                             {pendingCount > 0 && (
-                                <span className="ml-1 bg-white/20 px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[18px]">
+                                <span className="ml-1 bg-card/20 px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[18px]">
                                     {pendingCount}
                                 </span>
                             )}
@@ -271,40 +271,40 @@ export function FeedbackPanel({ testCases, setTestCases, onRunTests, isRunning, 
 
             {/* Add Test Case Dialog */}
             <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) setEditingItem(null); }}>
-                <DialogContent className="sm:max-w-[425px] rounded-2xl p-6 shadow-2xl border-zinc-100">
+                <DialogContent className="sm:max-w-[425px] rounded-2xl p-6 shadow-2xl border-border">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-semibold">
                             {editingItem ? "Редактировать тест-кейс" : "Добавить тест-кейс"}
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-500">
+                        <DialogDescription className="text-muted-foreground">
                             Укажите вопрос и ожидаемый ответ. Тест проверит, что ответ агента содержит ключевые слова.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-2">
                         <div className="grid gap-2">
-                            <Label htmlFor="question" className="text-xs font-semibold text-zinc-500 uppercase">Вопрос</Label>
+                            <Label htmlFor="question" className="text-xs font-semibold text-muted-foreground uppercase">Вопрос</Label>
                             <Input
                                 id="question"
                                 placeholder="Что спросить у агента?"
-                                className="rounded-xl bg-zinc-50 border-zinc-200"
+                                className="rounded-xl bg-muted/50 border-border"
                                 value={newQuestion}
                                 onChange={(e) => setNewQuestion(e.target.value)}
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="expected" className="text-xs font-semibold text-zinc-500 uppercase">Ожидаемый ответ</Label>
+                            <Label htmlFor="expected" className="text-xs font-semibold text-muted-foreground uppercase">Ожидаемый ответ</Label>
                             <Textarea
                                 id="expected"
                                 placeholder="Ключевые слова или фраза, которая должна быть в ответе"
-                                className="h-24 resize-none rounded-xl bg-zinc-50 border-zinc-200 focus:ring-0 focus:border-zinc-300 transition-all font-medium text-sm"
+                                className="h-24 resize-none rounded-xl bg-muted/50 border-border focus:ring-0 focus:border-border transition-all font-medium text-sm"
                                 value={newExpected}
                                 onChange={(e) => setNewExpected(e.target.value)}
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl border-zinc-200 h-10 hover:bg-zinc-50">Отмена</Button>
-                        <Button onClick={handleSaveTestCase} disabled={isAdding} className="rounded-xl h-10 bg-zinc-900 text-white hover:bg-zinc-800 shadow-md">
+                        <Button variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl border-border h-10 hover:bg-muted/50">Отмена</Button>
+                        <Button onClick={handleSaveTestCase} disabled={isAdding} className="rounded-xl h-10 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
                             {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : (editingItem ? "Сохранить" : "Добавить")}
                         </Button>
                     </DialogFooter>

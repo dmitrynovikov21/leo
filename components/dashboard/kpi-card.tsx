@@ -21,18 +21,18 @@ interface KPICardProps {
 
 export function KPICard({ title, value, trend, secondaryInfo, icon: Icon, sparklineData }: KPICardProps) {
     return (
-        <Card className="relative overflow-hidden bg-white border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
+        <Card className="relative overflow-hidden bg-card border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
             <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-medium text-zinc-500">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
                         {title}
                     </CardTitle>
-                    <Icon className="h-4 w-4 text-zinc-400" />
+                    <Icon className="h-4 w-4 text-muted-foreground" />
                 </div>
             </CardHeader>
             <CardContent>
                 <div className="space-y-1">
-                    <div className="text-3xl font-bold tracking-tight text-zinc-900 tabular-nums">{value}</div>
+                    <div className="text-3xl font-bold tracking-tight text-foreground tabular-nums">{value}</div>
                     {trend && (
                         <div className="flex items-center gap-1 text-xs">
                             {trend.isPositive ? (
@@ -43,11 +43,11 @@ export function KPICard({ title, value, trend, secondaryInfo, icon: Icon, sparkl
                             <span className={`font-medium tabular-nums ${trend.isPositive ? "text-emerald-500" : "text-red-500"}`}>
                                 {trend.isPositive ? "+" : ""}{trend.value}%
                             </span>
-                            <span className="text-zinc-400 ml-1">от прошлого месяца</span>
+                            <span className="text-muted-foreground ml-1">от прошлого месяца</span>
                         </div>
                     )}
                     {secondaryInfo && (
-                        <p className="text-xs text-zinc-400 mt-2">
+                        <p className="text-xs text-muted-foreground mt-2">
                             {secondaryInfo}
                         </p>
                     )}

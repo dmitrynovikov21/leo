@@ -61,7 +61,7 @@ export default function SourcesPage() {
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Источники коммуникации</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Источники коммуникации</h1>
                     <p className="text-sm text-muted-foreground">
                         Управление подключенными каналами для всех ваших агентов.
                     </p>
@@ -74,23 +74,23 @@ export default function SourcesPage() {
                     <Card
                         key={source.id}
                         className={cn(
-                            "group flex flex-col h-full transition-all duration-200 border-zinc-200/50 shadow-sm rounded-xl bg-white overflow-hidden",
-                            source.status === 'active' ? "hover:shadow-md hover:border-zinc-300" : "opacity-70 bg-white grayscale-[0.5]"
+                            "group flex flex-col h-full transition-all duration-200 border-border shadow-sm rounded-xl bg-card overflow-hidden",
+                            source.status === 'active' ? "hover:shadow-md hover:border-border" : "opacity-70 bg-card grayscale-[0.5]"
                         )}
                     >
                         <CardHeader className="pb-3 p-4">
                             <div className="flex items-center gap-3 mb-1">
                                 <div className={cn(
                                     "h-8 w-8 rounded-lg flex items-center justify-center transition-colors shrink-0",
-                                    "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
+                                    "bg-card border border-border group-hover:bg-card group-hover:shadow-sm"
                                 )}>
                                     <source.icon className={cn("h-4 w-4", source.color)} />
                                 </div>
-                                <CardTitle className="text-base font-bold text-zinc-900 leading-tight">
+                                <CardTitle className="text-base font-bold text-foreground leading-tight">
                                     {source.title}
                                 </CardTitle>
                             </div>
-                            <CardDescription className="text-xs text-zinc-500 leading-relaxed">
+                            <CardDescription className="text-xs text-muted-foreground leading-relaxed">
                                 {source.description}
                             </CardDescription>
                         </CardHeader>
@@ -120,7 +120,7 @@ export default function SourcesPage() {
                                 <div className="w-full flex items-center justify-center h-9">
                                     <Badge
                                         variant="secondary"
-                                        className="bg-zinc-100 text-zinc-500 hover:bg-zinc-100 border-zinc-200 px-2.5 py-0.5 text-xs rounded-md"
+                                        className="bg-muted text-muted-foreground hover:bg-muted border-border px-2.5 py-0.5 text-xs rounded-md"
                                     >
                                         Скоро
                                     </Badge>

@@ -38,7 +38,7 @@ export default function AgentsPage() {
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{t('title')}</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('title')}</h1>
                     <p className="text-sm text-muted-foreground">
                         {t('description')}
                     </p>

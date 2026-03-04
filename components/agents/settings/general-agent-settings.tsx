@@ -118,7 +118,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
             try {
                 if (!orchestratorUrl) {
                     await new Promise(r => setTimeout(r, 1000))
-                    toast.success(`Agent ${action}ed (Mock)`)
+                    toast.success(`Агент ${action === 'start' ? 'запущен' : 'остановлен'} (Mock)`)
                     await refreshAgents()
                     return
                 }
@@ -145,18 +145,18 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                 }
 
                 await refreshAgents()
-                toast.success(`Agent ${action === 'start' ? 'started' : 'stopped'} successfully`)
+                toast.success(`Агент успешно ${action === 'start' ? 'запущен' : 'остановлен'}`)
 
             } catch (error) {
                 console.error(error)
-                toast.error(`Failed to ${action} agent`)
+                toast.error(`Не удалось ${action === 'start' ? 'запустить' : 'остановить'} агента`)
             } finally {
                 setIsLoading(false)
             }
         }
 
         if (!agent) {
-            return <div>Agent not found</div>
+            return <div>Агент не найден</div>
         }
 
         const isRunning = agent.status === 'RUNNING'
@@ -164,22 +164,22 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
         return (
             <div className="space-y-6">
                 {/* Status Control Card - FIRST */}
-                <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-full ${isRunning ? 'bg-emerald-100' : 'bg-zinc-100'}`}>
-                                <Power className={`h-5 w-5 ${isRunning ? 'text-emerald-600' : 'text-zinc-500'}`} />
+                            <div className={`p-2 rounded-full ${isRunning ? 'bg-emerald-100' : 'bg-muted'}`}>
+                                <Power className={`h-5 w-5 ${isRunning ? 'text-emerald-600' : 'text-muted-foreground'}`} />
                             </div>
                             <div>
-                                <h4 className="font-medium text-sm text-zinc-900">Status</h4>
+                                <h4 className="font-medium text-sm text-foreground">Статус</h4>
                                 <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-semibold ${isRunning ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                                    <span className={`text-xs font-semibold ${isRunning ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                                         {agent.status === 'STARTING' ? t('starting') :
                                             agent.status === 'RUNNING' ? t('online') :
                                                 agent.status === 'STOPPED' ? t('paused') : agent.status}
                                     </span>
                                     {agent.containerId && (
-                                        <span className="text-[10px] text-zinc-400 font-mono">
+                                        <span className="text-[10px] text-muted-foreground font-mono">
                                             {agent.containerId.substring(0, 8)}
                                         </span>
                                     )}
@@ -201,7 +201,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                             ) : (
                                 <Play className="h-4 w-4 mr-2" />
                             )}
-                            {isRunning ? "Stop Agent" : "Start Agent"}
+                            {isRunning ? "Остановить" : "Запустить"}
                         </Button>
                     </CardContent>
                 </Card>
@@ -209,8 +209,8 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                 {/* Info Header with Save Button - SECOND */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-bold text-zinc-900">Основная информация</h3>
-                        <p className="text-sm text-zinc-500 mt-1">
+                        <h3 className="text-lg font-bold text-foreground">Основная информация</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
                             Настройте имя агента, его аватар и описание.
                         </p>
                     </div>
@@ -223,7 +223,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                     </Button>
                 </div>
 
-                <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                     <CardContent className="p-4 space-y-4">
                         {/* Identity Row - Emoji + Name */}
                         <div className="flex items-center gap-4">
@@ -231,7 +231,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                                 <PopoverTrigger asChild>
                                     <button
                                         type="button"
-                                        className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm bg-zinc-50 text-2xl hover:bg-zinc-100 hover:shadow-md transition-all duration-200 border border-zinc-100"
+                                        className="flex h-12 w-12 items-center justify-center rounded-xl shadow-sm bg-muted/50 text-2xl hover:bg-muted hover:shadow-md transition-all duration-200 border border-border"
                                     >
                                         {emoji}
                                     </button>
@@ -256,7 +256,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                                     value={name}
                                     onChange={handleNameChange}
                                     placeholder="Имя агента"
-                                    className="h-10 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 placeholder:text-zinc-400"
+                                    className="h-10 rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
                         </div>
@@ -265,18 +265,18 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                         {/* Description */}
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                                <Label htmlFor="agent-desc" className="text-sm font-semibold text-zinc-700">Описание / Должность</Label>
+                                <Label htmlFor="agent-desc" className="text-sm font-semibold text-foreground">Описание / Должность</Label>
                                 <HoverCard>
                                     <HoverCardTrigger asChild>
-                                        <div className="cursor-default rounded-full p-0.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors">
+                                        <div className="cursor-default rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-muted-foreground transition-colors">
                                             <HelpCircle className="h-4 w-4" />
                                         </div>
                                     </HoverCardTrigger>
-                                    <HoverCardContent align="start" className="w-[450px] p-5 rounded-xl shadow-xl border-zinc-200">
+                                    <HoverCardContent align="start" className="w-[450px] p-5 rounded-xl shadow-xl border-border">
                                         <div className="space-y-4">
                                             <div className="space-y-1">
-                                                <h4 className="text-sm font-bold text-zinc-900 leading-none">Зачем указывать должность?</h4>
-                                                <p className="text-xs text-zinc-500">
+                                                <h4 className="text-sm font-bold text-foreground leading-none">Зачем указывать должность?</h4>
+                                                <p className="text-xs text-muted-foreground">
                                                     Правильное описание роли агента критически влияет на качество ответов.
                                                 </p>
                                             </div>
@@ -286,8 +286,8 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                                                         <User className="h-3 w-3" />
                                                     </div>
                                                     <div className="space-y-0.5">
-                                                        <p className="text-xs font-semibold text-zinc-900">Роль и контекст</p>
-                                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                                        <p className="text-xs font-semibold text-foreground">Роль и контекст</p>
+                                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
                                                             Помогает агенту понять, в каком качестве он выступает (менеджер, помощник, эксперт), что определяет уровень ответственности.
                                                         </p>
                                                     </div>
@@ -297,8 +297,8 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                                                         <MessageSquare className="h-3 w-3" />
                                                     </div>
                                                     <div className="space-y-0.5">
-                                                        <p className="text-xs font-semibold text-zinc-900">Тон общения</p>
-                                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                                        <p className="text-xs font-semibold text-foreground">Тон общения</p>
+                                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
                                                             Влияет на стиль речи. Менеджер говорит иначе, чем консультант. Это создает правильное впечатление о компетентности.
                                                         </p>
                                                     </div>
@@ -308,8 +308,8 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                                                         <Shield className="h-3 w-3" />
                                                     </div>
                                                     <div className="space-y-0.5">
-                                                        <p className="text-xs font-semibold text-zinc-900">Границы компетенции</p>
-                                                        <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                                        <p className="text-xs font-semibold text-foreground">Границы компетенции</p>
+                                                        <p className="text-[11px] text-muted-foreground leading-relaxed">
                                                             Определяет, в каких вопросах агент может давать рекомендации, а где должен перенаправить к человеку.
                                                         </p>
                                                     </div>
@@ -324,7 +324,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                                 value={description}
                                 onChange={handleDescriptionChange}
                                 placeholder="Например: Старший менеджер по работе с корпоративными клиентами. Занимается оформлением сделок и поддержкой ключевых партнеров."
-                                className="min-h-[80px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 resize-none"
+                                className="min-h-[80px] rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground resize-none"
                             />
                         </div>
                     </CardContent>
@@ -332,15 +332,15 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
 
                 {/* Telegram Required Modal */}
                 <Dialog open={showTelegramModal} onOpenChange={setShowTelegramModal}>
-                    <DialogContent className="sm:max-w-[450px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                    <DialogContent className="sm:max-w-[450px] rounded-2xl p-6 border-border shadow-xl">
                         <DialogHeader className="text-center">
                             <div className="mx-auto h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
                                 <Send className="h-8 w-8 text-blue-600" />
                             </div>
-                            <DialogTitle className="text-xl font-bold text-zinc-900">
+                            <DialogTitle className="text-xl font-bold text-foreground">
                                 Подключите Telegram
                             </DialogTitle>
-                            <DialogDescription className="text-zinc-500 mt-2">
+                            <DialogDescription className="text-muted-foreground mt-2">
                                 Для запуска агента необходимо подключить Telegram бота.
                                 Это позволит агенту общаться с пользователями.
                             </DialogDescription>

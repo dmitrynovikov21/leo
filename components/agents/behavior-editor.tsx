@@ -520,7 +520,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             className="mt-4"
                             onClick={() => window.location.reload()}
                         >
-                            Retry
+                            Повторить
                         </Button>
                     </CardContent>
                 </Card>
@@ -555,7 +555,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                         <h3 className="text-lg font-semibold flex items-center gap-2">
                             <User className="h-5 w-5" /> {t('identity')}
                         </h3>
-                        <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                        <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                             <CardContent className="p-4 space-y-4">
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1">
@@ -563,22 +563,22 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         <Input
                                             {...form.register("displayName")}
                                             placeholder={t('displayName')}
-                                            className="h-10 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 placeholder:text-zinc-400"
+                                            className="h-10 rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground placeholder:text-muted-foreground"
                                         />
                                     </div>
                                 </div>
                                 {/* Welcome Message */}
                                 <div>
-                                    <Label htmlFor="welcomeMessage" className="text-sm font-medium text-zinc-700 mb-2 block">
+                                    <Label htmlFor="welcomeMessage" className="text-sm font-medium text-foreground mb-2 block">
                                         Приветственное сообщение
                                     </Label>
                                     <Textarea
                                         {...form.register("welcomeMessage")}
                                         id="welcomeMessage"
                                         placeholder="Введите сообщение, которое бот отправит при старте диалога..."
-                                        className="min-h-[80px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 resize-none"
+                                        className="min-h-[80px] rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground resize-none"
                                     />
-                                    <p className="text-xs text-zinc-500 mt-1">
+                                    <p className="text-xs text-muted-foreground mt-1">
                                         Это сообщение будет автоматически отправлено пользователю при начале нового диалога
                                     </p>
                                 </div>
@@ -591,12 +591,12 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                         <h3 className="text-lg font-semibold flex items-center gap-2">
                             <Wand2 className="h-5 w-5" /> {t('cognitiveSettings')}
                         </h3>
-                        <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                        <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                             <CardContent className="pt-6 pb-6 space-y-6">
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-zinc-900 font-medium">{t('creativity')}</Label>
-                                        <Badge variant="outline" className="text-xs font-mono rounded-lg border-zinc-200 bg-zinc-50 text-zinc-600">
+                                        <Label className="text-foreground font-medium">{t('creativity')}</Label>
+                                        <Badge variant="outline" className="text-xs font-mono rounded-lg border-border bg-muted/50 text-muted-foreground">
                                             {form.watch("temperature")}
                                         </Badge>
                                     </div>
@@ -608,7 +608,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         onValueChange={(val) => form.setValue("temperature", val[0], { shouldDirty: true })}
                                         className="cursor-pointer"
                                     />
-                                    <div className="flex justify-between text-xs text-zinc-400 px-1 font-medium">
+                                    <div className="flex justify-between text-xs text-muted-foreground px-1 font-medium">
                                         <span>{t('strict')} (0.0)</span>
                                         <span>{t('balanced')} (0.5)</span>
                                         <span>{t('creative')} (1.0)</span>
@@ -637,13 +637,13 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                     <TabsList className="bg-amber-100/50 p-1 rounded-xl h-9 mb-3">
                                         <TabsTrigger
                                             value="platform"
-                                            className="rounded-lg text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                                            className="rounded-lg text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm"
                                         >
                                             Техническая инструкция
                                         </TabsTrigger>
                                         <TabsTrigger
                                             value="preview"
-                                            className="rounded-lg text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                                            className="rounded-lg text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm"
                                         >
                                             Собранный промпт
                                         </TabsTrigger>
@@ -652,8 +652,8 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         {isLoadingDebug ? (
                                             <Skeleton className="h-32 w-full rounded-xl" />
                                         ) : platformPrompt ? (
-                                            <div className="bg-white border border-amber-200/50 rounded-xl p-4">
-                                                <pre className="text-xs font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                                            <div className="bg-card border border-amber-200/50 rounded-xl p-4">
+                                                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
                                                     {platformPrompt}
                                                 </pre>
                                             </div>
@@ -665,8 +665,8 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         {isLoadingDebug ? (
                                             <Skeleton className="h-32 w-full rounded-xl" />
                                         ) : promptPreview ? (
-                                            <div className="bg-white border border-amber-200/50 rounded-xl p-4">
-                                                <pre className="text-xs font-mono text-zinc-600 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                                            <div className="bg-card border border-amber-200/50 rounded-xl p-4">
+                                                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
                                                     {promptPreview}
                                                 </pre>
                                             </div>
@@ -689,18 +689,18 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                         </Card>
 
                         {/* Role Definition */}
-                        <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                        <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                             <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                                 <div className="space-y-1">
-                                    <CardTitle className="text-base text-zinc-900">{t('roleDefinition')}</CardTitle>
-                                    <CardDescription className="text-zinc-500">{t('roleDefinitionDesc')}</CardDescription>
+                                    <CardTitle className="text-base text-foreground">{t('roleDefinition')}</CardTitle>
+                                    <CardDescription className="text-muted-foreground">{t('roleDefinitionDesc')}</CardDescription>
                                 </div>
                                 <Select
                                     value={isNewVersion ? 'new' : (selectedVersionId || undefined)}
                                     onValueChange={handleVersionChange}
                                 >
-                                    <SelectTrigger className="w-[140px] h-9 text-xs border-transparent bg-zinc-100/50 hover:bg-zinc-100 transition-all rounded-xl focus:ring-0">
-                                        <SelectValue placeholder="Select version" />
+                                    <SelectTrigger className="w-[140px] h-9 text-xs border-transparent bg-muted/50 hover:bg-muted transition-all rounded-xl focus:ring-0">
+                                        <SelectValue placeholder="Выберите версию" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {promptVersions.map((v) => (
@@ -709,7 +709,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                                     <span>{v.version}</span>
                                                     {v.isActive && (
                                                         <Badge variant="secondary" className="text-[10px] h-4 px-1 py-0 border-0 bg-green-500/10 text-green-600 rounded-md">
-                                                            Current
+                                                            Активная
                                                         </Badge>
                                                     )}
                                                 </span>
@@ -720,7 +720,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                             <span className="flex items-center gap-2">
                                                 <span>{getNextVersion(promptVersions)}</span>
                                                 <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 border-0 bg-blue-500/10 text-blue-600 rounded-md font-semibold">
-                                                    NEW
+                                                    НОВАЯ
                                                 </Badge>
                                             </span>
                                         </SelectItem>
@@ -729,16 +729,16 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                             </CardHeader>
                             <CardContent className="pb-6">
                                 <Textarea
-                                    className="min-h-[450px] font-mono text-sm leading-relaxed border-transparent bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all rounded-xl resize-none text-zinc-800"
+                                    className="min-h-[450px] font-mono text-sm leading-relaxed border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all rounded-xl resize-none text-foreground"
                                     {...form.register("systemPrompt")}
                                 />
                             </CardContent>
                         </Card>
 
                         {/* Tone of Voice */}
-                        <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                        <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-base text-zinc-900">{t('toneOfVoice')}</CardTitle>
+                                <CardTitle className="text-base text-foreground">{t('toneOfVoice')}</CardTitle>
                             </CardHeader>
                             <CardContent className="pb-6">
                                 <div className="flex flex-wrap gap-2">
@@ -752,8 +752,8 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                                 className={cn(
                                                     "px-4 py-2 rounded-xl border transition-all duration-200 text-sm font-medium",
                                                     isSelected
-                                                        ? "border-zinc-900 bg-zinc-900 text-white shadow-md hover:bg-zinc-800"
-                                                        : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50"
+                                                        ? "border-primary bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
+                                                        : "border-border bg-card text-muted-foreground hover:border-border hover:bg-muted/50"
                                                 )}
                                                 onClick={() => {
                                                     if (isSelected) {
@@ -772,15 +772,15 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                         </Card>
 
                         {/* Guardrails */}
-                        <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                        <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-base text-zinc-900 flex items-center justify-between">
+                                <CardTitle className="text-base text-foreground flex items-center justify-between">
                                     <span>{t('guardrails')}</span>
-                                    <Badge variant="secondary" className="font-normal text-xs text-zinc-500 bg-zinc-100 border-0 rounded-lg px-2 shadow-none">
+                                    <Badge variant="secondary" className="font-normal text-xs text-muted-foreground bg-muted border-0 rounded-lg px-2 shadow-none">
                                         {fields.length} {t('activeRules')}
                                     </Badge>
                                 </CardTitle>
-                                <CardDescription className="text-zinc-500">{t('guardrailsDesc')}</CardDescription>
+                                <CardDescription className="text-muted-foreground">{t('guardrailsDesc')}</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3 pb-6">
                                 {fields.map((field, index) => (
@@ -790,14 +790,14 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         </div>
                                         <Input
                                             {...form.register(`guardrails.${index}.rule` as const)}
-                                            className="flex-1 border-transparent bg-zinc-50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all rounded-xl text-zinc-900"
+                                            className="flex-1 border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all rounded-xl text-foreground"
                                         />
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => remove(index)}
-                                            className="text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                            className="text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                                         >
                                             <X className="h-4 w-4" />
                                         </Button>
@@ -807,7 +807,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="w-full mt-2 border-zinc-200/50 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-zinc-600 rounded-xl shadow-none h-10 border-dashed"
+                                    className="w-full mt-2 border-border bg-card hover:bg-muted/50 hover:border-border text-muted-foreground rounded-xl shadow-none h-10 border-dashed"
                                     onClick={() => append({ rule: t('newGuardrailRule') })}
                                 >
                                     <Plus className="h-4 w-4 mr-2" /> {t('addGuardrail')}
@@ -820,15 +820,15 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
 
             {/* Restart Dialog */}
             <Dialog open={showRestartDialog} onOpenChange={setShowRestartDialog}>
-                <DialogContent className="sm:max-w-[400px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                <DialogContent className="sm:max-w-[400px] rounded-2xl p-6 border-border shadow-xl">
                     <DialogHeader className="text-center">
                         <div className="mx-auto h-16 w-16 rounded-full bg-yellow-100 flex items-center justify-center mb-4">
                             <RefreshCw className="h-8 w-8 text-yellow-600" />
                         </div>
-                        <DialogTitle className="text-xl font-bold text-zinc-900">
+                        <DialogTitle className="text-xl font-bold text-foreground">
                             Требуется перезапуск
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-500 mt-2">
+                        <DialogDescription className="text-muted-foreground mt-2">
                             Изменения сохранены. Чтобы они вступили в силу, нужно перезапустить агента.
                         </DialogDescription>
                     </DialogHeader>
@@ -854,15 +854,15 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
 
             {/* Telegram Required Modal */}
             <Dialog open={showTelegramModal} onOpenChange={setShowTelegramModal}>
-                <DialogContent className="sm:max-w-[450px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                <DialogContent className="sm:max-w-[450px] rounded-2xl p-6 border-border shadow-xl">
                     <DialogHeader className="text-center">
                         <div className="mx-auto h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center mb-4">
                             <Send className="h-8 w-8 text-blue-600" />
                         </div>
-                        <DialogTitle className="text-xl font-bold text-zinc-900">
+                        <DialogTitle className="text-xl font-bold text-foreground">
                             Подключите Telegram
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-500 mt-2">
+                        <DialogDescription className="text-muted-foreground mt-2">
                             Для перезапуска агента необходимо подключить Telegram бота.
                         </DialogDescription>
                     </DialogHeader>

@@ -311,19 +311,19 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                 {step === "input" && (
                     <div className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="token" className="text-sm font-semibold text-zinc-900">Bot Token</Label>
+                            <Label htmlFor="token" className="text-sm font-semibold text-foreground">Bot Token</Label>
                             <div className="relative">
-                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     id="token"
                                     placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                                    className="pl-9 font-mono text-sm h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:ring-zinc-200 rounded-xl transition-all"
+                                    className="pl-9 font-mono text-sm h-11 bg-muted/50 border-border focus:bg-card focus:ring-ring rounded-xl transition-all"
                                     value={token}
                                     onChange={(e) => setToken(e.target.value)}
                                 />
                             </div>
-                            <p className="text-[11px] text-zinc-400 px-1">
-                                Получите токен у <a href="https://t.me/BotFather" target="_blank" className="underline decoration-zinc-300 hover:text-zinc-600">@BotFather</a> в Telegram.
+                            <p className="text-[11px] text-muted-foreground px-1">
+                                Получите токен у <a href="https://t.me/BotFather" target="_blank" className="underline decoration-zinc-300 hover:text-muted-foreground">@BotFather</a> в Telegram.
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -357,8 +357,8 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                     <BotIcon className="h-6 w-6 text-white" />
                                 </div>
                                 <div>
-                                    <p className="font-semibold text-zinc-900">{botInfo.first_name}</p>
-                                    <p className="text-sm text-zinc-500">@{botInfo.username}</p>
+                                    <p className="font-semibold text-foreground">{botInfo.first_name}</p>
+                                    <p className="text-sm text-muted-foreground">@{botInfo.username}</p>
                                 </div>
                                 <CheckCircle2 className="h-5 w-5 text-green-500 ml-auto" />
                             </div>
@@ -385,8 +385,8 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                 {step === "success" && (
                     <div className="text-center py-4">
                         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                        <p className="font-semibold text-zinc-900">Telegram подключён!</p>
-                        <p className="text-sm text-zinc-500">Теперь вы можете запустить агента.</p>
+                        <p className="font-semibold text-foreground">Telegram подключён!</p>
+                        <p className="text-sm text-muted-foreground">Теперь вы можете запустить агента.</p>
                     </div>
                 )}
             </div>
@@ -398,16 +398,16 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
             <DialogTrigger asChild>
                 {children}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden gap-0 rounded-2xl bg-white border-zinc-200 shadow-2xl">
+            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden gap-0 rounded-2xl bg-card border-border shadow-2xl">
                 <div className="grid md:grid-cols-5 h-full">
                     {/* Left Side: Bot Preview / Info */}
-                    <div className="md:col-span-2 bg-zinc-50 border-r border-zinc-100 p-6 flex flex-col justify-between">
+                    <div className="md:col-span-2 bg-muted/50 border-r border-border p-6 flex flex-col justify-between">
                         <div>
                             <div className="flex items-center gap-2">
                                 <div className="h-8 w-8 rounded-lg bg-[#0088cc] flex items-center justify-center shadow-sm shadow-blue-200">
                                     <Send className="h-4 w-4 text-white" />
                                 </div>
-                                <span className="font-bold text-zinc-900 tracking-tight">Telegram Bot</span>
+                                <span className="font-bold text-foreground tracking-tight">Telegram Bot</span>
                             </div>
 
                         </div>
@@ -418,10 +418,10 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                     {/* Right Side: Form */}
                     <div className="md:col-span-3 p-6 flex flex-col">
                         <DialogHeader className="mb-6">
-                            <DialogTitle className="text-xl font-bold text-zinc-900">
+                            <DialogTitle className="text-xl font-bold text-foreground">
                                 {step === 'restart' || step === 'disconnected' ? 'Требуется перезапуск' : step === 'start' ? 'Требуется запуск' : step === 'connected' ? 'Управление подключением' : 'Настройка подключения'}
                             </DialogTitle>
-                            <DialogDescription className="text-zinc-500">
+                            <DialogDescription className="text-muted-foreground">
                                 {step === 'restart'
                                     ? 'Агент активен. Для применения нового токена необходим перезапуск.'
                                     : step === 'disconnected'
@@ -438,19 +438,19 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                             <div className="space-y-6 flex-1">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="token" className="text-sm font-semibold text-zinc-900">Bot Token</Label>
+                                        <Label htmlFor="token" className="text-sm font-semibold text-foreground">Bot Token</Label>
                                         <div className="relative">
-                                            <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                                            <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                             <Input
                                                 id="token"
                                                 placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
-                                                className="pl-9 font-mono text-sm h-11 bg-zinc-50 border-zinc-200 focus:bg-white focus:ring-zinc-200 rounded-xl transition-all"
+                                                className="pl-9 font-mono text-sm h-11 bg-muted/50 border-border focus:bg-card focus:ring-ring rounded-xl transition-all"
                                                 value={token}
                                                 onChange={(e) => setToken(e.target.value)}
                                             />
                                         </div>
-                                        <p className="text-[11px] text-zinc-400 px-1">
-                                            Этот токен можно получить у <a href="https://t.me/BotFather" target="_blank" className="underline decoration-zinc-300 hover:text-zinc-600">@BotFather</a> в Telegram.
+                                        <p className="text-[11px] text-muted-foreground px-1">
+                                            Этот токен можно получить у <a href="https://t.me/BotFather" target="_blank" className="underline decoration-zinc-300 hover:text-muted-foreground">@BotFather</a> в Telegram.
                                         </p>
                                     </div>
 
@@ -476,7 +476,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                             <Power className="h-4 w-4" />
                                         </Button>
                                     )}
-                                    <Button variant="ghost" className="rounded-xl hover:bg-zinc-100 text-zinc-600" onClick={() => setOpen(false)}>Отмена</Button>
+                                    <Button variant="ghost" className="rounded-xl hover:bg-muted text-muted-foreground" onClick={() => setOpen(false)}>Отмена</Button>
                                     <Button
                                         className="rounded-xl bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-sm shadow-blue-200"
                                         onClick={handleValidateToken}
@@ -493,14 +493,14 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                             <div className="flex flex-col items-center justify-center flex-1 py-6 space-y-6 animate-in fade-in zoom-in-95 duration-300 w-full max-w-sm mx-auto">
                                 <div className="p-6 bg-green-50/50 border border-green-100 rounded-3xl w-full shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-zinc-100 shrink-0">
+                                        <div className="h-16 w-16 rounded-2xl bg-card flex items-center justify-center shadow-sm border border-border shrink-0">
                                             <div className="h-10 w-10 rounded-xl bg-[#0088cc] flex items-center justify-center">
                                                 <BotIcon className="h-6 w-6 text-white" />
                                             </div>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-lg font-bold text-zinc-900 truncate">{botInfo.first_name}</p>
-                                            <p className="text-sm text-zinc-500 truncate">@{botInfo.username}</p>
+                                            <p className="text-lg font-bold text-foreground truncate">{botInfo.first_name}</p>
+                                            <p className="text-sm text-muted-foreground truncate">@{botInfo.username}</p>
                                         </div>
                                         <div className="bg-green-100 p-1.5 rounded-full shrink-0">
                                             <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -509,12 +509,12 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                 </div>
 
                                 <div className="text-center space-y-1">
-                                    <p className="font-medium text-zinc-900">Бот найден!</p>
-                                    <p className="text-sm text-zinc-500">Сохранить подключение и активировать агента?</p>
+                                    <p className="font-medium text-foreground">Бот найден!</p>
+                                    <p className="text-sm text-muted-foreground">Сохранить подключение и активировать агента?</p>
                                 </div>
 
                                 <div className="flex w-full gap-3 pt-2">
-                                    <Button variant="outline" className="flex-1 h-11 rounded-xl border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900" onClick={() => setStep('input')}>
+                                    <Button variant="outline" className="flex-1 h-11 rounded-xl border-border hover:bg-muted/50 hover:text-foreground" onClick={() => setStep('input')}>
                                         Назад
                                     </Button>
                                     <Button
@@ -533,7 +533,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                             <div className="flex flex-col items-center justify-center flex-1 py-6 space-y-6 animate-in fade-in zoom-in-95 duration-300 w-full max-w-sm mx-auto">
                                 <div className="p-6 bg-green-50/50 border border-green-100 rounded-3xl w-full shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-zinc-100 shrink-0">
+                                        <div className="h-16 w-16 rounded-2xl bg-card flex items-center justify-center shadow-sm border border-border shrink-0">
                                             <div className="h-10 w-10 rounded-xl bg-[#0088cc] flex items-center justify-center">
                                                 <BotIcon className="h-6 w-6 text-white" />
                                             </div>
@@ -541,13 +541,13 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                         <div className="flex-1 min-w-0">
                                             {botInfo ? (
                                                 <>
-                                                    <p className="text-lg font-bold text-zinc-900 truncate">{botInfo.first_name}</p>
-                                                    <p className="text-sm text-zinc-500 truncate">@{botInfo.username}</p>
+                                                    <p className="text-lg font-bold text-foreground truncate">{botInfo.first_name}</p>
+                                                    <p className="text-sm text-muted-foreground truncate">@{botInfo.username}</p>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <div className="h-4 w-24 bg-zinc-100 rounded animate-pulse mb-1.5" />
-                                                    <div className="h-3 w-16 bg-zinc-50 rounded animate-pulse" />
+                                                    <div className="h-4 w-24 bg-muted rounded animate-pulse mb-1.5" />
+                                                    <div className="h-3 w-16 bg-muted/50 rounded animate-pulse" />
                                                 </>
                                             )}
                                         </div>
@@ -558,7 +558,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                 <div className="flex w-full gap-3 pt-2">
                                     <Button
                                         variant="outline"
-                                        className="flex-1 h-11 rounded-xl border-zinc-200 hover:bg-zinc-50 hover:text-zinc-900"
+                                        className="flex-1 h-11 rounded-xl border-border hover:bg-muted/50 hover:text-foreground"
                                         onClick={() => {
                                             setStep('input')
                                             setToken('')
@@ -586,8 +586,8 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                     <RefreshCw className="h-8 w-8 text-yellow-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-zinc-900">Telegram отключён</h3>
-                                    <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
+                                    <h3 className="text-lg font-bold text-foreground">Telegram отключён</h3>
+                                    <p className="text-sm text-muted-foreground max-w-[250px] mx-auto mt-1">
                                         Чтобы изменения вступили в силу, агент должен быть перезапущен.
                                     </p>
                                 </div>
@@ -614,8 +614,8 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                     <Power className="h-8 w-8 text-blue-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-zinc-900">Токен сохранён</h3>
-                                    <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
+                                    <h3 className="text-lg font-bold text-foreground">Токен сохранён</h3>
+                                    <p className="text-sm text-muted-foreground max-w-[250px] mx-auto mt-1">
                                         Запустите агента, чтобы подключение к Telegram вступило в силу.
                                     </p>
                                 </div>
@@ -642,8 +642,8 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                     <RefreshCw className="h-8 w-8 text-yellow-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-zinc-900">Токен обновлен</h3>
-                                    <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
+                                    <h3 className="text-lg font-bold text-foreground">Токен обновлен</h3>
+                                    <p className="text-sm text-muted-foreground max-w-[250px] mx-auto mt-1">
                                         Чтобы изменения вступили в силу, агент должен быть перезапущен.
                                     </p>
                                 </div>
@@ -670,17 +670,17 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                     <CheckCircle2 className="h-8 w-8 text-green-600" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-zinc-900">Успешно подключено!</h3>
-                                    <p className="text-sm text-zinc-500 max-w-[250px] mx-auto mt-1">
+                                    <h3 className="text-lg font-bold text-foreground">Успешно подключено!</h3>
+                                    <p className="text-sm text-muted-foreground max-w-[250px] mx-auto mt-1">
                                         Ваш агент теперь отвечает в Telegram.
                                     </p>
                                 </div>
-                                <div className="w-full bg-zinc-50 p-4 rounded-xl border border-zinc-100 flex items-center justify-between mt-4">
+                                <div className="w-full bg-muted/50 p-4 rounded-xl border border-border flex items-center justify-between mt-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-zinc-200" />
+                                        <div className="h-8 w-8 rounded-full bg-muted" />
                                         <div className="text-left">
-                                            <div className="text-sm font-semibold text-zinc-900">Telegram Bot</div>
-                                            <div className="text-[10px] text-zinc-500">{token.substring(0, 12)}...</div>
+                                            <div className="text-sm font-semibold text-foreground">Telegram Bot</div>
+                                            <div className="text-[10px] text-muted-foreground">{token.substring(0, 12)}...</div>
                                         </div>
                                     </div>
                                     <Badge variant="secondary" className="bg-green-100 text-green-700 h-6 px-2 text-[10px] font-bold tracking-wide rounded-lg">ACTIVE</Badge>

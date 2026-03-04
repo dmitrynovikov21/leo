@@ -153,7 +153,7 @@ function TopupForm({ onSuccess, onOpenChange }: { onSuccess: () => void; onOpenC
 
       <div className='space-y-2'>
         <Label htmlFor='card'>Card Details</Label>
-        <div className='rounded-lg border border-gray-200 bg-white p-3'>
+        <div className='rounded-lg border border-gray-200 bg-card p-3'>
           <CardElement
             options={{
               style: {

@@ -201,7 +201,7 @@ export default function BentoGrid() {
           <div className="relative col-span-full overflow-hidden rounded-2xl border bg-background p-8 lg:col-span-3">
             <div className="grid sm:grid-cols-2">
               <div className="relative z-10 flex flex-col justify-between space-y-12 lg:space-y-6">
-                <div className="relative flex aspect-square size-12 rounded-full border before:absolute before:-inset-2 before:rounded-full before:border dark:border-white/10 dark:bg-white/5 dark:before:border-white/5 dark:before:bg-white/5">
+                <div className="relative flex aspect-square size-12 rounded-full border before:absolute before:-inset-2 before:rounded-full before:border dark:border-white/10 dark:bg-card/5 dark:before:border-white/5 dark:before:bg-card/5">
                   <svg
                     className="m-auto size-6"
                     xmlns="http://www.w3.org/2000/svg"
@@ -280,7 +280,7 @@ export default function BentoGrid() {
           <div className="relative col-span-full overflow-hidden rounded-2xl border bg-background p-8 lg:col-span-3">
             <div className="grid h-full sm:grid-cols-2">
               <div className="relative z-10 flex flex-col justify-between space-y-12 lg:space-y-6">
-                <div className="relative flex aspect-square size-12 rounded-full border before:absolute before:-inset-2 before:rounded-full before:border dark:border-white/10 dark:bg-white/5 dark:before:border-white/5 dark:before:bg-white/5">
+                <div className="relative flex aspect-square size-12 rounded-full border before:absolute before:-inset-2 before:rounded-full before:border dark:border-white/10 dark:bg-card/5 dark:before:border-white/5 dark:before:bg-card/5">
                   <svg
                     className="m-auto size-6"
                     xmlns="http://www.w3.org/2000/svg"

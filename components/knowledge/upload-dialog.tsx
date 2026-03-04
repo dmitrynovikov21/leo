@@ -234,7 +234,7 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                         <UploadCloud className="h-12 w-12 text-primary animate-pulse" />
                         <div className="text-center space-y-1 w-full max-w-xs">
                             <h3 className="font-semibold text-lg">Обработка файлов...</h3>
-                            <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-primary transition-all duration-300"
                                     style={{ width: `${progress}%` }}

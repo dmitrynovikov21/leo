@@ -97,7 +97,7 @@ export default function SourcesPage() {
         <div className="space-y-6 max-w-5xl">
             {/* Page Header */}
             <div>
-                <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Источники коммуникации</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">Источники коммуникации</h2>
                 <p className="text-muted-foreground mt-1">
                     Подключите агента к платформам, где находятся ваши клиенты.
                 </p>
@@ -110,9 +110,9 @@ export default function SourcesPage() {
                         <Card
                             key={source.id}
                             className={cn(
-                                "group flex flex-col h-full transition-all duration-300 border-zinc-200/50 shadow-sm rounded-2xl bg-white overflow-hidden relative",
+                                "group flex flex-col h-full transition-all duration-300 border-border shadow-sm rounded-2xl bg-card overflow-hidden relative",
                                 source.status === 'active'
-                                    ? "hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-zinc-300 hover:-translate-y-1"
+                                    ? "hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-border hover:-translate-y-1"
                                     : "opacity-80"
                             )}
                         >
@@ -120,15 +120,15 @@ export default function SourcesPage() {
                                 <div className="flex items-center gap-4 mb-2">
                                     <div className={cn(
                                         "h-8 w-8 rounded-xl flex items-center justify-center transition-colors shrink-0",
-                                        "bg-white border border-zinc-100 group-hover:bg-white group-hover:shadow-sm"
+                                        "bg-card border border-border group-hover:bg-card group-hover:shadow-sm"
                                     )}>
                                         <source.icon className={cn("h-4 w-4", source.color)} />
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-zinc-900 leading-tight">
+                                    <CardTitle className="text-lg font-bold text-foreground leading-tight">
                                         {source.title}
                                     </CardTitle>
                                 </div>
-                                <CardDescription className="text-sm text-zinc-500 leading-relaxed">
+                                <CardDescription className="text-sm text-muted-foreground leading-relaxed">
                                     {source.description}
                                 </CardDescription>
                             </CardHeader>
@@ -140,7 +140,7 @@ export default function SourcesPage() {
                                 {source.status === 'active' ? (
                                     source.connected ? (
                                         <Button
-                                            className="w-full rounded-xl h-10 font-medium shadow-none bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-zinc-900"
+                                            className="w-full rounded-xl h-10 font-medium shadow-none bg-muted/50 hover:bg-muted border border-border text-foreground"
                                             variant="secondary"
                                         >
                                             <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
@@ -161,11 +161,11 @@ export default function SourcesPage() {
 
                             {/* Premium Overlay for Coming Soon */}
                             {source.status === 'coming_soon' && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 transition-all duration-500">
-                                    <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 ring-1 ring-black/5 mx-6 transform transition-transform group-hover:scale-105">
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-[2px] z-10 transition-all duration-500">
+                                    <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 ring-1 ring-black/5 mx-6 transform transition-transform group-hover:scale-105">
                                         <div className="text-center space-y-1">
-                                            <h4 className="text-sm font-bold text-zinc-900 tracking-tight">Скоро</h4>
-                                            <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400">В разработке</p>
+                                            <h4 className="text-sm font-bold text-foreground tracking-tight">Скоро</h4>
+                                            <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">В разработке</p>
                                         </div>
                                     </div>
                                 </div>

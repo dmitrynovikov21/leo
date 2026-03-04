@@ -8,7 +8,15 @@ import { siteConfig } from "@/config/site";
 
 import { getUserByEmail } from "./user";
 
-export const resend = new Resend(env.RESEND_API_KEY);
+// Lazy singleton — не инициализируется при импорте модуля (иначе падает при сборке без ключа)
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(env.RESEND_API_KEY);
+  return _resend;
+}
+export const resend = new Proxy({} as Resend, {
+  get: (_, prop) => getResend()[prop as keyof Resend],
+});
 
 export const sendVerificationRequest: EmailConfig["sendVerificationRequest"] =
   async ({ identifier, url, provider }) => {
@@ -50,6 +58,32 @@ export const sendVerificationRequest: EmailConfig["sendVerificationRequest"] =
       throw new Error("Failed to send verification email.");
     }
   };
+
+export async function sendEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  const { data, error } = await resend.emails.send({
+    from: env.EMAIL_FROM,
+    to,
+    subject,
+    html,
+    headers: {
+      "X-Entity-Ref-ID": new Date().getTime() + "",
+    },
+  });
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Failed to send email");
+  }
+
+  return data;
+}
 
 export async function sendVerificationCode(
   email: string,

@@ -69,15 +69,15 @@ export function FriendlyDangerZone() {
     const isConfirmValid = confirmText === "УДАЛИТЬ"
 
     return (
-        <div className="space-y-6 pt-6 border-t border-dashed border-zinc-200">
+        <div className="space-y-6 pt-6 border-t border-dashed border-border">
 
 
             <Card className="border border-red-100 bg-red-50/10 shadow-none rounded-2xl overflow-hidden">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h4 className="text-sm font-bold text-zinc-900">Удалить агента</h4>
-                            <p className="text-xs text-zinc-500 mt-1 max-w-lg leading-relaxed">
+                            <h4 className="text-sm font-bold text-foreground">Удалить агента</h4>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-lg leading-relaxed">
                                 Это действие безвозвратно удалит агента и все связанные с ним диалоги, настройки и историю. Это действие нельзя отменить.
                             </p>
                         </div>
@@ -95,15 +95,15 @@ export function FriendlyDangerZone() {
 
             {/* Delete Confirmation Modal */}
             <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-                <DialogContent className="sm:max-w-[400px] rounded-2xl p-6 border-zinc-200 shadow-xl">
+                <DialogContent className="sm:max-w-[400px] rounded-2xl p-6 border-border shadow-xl">
                     <DialogHeader className="text-center">
                         <div className="mx-auto h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
                             <AlertTriangle className="h-8 w-8 text-red-600" />
                         </div>
-                        <DialogTitle className="text-xl font-bold text-zinc-900">
+                        <DialogTitle className="text-xl font-bold text-foreground">
                             Удалить агента?
                         </DialogTitle>
-                        <DialogDescription className="text-zinc-500 mt-2">
+                        <DialogDescription className="text-muted-foreground mt-2">
                             Вы собираетесь удалить агента <strong>{agent?.name}</strong>.
                             Все данные будут потеряны безвозвратно.
                         </DialogDescription>
@@ -111,7 +111,7 @@ export function FriendlyDangerZone() {
 
                     <div className="mt-4 space-y-4">
                         <div>
-                            <p className="text-sm text-zinc-600 mb-2">
+                            <p className="text-sm text-muted-foreground mb-2">
                                 Введите <strong className="text-red-600">УДАЛИТЬ</strong> для подтверждения:
                             </p>
                             <Input

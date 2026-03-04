@@ -26,7 +26,7 @@ export default async function TokenRatesPage() {
       <div className='space-y-6'>
         <div>
           <h1 className='text-3xl font-bold'>Курсы конвертации токенов</h1>
-          <p className='text-gray-600'>Управление курсами конвертации рублей и LLM токенов в платформенные токены</p>
+          <p className='text-muted-foreground'>Управление курсами конвертации рублей и LLM токенов в платформенные токены</p>
         </div>
 
         {/* Current Rate Display */}
@@ -41,7 +41,7 @@ export default async function TokenRatesPage() {
               </CardHeader>
               <CardContent>
                 <div className='text-3xl font-bold'>1 ₽ = {activeRate.rubToTokenRate} токенов</div>
-                <p className='text-xs text-gray-500'>Обновлено {new Date(activeRate.createdAt).toLocaleDateString('ru-RU')}</p>
+                <p className='text-xs text-muted-foreground'>Обновлено {new Date(activeRate.createdAt).toLocaleDateString('ru-RU')}</p>
               </CardContent>
             </Card>
 
@@ -54,7 +54,7 @@ export default async function TokenRatesPage() {
               </CardHeader>
               <CardContent>
                 <div className='text-3xl font-bold'>1 LLM = {activeRate.llmTokenToTokenRate} токенов</div>
-                <p className='text-xs text-gray-500'>Обновлено {new Date(activeRate.createdAt).toLocaleDateString('ru-RU')}</p>
+                <p className='text-xs text-muted-foreground'>Обновлено {new Date(activeRate.createdAt).toLocaleDateString('ru-RU')}</p>
               </CardContent>
             </Card>
           </div>

@@ -41,97 +41,97 @@ export function BillingTab() {
 
     return (
         <div className="space-y-6">
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-zinc-900">Тарифный план</CardTitle>
-                    <CardDescription className="text-zinc-500">
-                        Вы используете план <span className="font-semibold text-zinc-900 capitalize">{planDetails.label}</span>.
+                    <CardTitle className="text-xl font-bold text-foreground">Тарифный план</CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                        Вы используете план <span className="font-semibold text-foreground capitalize">{planDetails.label}</span>.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
-                    <div className="flex items-center justify-between border border-zinc-200 p-4 rounded-xl bg-zinc-50/50">
+                    <div className="flex items-center justify-between border border-border p-4 rounded-xl bg-muted/30">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-xl bg-zinc-900 flex items-center justify-center shadow-sm">
-                                <Zap className="h-6 w-6 text-white" />
+                            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center shadow-sm">
+                                <Zap className="h-6 w-6 text-primary-foreground" />
                             </div>
                             <div>
-                                <div className="font-bold text-lg text-zinc-900">{planDetails.name}</div>
-                                <div className="text-sm font-medium text-zinc-500">{planDetails.price}</div>
+                                <div className="font-bold text-lg text-foreground">{planDetails.name}</div>
+                                <div className="text-sm font-medium text-muted-foreground">{planDetails.price}</div>
                             </div>
                         </div>
-                        <Button variant="outline" className="rounded-xl border-zinc-200 hover:bg-white shadow-sm font-medium text-zinc-700">Изменить план</Button>
+                        <Button variant="outline" className="rounded-xl border-border hover:bg-muted shadow-sm font-medium text-foreground">Изменить план</Button>
                     </div>
 
                     <div className="space-y-3">
-                        <div className="text-sm font-semibold text-zinc-900">Доступные возможности</div>
-                        <ul className="grid gap-2.5 text-sm text-zinc-500 font-medium">
+                        <div className="text-sm font-semibold text-foreground">Доступные возможности</div>
+                        <ul className="grid gap-2.5 text-sm text-muted-foreground font-medium">
                             <li className="flex items-center gap-2">
-                                <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                    <Check className="h-3 w-3 text-green-600" />
+                                <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center shrink-0">
+                                    <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                                 </div>
                                 Неограниченное количество агентов
                             </li>
                             <li className="flex items-center gap-2">
-                                <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                    <Check className="h-3 w-3 text-green-600" />
+                                <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center shrink-0">
+                                    <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                                 </div>
                                 Приоритетная поддержка
                             </li>
                             <li className="flex items-center gap-2">
-                                <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                    <Check className="h-3 w-3 text-green-600" />
+                                <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center shrink-0">
+                                    <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                                 </div>
                                 Расширенная аналитика
                             </li>
                             <li className="flex items-center gap-2">
-                                <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                    <Check className="h-3 w-3 text-green-600" />
+                                <div className="h-5 w-5 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center shrink-0">
+                                    <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
                                 </div>
                                 API доступ
                             </li>
                         </ul>
                     </div>
                 </CardContent>
-                <CardFooter className="flex justify-between border-t border-zinc-100 pt-6 pb-6 px-6">
-                    <div className="text-sm text-zinc-500 font-medium">
-                        Следующее списание: <span className="font-semibold text-zinc-900">1 января 2026</span>
+                <CardFooter className="flex justify-between border-t border-border pt-6 pb-6 px-6">
+                    <div className="text-sm text-muted-foreground font-medium">
+                        Следующее списание: <span className="font-semibold text-foreground">1 января 2026</span>
                     </div>
-                    <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl font-medium">
+                    <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl font-medium">
                         Отменить подписку
                     </Button>
                 </CardFooter>
             </Card>
 
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-zinc-900">Пополнение баланса (PU)</CardTitle>
-                    <CardDescription className="text-zinc-500">Пополните баланс для использования AI моделей.</CardDescription>
+                    <CardTitle className="text-xl font-bold text-foreground">Пополнение баланса (PU)</CardTitle>
+                    <CardDescription className="text-muted-foreground">Пополните баланс для использования AI моделей.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
-                    <div className="flex items-center justify-between border border-zinc-200 p-4 rounded-xl bg-zinc-50/50">
+                    <div className="flex items-center justify-between border border-border p-4 rounded-xl bg-muted/30">
                         <div className="flex items-center gap-4">
-                            <div className="font-bold text-lg text-zinc-900">100 PU</div>
-                            <div className="text-sm font-medium text-zinc-500">100 RUB</div>
+                            <div className="font-bold text-lg text-foreground">100 PU</div>
+                            <div className="text-sm font-medium text-muted-foreground">100 RUB</div>
                         </div>
                         <YpmnButton amount={100} label="Купить (100₽)" className="rounded-xl" />
                     </div>
-                    <div className="flex items-center justify-between border border-zinc-200 p-4 rounded-xl bg-zinc-50/50">
+                    <div className="flex items-center justify-between border border-border p-4 rounded-xl bg-muted/30">
                         <div className="flex items-center gap-4">
-                            <div className="font-bold text-lg text-zinc-900">500 PU</div>
-                            <div className="text-sm font-medium text-zinc-500">500 RUB</div>
+                            <div className="font-bold text-lg text-foreground">500 PU</div>
+                            <div className="text-sm font-medium text-muted-foreground">500 RUB</div>
                         </div>
                         <YpmnButton amount={500} label="Купить (500₽)" className="rounded-xl" />
                     </div>
                 </CardContent>
             </Card>
 
-            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-zinc-900">История платежей</CardTitle>
-                    <CardDescription className="text-zinc-500">Скачать инвойсы и просмотреть историю оплат.</CardDescription>
+                    <CardTitle className="text-xl font-bold text-foreground">История платежей</CardTitle>
+                    <CardDescription className="text-muted-foreground">Скачать инвойсы и просмотреть историю оплат.</CardDescription>
                 </CardHeader>
                 <CardContent className="pb-8">
-                    <div className="text-sm text-zinc-400 font-medium text-center py-12 bg-zinc-50 rounded-xl border border-dashed border-zinc-200">
+                    <div className="text-sm text-muted-foreground font-medium text-center py-12 bg-muted/30 rounded-xl border border-dashed border-border">
                         История платежей пуста.
                     </div>
                 </CardContent>

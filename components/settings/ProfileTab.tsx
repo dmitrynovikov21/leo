@@ -89,54 +89,54 @@ export function ProfileTab() {
     }
 
     return (
-        <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+        <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
             <CardHeader>
-                <CardTitle className="text-xl font-bold text-zinc-900">Профиль</CardTitle>
-                <CardDescription className="text-zinc-500">
+                <CardTitle className="text-xl font-bold text-foreground">Профиль</CardTitle>
+                <CardDescription className="text-muted-foreground">
                     Управляйте своей личной информацией и настройками профиля.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="fullname" className="text-zinc-700 font-medium">Полное имя</Label>
+                        <Label htmlFor="fullname" className="text-foreground font-medium">Полное имя</Label>
                         <div className="flex items-center gap-4">
                             <EmojiAvatar
                                 value={avatar}
                                 onChange={setAvatar}
                                 editable
                                 size="md"
-                                className="h-12 w-12 text-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-300 transition-all rounded-xl shrink-0"
+                                className="h-12 w-12 text-2xl border border-border bg-muted hover:bg-accent hover:border-border transition-all rounded-xl shrink-0"
                             />
                             <Input
                                 id="fullname"
                                 value={formData.name}
                                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                className="flex-1 h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                                className="flex-1 h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                             />
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="role" className="text-zinc-700 font-medium">Должность</Label>
+                        <Label htmlFor="role" className="text-foreground font-medium">Должность</Label>
                         <Input
                             id="role"
                             value={formData.jobTitle}
                             onChange={(e) => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))}
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="timezone" className="text-zinc-700 font-medium">Часовой пояс</Label>
+                        <Label htmlFor="timezone" className="text-foreground font-medium">Часовой пояс</Label>
                         <Select
                             value={formData.timezone}
                             onValueChange={(value) => setFormData(prev => ({ ...prev, timezone: value }))}
                         >
-                            <SelectTrigger className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900">
+                            <SelectTrigger className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground">
                                 <SelectValue placeholder="Выберите часовой пояс" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-zinc-200">
+                            <SelectContent className="rounded-xl border-border">
                                 <SelectItem value="utc-8">Pacific Time (UTC-8)</SelectItem>
                                 <SelectItem value="utc-5">Eastern Time (UTC-5)</SelectItem>
                                 <SelectItem value="utc+0">London (UTC+0)</SelectItem>
@@ -151,14 +151,14 @@ export function ProfileTab() {
 
 
                     <div className="space-y-2">
-                        <Label htmlFor="email" className="text-zinc-700 font-medium">Email</Label>
+                        <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
                         <Input
                             id="email"
                             value={formData.email}
                             disabled
-                            className="h-11 rounded-xl border-zinc-200 bg-zinc-50/50 text-zinc-500 font-mono"
+                            className="h-11 rounded-xl border-border bg-muted/30 text-muted-foreground font-mono"
                         />
-                        <p className="text-xs text-zinc-400 px-1">
+                        <p className="text-xs text-muted-foreground px-1">
                             Изменение email управляется провайдером авторизации.
                         </p>
                     </div>
@@ -167,13 +167,13 @@ export function ProfileTab() {
             <CardFooter className="flex justify-end gap-3 pt-2 pb-6 px-6">
                 <Button
                     variant="ghost"
-                    className="rounded-xl h-10 px-6 font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100"
+                    className="rounded-xl h-10 px-6 font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
                     onClick={() => window.location.reload()} // Simple reset
                 >
                     Отмена
                 </Button>
                 <Button
-                    className="rounded-xl h-10 px-6 font-medium bg-zinc-900 text-white hover:bg-zinc-800 shadow-sm"
+                    className="rounded-xl h-10 px-6 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                     onClick={handleSave}
                     disabled={isSaving}
                 >

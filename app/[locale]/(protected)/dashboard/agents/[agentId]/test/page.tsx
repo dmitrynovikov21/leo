@@ -18,7 +18,7 @@ export default function TestingPage() {
                     <h2 className="text-2xl font-bold tracking-tight">{t('qaLab')}</h2>
                     <p className="text-muted-foreground">{t('testDebugCertify')}</p>
                 </div>
-                <TabsList className="shrink-0 bg-zinc-100/80">
+                <TabsList className="shrink-0 bg-muted/80">
                     <TabsTrigger value="manual">{t('manualTest')}</TabsTrigger>
                     <TabsTrigger value="auto">{t('autoStressTest')}</TabsTrigger>
                 </TabsList>

@@ -221,8 +221,8 @@ export function FileEditorDialog({
             <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col p-0">
                 <DialogHeader className="p-6 pb-4 border-b">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-zinc-100">
-                            <FileText className="h-5 w-5 text-zinc-600" />
+                        <div className="p-2 rounded-lg bg-muted">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
                             <DialogTitle className="text-lg">{file.name}</DialogTitle>
@@ -263,7 +263,7 @@ export function FileEditorDialog({
                                             ? "border-primary bg-primary/5"
                                             : !isIsolatedMode && (highlightText && chunk.content.toLowerCase().includes(highlightText.toLowerCase().trim()))
                                                 ? "border-amber-400 bg-amber-50 shadow-[0_0_15px_rgba(251,191,36,0.3)] ring-1 ring-amber-400"
-                                                : !isIsolatedMode && "border-zinc-200 bg-white hover:border-zinc-300"
+                                                : !isIsolatedMode && "border-border bg-card hover:border-border"
                                     )}
                                 >
                                     {!isIsolatedMode && (
@@ -319,7 +319,7 @@ export function FileEditorDialog({
                                             autoFocus
                                         />
                                     ) : (
-                                        <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">
+                                        <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                                             {chunk.content}
                                         </p>
                                     )}
@@ -329,7 +329,7 @@ export function FileEditorDialog({
                     )}
                 </ScrollArea>
 
-                <DialogFooter className="p-6 pt-4 border-t flex justify-between items-center bg-zinc-50/50">
+                <DialogFooter className="p-6 pt-4 border-t flex justify-between items-center bg-muted/30">
                     {isIsolatedMode ? (
                         <div className="flex w-full justify-between items-center">
                             <span className="text-xs text-muted-foreground">

@@ -27,7 +27,7 @@ export function InboxLayout() {
 
     return (
         <TooltipProvider delayDuration={0}>
-            <div className="h-full min-h-[600px] overflow-hidden bg-white rounded-2xl border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <div className="h-full min-h-[600px] overflow-hidden bg-card rounded-2xl border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
                 <ResizablePanelGroup
                     direction="horizontal"
                     onLayout={(sizes: number[]) => {
@@ -47,18 +47,18 @@ export function InboxLayout() {
                         collapsible={true}
                         onCollapse={() => setIsCollapsed(true)}
                         onExpand={() => setIsCollapsed(false)}
-                        className={cn(isCollapsed && "min-w-[50px] transition-all duration-300 ease-in-out", "bg-white")}
+                        className={cn(isCollapsed && "min-w-[50px] transition-all duration-300 ease-in-out", "bg-card")}
                     >
-                        <div className="flex flex-col h-full border-r border-zinc-100">
+                        <div className="flex flex-col h-full border-r border-border">
                             <div className={cn("flex items-center justify-center p-4", isCollapsed ? "h-[68px]" : "")}>
                                 {isCollapsed ? (
-                                    <MessageCircle className="h-6 w-6 text-zinc-400" />
+                                    <MessageCircle className="h-6 w-6 text-muted-foreground" />
                                 ) : (
                                     <div className="relative w-full">
-                                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder={t('searchMessages')}
-                                            className="pl-9 h-10 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 placeholder:text-zinc-400"
+                                            className="pl-9 h-10 rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground placeholder:text-muted-foreground"
                                         />
                                     </div>
                                 )}
@@ -67,10 +67,10 @@ export function InboxLayout() {
                             <Tabs defaultValue="all" className="flex-1 flex flex-col">
                                 {!isCollapsed && (
                                     <div className="px-4 pb-4">
-                                        <TabsList className="w-full bg-zinc-100/50 rounded-xl p-1 h-9">
-                                            <TabsTrigger value="all" className="flex-1 rounded-lg text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-zinc-900 text-zinc-500">{t('all')}</TabsTrigger>
-                                            <TabsTrigger value="unread" className="flex-1 rounded-lg text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-zinc-900 text-zinc-500">{t('unread')}</TabsTrigger>
-                                            <TabsTrigger value="mentions" className="flex-1 rounded-lg text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-zinc-900 text-zinc-500">{t('mentions')}</TabsTrigger>
+                                        <TabsList className="w-full bg-muted/50 rounded-xl p-1 h-9">
+                                            <TabsTrigger value="all" className="flex-1 rounded-lg text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground">{t('all')}</TabsTrigger>
+                                            <TabsTrigger value="unread" className="flex-1 rounded-lg text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground">{t('unread')}</TabsTrigger>
+                                            <TabsTrigger value="mentions" className="flex-1 rounded-lg text-xs font-medium data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground">{t('mentions')}</TabsTrigger>
                                         </TabsList>
                                     </div>
                                 )}
@@ -83,28 +83,28 @@ export function InboxLayout() {
                                                 className={cn(
                                                     "flex flex-col items-start gap-2 rounded-xl p-3 text-left text-sm transition-all border border-transparent",
                                                     selectedChatId === chat.id
-                                                        ? "bg-zinc-50 border-zinc-200/50 shadow-sm"
-                                                        : "hover:bg-zinc-50 hover:border-zinc-100/50"
+                                                        ? "bg-muted/50 border-border shadow-sm"
+                                                        : "hover:bg-muted/50 hover:border-border"
                                                 )}
                                                 onClick={() => setSelectedChatId(chat.id)}
                                             >
                                                 <div className="flex w-full flex-col gap-1">
                                                     <div className="flex items-center">
                                                         <div className="flex items-center gap-3">
-                                                            <Avatar className="h-10 w-10 border border-zinc-100">
+                                                            <Avatar className="h-10 w-10 border border-border">
                                                                 <AvatarImage src={chat.avatar} alt={chat.name} />
-                                                                <AvatarFallback className="bg-zinc-100 text-zinc-500 font-medium">{chat.name[0]}</AvatarFallback>
+                                                                <AvatarFallback className="bg-muted text-muted-foreground font-medium">{chat.name[0]}</AvatarFallback>
                                                             </Avatar>
                                                             {!isCollapsed && (
-                                                                <div className="font-semibold text-zinc-900">{chat.name}</div>
+                                                                <div className="font-semibold text-foreground">{chat.name}</div>
                                                             )}
                                                         </div>
                                                         <div
                                                             className={cn(
                                                                 "ml-auto text-xs font-medium",
                                                                 selectedChatId === chat.id
-                                                                    ? "text-zinc-500"
-                                                                    : "text-zinc-400"
+                                                                    ? "text-muted-foreground"
+                                                                    : "text-muted-foreground"
                                                             )}
                                                         >
                                                             {chat.time}
@@ -113,7 +113,7 @@ export function InboxLayout() {
 
                                                     {!isCollapsed && (
                                                         <>
-                                                            <div className="line-clamp-2 text-xs text-zinc-500 mt-1 pl-[52px]">
+                                                            <div className="line-clamp-2 text-xs text-muted-foreground mt-1 pl-[52px]">
                                                                 {chat.lastMessage}
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-2 pl-[52px]">
@@ -139,14 +139,14 @@ export function InboxLayout() {
                         </div>
                     </ResizablePanel>
 
-                    <ResizableHandle withHandle className="bg-zinc-50 border-none" />
+                    <ResizableHandle withHandle className="bg-muted/50 border-none" />
 
                     {/* MAIN: Chat View */}
-                    <ResizablePanel defaultSize={75} className="bg-white">
+                    <ResizablePanel defaultSize={75} className="bg-card">
                         {selectedChat ? (
                             <ChatThreadView chat={selectedChat} />
                         ) : (
-                            <div className="m-auto flex h-full items-center justify-center p-8 text-zinc-400 font-medium">
+                            <div className="m-auto flex h-full items-center justify-center p-8 text-muted-foreground font-medium">
                                 {t('selectConversation')}
                             </div>
                         )}

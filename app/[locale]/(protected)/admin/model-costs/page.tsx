@@ -42,7 +42,7 @@ export default async function ModelCostsPage() {
       <div className='flex items-center justify-between'>
         <div>
           <h1 className='text-3xl font-bold'>Стоимость моделей ИИ</h1>
-          <p className='text-gray-600'>Управление ценами моделей в USD за 1 млн токенов</p>
+          <p className='text-muted-foreground'>Управление ценами моделей в USD за 1 млн токенов</p>
         </div>
       </div>
 

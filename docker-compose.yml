@@ -31,7 +31,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - .env.dev
     volumes:
       - .:/app
       - /app/node_modules

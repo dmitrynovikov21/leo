@@ -65,7 +65,7 @@ export function TableEditorDialog({
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-hidden relative bg-white dark:bg-zinc-950">
+                <div className="flex-1 overflow-hidden relative bg-card dark:bg-zinc-950">
                     <ScrollArea className="h-full w-full">
                         <div className="min-w-max p-4">
                             <div className="border rounded-md overflow-hidden bg-background shadow-sm">

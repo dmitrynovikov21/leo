@@ -28,9 +28,9 @@ export function SystemEventsLog({ events = [] }: SystemEventsLogProps) {
     const t = useTranslations('Dashboard')
 
     return (
-        <Card className="h-full bg-white border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
+        <Card className="h-full bg-card border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl">
             <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-zinc-900">{t('systemEvents')}</CardTitle>
+                <CardTitle className="text-lg font-semibold text-foreground">{t('systemEvents')}</CardTitle>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[420px] pr-3">

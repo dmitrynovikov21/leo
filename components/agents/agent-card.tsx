@@ -75,7 +75,7 @@ export function AgentCard({ agent }: AgentCardProps) {
             case 'paused':
                 return {
                     label: t('paused'),
-                    className: "bg-slate-500/10 text-slate-600 border-slate-200"
+                    className: "bg-muted/50 text-muted-foreground border-border"
                 }
             case 'error':
                 return {
@@ -89,7 +89,7 @@ export function AgentCard({ agent }: AgentCardProps) {
 
     return (
         <Link href={`/dashboard/agents/${agent.id}`} className="block h-full">
-            <Card className="group hover:border-primary/50 transition-all bg-white h-full flex flex-col cursor-pointer rounded-2xl border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <Card className="group hover:border-primary/50 transition-all bg-card h-full flex flex-col cursor-pointer rounded-2xl border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
                 {/* A. Header (Top) */}
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                     <div className="flex items-center gap-3">
@@ -119,19 +119,19 @@ export function AgentCard({ agent }: AgentCardProps) {
                 {/* B. Body (Middle) - Metrics */}
                 <CardContent className="py-3 flex-1">
                     <div className="grid grid-cols-2 gap-2">
-                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-zinc-50 border border-zinc-100/50 group-hover:bg-zinc-100 transition-colors">
-                            <span className="text-[10px] uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5 truncate">
+                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/50 border border-border group-hover:bg-muted transition-colors">
+                            <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider flex items-center gap-1.5 truncate">
                                 <MessageSquare size={12} /> {t('totalDialogs')}
                             </span>
-                            <span className="text-xl font-bold text-zinc-900 tracking-tight">
+                            <span className="text-xl font-bold text-foreground tracking-tight">
                                 {metrics.totalDialogs.toLocaleString('ru-RU')}
                             </span>
                         </div>
-                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-zinc-50 border border-zinc-100/50 group-hover:bg-zinc-100 transition-colors">
-                            <span className="text-[10px] uppercase text-zinc-400 font-bold tracking-wider flex items-center gap-1.5 truncate">
+                        <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/50 border border-border group-hover:bg-muted transition-colors">
+                            <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider flex items-center gap-1.5 truncate">
                                 <MessageSquare size={12} className="opacity-50" /> Сегодня
                             </span>
-                            <span className="text-xl font-bold text-zinc-900 tracking-tight">
+                            <span className="text-xl font-bold text-foreground tracking-tight">
                                 {metrics.dialogsToday.toLocaleString('ru-RU')}
                             </span>
                         </div>
@@ -139,7 +139,7 @@ export function AgentCard({ agent }: AgentCardProps) {
                 </CardContent>
 
                 {/* C. Footer (Bottom) - Channels + Manage */}
-                <CardFooter className="pt-3 pb-3 gap-2 border-t border-zinc-100 flex items-center justify-between mt-auto">
+                <CardFooter className="pt-3 pb-3 gap-2 border-t border-border flex items-center justify-between mt-auto">
                     <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                         {metrics.connectedChannels.whatsapp && <ChannelIcon type="whatsapp" active={true} />}
                         {metrics.connectedChannels.telegram && <ChannelIcon type="telegram" active={true} />}
@@ -150,7 +150,7 @@ export function AgentCard({ agent }: AgentCardProps) {
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="text-xs h-8 px-4 rounded-xl hover:bg-zinc-100 text-zinc-600 group-hover:text-zinc-900"
+                        className="text-xs h-8 px-4 rounded-xl hover:bg-muted text-muted-foreground group-hover:text-foreground"
                     >
                         <Settings size={14} className="mr-1.5" />
                         {t('manage')}

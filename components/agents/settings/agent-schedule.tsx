@@ -207,27 +207,27 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-lg font-bold text-zinc-900">График доступности</h3>
-                            <p className="text-sm text-zinc-500 mt-1">
+                            <h3 className="text-lg font-bold text-foreground">График доступности</h3>
+                            <p className="text-sm text-muted-foreground mt-1">
                                 Настройте рабочие часы, когда агент будет отвечать пользователям.
                             </p>
                         </div>
-                        <div className="flex items-center h-10 px-3 rounded-xl bg-zinc-100/50 text-zinc-900 font-medium text-sm">
-                            <Globe className="mr-2 h-4 w-4 text-zinc-500" />
+                        <div className="flex items-center h-10 px-3 rounded-xl bg-muted/50 text-foreground font-medium text-sm">
+                            <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
                             Москва (GMT+3)
                         </div>
                     </div>
 
-                    <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                         <CardHeader className="pb-4">
                             <div className="flex items-center justify-between">
-                                <CardTitle className="text-base font-semibold text-zinc-900">Недельный график</CardTitle>
-                                <div className="flex items-center gap-4 text-xs font-medium text-zinc-500">
+                                <CardTitle className="text-base font-semibold text-foreground">Недельный график</CardTitle>
+                                <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
                                     <div className="flex items-center gap-1.5">
-                                        <div className="h-3 w-3 rounded-sm bg-zinc-900" /> Активен
+                                        <div className="h-3 w-3 rounded-sm bg-primary" /> Активен
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                        <div className="h-3 w-3 rounded-sm bg-zinc-100" /> Неактивен
+                                        <div className="h-3 w-3 rounded-sm bg-muted" /> Неактивен
                                     </div>
                                 </div>
                             </div>
@@ -237,7 +237,7 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                                 {/* Header Hours */}
                                 <div className="flex mb-2">
                                     <div className="w-12" />
-                                    <div className="flex-1 flex justify-between text-[10px] text-zinc-400 font-medium px-1 uppercase tracking-wide">
+                                    <div className="flex-1 flex justify-between text-[10px] text-muted-foreground font-medium px-1 uppercase tracking-wide">
                                         <span>00:00</span>
                                         <span>06:00</span>
                                         <span>12:00</span>
@@ -249,7 +249,7 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                                 <div className="space-y-1">
                                     {days.map((day, dIndex) => (
                                         <div key={day} className="flex items-center gap-2">
-                                            <span className="w-12 text-xs font-semibold text-zinc-500 uppercase tracking-wide">{day}</span>
+                                            <span className="w-12 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{day}</span>
                                             <div className="flex-1 flex gap-[2px] h-8">
                                                 {hours.map((h) => (
                                                     <div
@@ -257,8 +257,8 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                                                         className={cn(
                                                             "flex-1 rounded-sm cursor-pointer transition-all duration-75",
                                                             schedule[dIndex][h]
-                                                                ? "bg-zinc-900 hover:bg-zinc-800"
-                                                                : "bg-zinc-100 hover:bg-zinc-200"
+                                                                ? "bg-primary hover:bg-primary/90"
+                                                                : "bg-muted hover:bg-muted"
                                                         )}
                                                         onMouseDown={() => onMouseDown(dIndex, h)}
                                                         onMouseEnter={() => onMouseEnter(dIndex, h)}
@@ -277,14 +277,14 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                         {/* Offline Behavior */}
                         <div className="space-y-4">
                             <div>
-                                <h3 className="text-base font-bold text-zinc-900">Поведение оффлайн</h3>
-                                <p className="text-sm text-zinc-500 mt-1">Что отвечать в нерабочее время?</p>
+                                <h3 className="text-base font-bold text-foreground">Поведение оффлайн</h3>
+                                <p className="text-sm text-muted-foreground mt-1">Что отвечать в нерабочее время?</p>
                             </div>
-                            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                                 <CardContent className="p-4 space-y-4">
                                     <Textarea
                                         placeholder="Напишите сообщение..."
-                                        className="min-h-[100px] text-sm rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 placeholder:text-zinc-400 p-4 resize-none"
+                                        className="min-h-[100px] text-sm rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground placeholder:text-muted-foreground p-4 resize-none"
                                         value={offlineMessage}
                                         onChange={handleOfflineMessageChange}
                                     />
@@ -295,17 +295,17 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                         {/* Holidays */}
                         <div className="space-y-4">
                             <div>
-                                <h3 className="text-base font-bold text-zinc-900">Праздники</h3>
-                                <p className="text-sm text-zinc-500 mt-1">Исключения из графика работы.</p>
+                                <h3 className="text-base font-bold text-foreground">Праздники</h3>
+                                <p className="text-sm text-muted-foreground mt-1">Исключения из графика работы.</p>
                             </div>
-                            <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl h-[calc(100%-76px)]">
+                            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl h-[calc(100%-76px)]">
                                 <CardContent className="p-4 h-full relative">
                                     {holidays.length === 0 ? (
-                                        <div className="p-8 border-2 border-dashed border-zinc-200 rounded-xl text-center h-full flex flex-col items-center justify-center bg-white">
-                                            <p className="text-sm text-zinc-500 font-medium mb-4">Нет добавленных праздников.</p>
+                                        <div className="p-8 border-2 border-dashed border-border rounded-xl text-center h-full flex flex-col items-center justify-center bg-card">
+                                            <p className="text-sm text-muted-foreground font-medium mb-4">Нет добавленных праздников.</p>
                                             <Popover>
                                                 <PopoverTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 font-medium shadow-sm">Добавить дату</Button>
+                                                    <Button variant="outline" size="sm" className="rounded-xl border-border bg-card hover:bg-muted/50 text-foreground font-medium shadow-sm">Добавить дату</Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="center">
                                                     <Calendar
@@ -321,12 +321,12 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                                         <div className="h-full flex flex-col">
                                             <div className="flex-1 overflow-auto space-y-2 mb-4">
                                                 {holidays.map((date) => (
-                                                    <div key={date} className="flex items-center justify-between p-2 bg-zinc-50 rounded-lg border border-zinc-100">
-                                                        <span className="text-sm font-medium text-zinc-700">{date}</span>
+                                                    <div key={date} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg border border-border">
+                                                        <span className="text-sm font-medium text-foreground">{date}</span>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-6 w-6 p-0 text-zinc-400 hover:text-red-500"
+                                                            className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
                                                             onClick={() => handleRemoveHoliday(date)}
                                                         >
                                                             &times;
@@ -336,7 +336,7 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                                             </div>
                                             <Popover>
                                                 <PopoverTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="w-full rounded-xl border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 font-medium shadow-sm">Добавить дату</Button>
+                                                    <Button variant="outline" size="sm" className="w-full rounded-xl border-border bg-card hover:bg-muted/50 text-foreground font-medium shadow-sm">Добавить дату</Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
                                                     <Calendar
@@ -358,17 +358,17 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                 {/* Buffer / Response Delay */}
                 <div className="space-y-6">
                     <div>
-                        <h3 className="text-lg font-bold text-zinc-900">Буфер обмена (Задержка)</h3>
-                        <p className="text-sm text-zinc-500 mt-1">
+                        <h3 className="text-lg font-bold text-foreground">Буфер обмена (Задержка)</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
                             Настройте искусственную задержку перед ответом.
                         </p>
                     </div>
-                    <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                         <CardContent className="pt-6 pb-6 space-y-6">
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="buffer-seconds" className="font-medium text-zinc-900">Время задержки</Label>
-                                    <Badge variant="outline" className="text-xs font-mono rounded-lg border-zinc-200 bg-zinc-50 text-zinc-600">
+                                    <Label htmlFor="buffer-seconds" className="font-medium text-foreground">Время задержки</Label>
+                                    <Badge variant="outline" className="text-xs font-mono rounded-lg border-border bg-muted/50 text-muted-foreground">
                                         {bufferSeconds[0]} сек
                                     </Badge>
                                 </div>
@@ -381,13 +381,13 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                                     onValueChange={handleBufferChange}
                                     className="cursor-pointer"
                                 />
-                                <div className="flex justify-between text-xs text-zinc-400 px-1 font-medium">
+                                <div className="flex justify-between text-xs text-muted-foreground px-1 font-medium">
                                     <span>Минимум (1с)</span>
                                     <span>Естественно (2-5с)</span>
                                     <span>Задумчиво (10с+)</span>
                                 </div>
                             </div>
-                            <p className="text-xs text-zinc-500 leading-relaxed">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
                                 Добавление небольшой задержки (2-3 секунды) делает общение с ботом более естественным, имитируя процесс чтения и набора текста человеком.
                             </p>
                         </CardContent>

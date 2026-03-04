@@ -1,4 +1,31 @@
 services:
+  # Traefik reverse proxy
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    environment:
+      - DOCKER_API_VERSION=1.53
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=leo_default"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.le.acme.tlschallenge=true"
+      - "--certificatesresolvers.le.acme.email=admin@leoagent.ru"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt_data:/letsencrypt"
+    networks:
+      - leo_default
+
   # PostgreSQL database
   db:
     image: postgres:16-alpine
@@ -29,10 +56,8 @@ services:
     container_name: leo-app
     restart: unless-stopped
     user: root
-    ports:
-      - "3000:3000"
     env_file:
-      - .env
+      - .env.prod
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -40,11 +65,18 @@ services:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`app.leoagent.ru`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=le"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
     networks:
       - leo_default
 
 volumes:
   postgres_data:
+  letsencrypt_data:
 
 networks:
   leo_default:

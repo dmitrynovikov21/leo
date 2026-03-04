@@ -319,7 +319,7 @@ export function AutoTestRunner() {
             <ResizablePanel defaultSize={75} minSize={30}>
                 <Tabs defaultValue="runner" className="h-full flex flex-col pt-4 px-6">
                     <div className="flex justify-end mb-4">
-                        <TabsList className="bg-zinc-100/80 h-9">
+                        <TabsList className="bg-muted/80 h-9">
                             <TabsTrigger value="runner" className="text-xs px-3">Автотест</TabsTrigger>
                             <TabsTrigger value="history" className="text-xs px-3">История ({history.length})</TabsTrigger>
                         </TabsList>
@@ -329,12 +329,12 @@ export function AutoTestRunner() {
                         <TabsContent value="runner" className="space-y-8 mt-0">
                             {status === "idle" || status === "generating" ? (
                                 <div className="text-center space-y-4 py-12">
-                                    <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto border border-zinc-200">
-                                        <Zap className="h-8 w-8 text-zinc-900" />
+                                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto border border-border">
+                                        <Zap className="h-8 w-8 text-foreground" />
                                     </div>
                                     <div className="space-y-2">
-                                        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">{t('autoLab')}</h2>
-                                        <p className="text-zinc-500 max-w-lg mx-auto">
+                                        <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('autoLab')}</h2>
+                                        <p className="text-muted-foreground max-w-lg mx-auto">
                                             Запустите автотестирование, мы проанализируем вашу базу знаний и составим вопросы для теста.
                                         </p>
                                     </div>
@@ -354,7 +354,7 @@ export function AutoTestRunner() {
                             ) : status === "complete" ? (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
                                     <div className="flex justify-between items-center">
-                                        <h2 className="text-2xl font-bold text-zinc-900">{t('testResults')}</h2>
+                                        <h2 className="text-2xl font-bold text-foreground">{t('testResults')}</h2>
                                         <Button variant="outline" onClick={() => setStatus("idle")} className="rounded-xl">
                                             <RotateCcw className="mr-2 h-4 w-4" />
                                             {t('runAgain')}
@@ -363,15 +363,15 @@ export function AutoTestRunner() {
                                     <TestResultScorecard report={report} />
                                 </div>
                             ) : (
-                                <Card className="w-full border-zinc-200 shadow-sm border-0 bg-transparent shadow-none">
+                                <Card className="w-full border-border shadow-sm border-0 bg-transparent shadow-none">
                                     <CardContent className="pt-6 space-y-6">
-                                        <div className="flex justify-between text-sm font-medium text-zinc-700">
+                                        <div className="flex justify-between text-sm font-medium text-foreground">
                                             <span className="flex items-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" /> {t('running')}
                                             </span>
                                             <span>{progress}%</span>
                                         </div>
-                                        <Progress value={progress} className="h-3 rounded-full bg-zinc-100" />
+                                        <Progress value={progress} className="h-3 rounded-full bg-muted" />
                                         <div ref={scrollRef} className="h-[300px] rounded-xl bg-zinc-950 text-emerald-500 font-mono text-xs p-4 overflow-y-auto space-y-1 shadow-inner">
                                             {logs.map((log, i) => <div key={i}>{log}</div>)}
                                             <div className="animate-pulse">_</div>
@@ -385,13 +385,13 @@ export function AutoTestRunner() {
                             {isLoadingData ? (
                                 <div className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto opacity-50" /></div>
                             ) : history.length === 0 ? (
-                                <div className="text-center py-12 text-zinc-400">История пуста</div>
+                                <div className="text-center py-12 text-muted-foreground">История пуста</div>
                             ) : (
                                 <div className="space-y-4">
                                     {history.map(run => (
                                         <div
                                             key={run.id}
-                                            className="flex items-center justify-between p-4 rounded-xl border border-zinc-100 bg-white hover:border-zinc-300 transition-all cursor-pointer hover:shadow-sm"
+                                            className="flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:border-border transition-all cursor-pointer hover:shadow-sm"
                                             onClick={() => setSelectedRun(run)}
                                         >
                                             <div className="flex items-center gap-4">
@@ -404,16 +404,16 @@ export function AutoTestRunner() {
                                                     {run.score}%
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium text-zinc-900">
+                                                    <div className="font-medium text-foreground">
                                                         {new Date(run.createdAt).toLocaleDateString()} {new Date(run.createdAt).toLocaleTimeString()}
                                                     </div>
-                                                    <div className="text-xs text-zinc-500">
+                                                    <div className="text-xs text-muted-foreground">
                                                         {run.results.length} тестов • {run.results.filter(r => r.passed).length} пройдено
                                                     </div>
                                                 </div>
                                             </div>
                                             <Button variant="ghost" size="icon">
-                                                <FileText className="h-4 w-4 text-zinc-400" />
+                                                <FileText className="h-4 w-4 text-muted-foreground" />
                                             </Button>
                                         </div>
                                     ))}
@@ -424,7 +424,7 @@ export function AutoTestRunner() {
                 </Tabs>
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="bg-zinc-100" />
+            <ResizableHandle withHandle className="bg-muted" />
 
             <ResizablePanel defaultSize={25} minSize={25} maxSize={50}>
                 <FeedbackPanel

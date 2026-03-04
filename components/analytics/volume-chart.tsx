@@ -14,10 +14,10 @@ import { mockVolumeData } from "@/mocks/analytics"
 
 export function VolumeChart() {
     return (
-        <Card className="col-span-4 border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+        <Card className="col-span-4 border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
             <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-bold text-zinc-900">Conversation Volume</CardTitle>
-                <CardDescription className="text-zinc-500 font-medium">
+                <CardTitle className="text-lg font-bold text-foreground">Conversation Volume</CardTitle>
+                <CardDescription className="text-muted-foreground font-medium">
                     Daily session traffic over the last 14 days.
                 </CardDescription>
             </CardHeader>

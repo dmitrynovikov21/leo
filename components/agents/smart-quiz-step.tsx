@@ -114,13 +114,14 @@ interface OptionWithCustomProps {
     customValue: string
     onChange: (value: string) => void
     onCustomChange: (value: string) => void
+    id?: string
 }
 
-function OptionWithCustom({ label, value, options, customValue, onChange, onCustomChange }: OptionWithCustomProps) {
+function OptionWithCustom({ label, value, options, customValue, onChange, onCustomChange, id }: OptionWithCustomProps) {
     const isCustom = value === "custom"
 
     return (
-        <div className="space-y-3">
+        <div id={id} className="space-y-3">
             <Label className="text-sm font-medium text-foreground">{label}</Label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {options.map((opt) => {
@@ -271,7 +272,7 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
                                 <p className="text-xs text-muted-foreground">{role.desc}</p>
                             </div>
                             <div className="absolute top-2 right-2 rounded bg-muted px-2 py-0.5 text-[10px] uppercase font-medium text-muted-foreground">
-                                Soon
+                                Скоро
                             </div>
                         </div>
                     ))}
@@ -289,9 +290,9 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
                         className="space-y-8 rounded-lg border bg-muted/10 p-6"
                     >
                         {/* 1. Identity */}
-                        <div className="space-y-4">
+                        <div id="field-identityName" className="space-y-4">
                             <h4 className="font-medium flex items-center gap-2 text-primary">
-                                <FileText className="h-4 w-4" /> 1. Личность (Identity)
+                                <FileText className="h-4 w-4" /> 1. Личность
                             </h4>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -315,7 +316,8 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
 
                         {/* 2. Audience */}
                         <OptionWithCustom
-                            label="2. Целевая аудитория (Audience)"
+                            id="field-audience"
+                            label="2. Целевая аудитория"
                             value={answers.audience}
                             customValue={answers.audienceCustom}
                             onChange={(v) => updateAnswer("audience", v)}
@@ -329,20 +331,22 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
 
                         {/* 3. Strictness */}
                         <OptionWithCustom
-                            label="3. Источник знаний (Strictness)"
+                            id="field-strictness"
+                            label="3. Источник знаний"
                             value={answers.strictness}
                             customValue={answers.strictnessCustom}
                             onChange={(v) => updateAnswer("strictness", v)}
                             onCustomChange={(v) => updateAnswer("strictnessCustom", v)}
                             options={[
-                                { value: "strict_files", label: "Только из файлов (Strict)" },
+                                { value: "strict_files", label: "Только из файлов" },
                                 { value: "hybrid", label: "Файлы + знания модели" },
                             ]}
                         />
 
                         {/* 4. Citations */}
                         <OptionWithCustom
-                            label="4. Ссылки на источники (Citations)"
+                            id="field-citations"
+                            label="4. Ссылки на источники"
                             value={answers.citations}
                             customValue={answers.citationsCustom}
                             onChange={(v) => updateAnswer("citations", v)}
@@ -356,7 +360,8 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
 
                         {/* 5. Conflicts */}
                         <OptionWithCustom
-                            label="5. Противоречия в данных (Conflicts)"
+                            id="field-conflicts"
+                            label="5. Противоречия в данных"
                             value={answers.conflicts}
                             customValue={answers.conflictsCustom}
                             onChange={(v) => updateAnswer("conflicts", v)}
@@ -370,7 +375,8 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
 
                         {/* 6. Answer Depth */}
                         <OptionWithCustom
-                            label="6. Глубина ответа (Depth)"
+                            id="field-answerDepth"
+                            label="6. Глубина ответа"
                             value={answers.answerDepth}
                             customValue={answers.answerDepthCustom}
                             onChange={(v) => updateAnswer("answerDepth", v)}
@@ -384,7 +390,8 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
 
                         {/* 7. Format */}
                         <OptionWithCustom
-                            label="7. Стиль оформления (Format)"
+                            id="field-format"
+                            label="7. Стиль оформления"
                             value={answers.format}
                             customValue={answers.formatCustom}
                             onChange={(v) => updateAnswer("format", v)}
@@ -397,21 +404,21 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
 
                         {/* 8. Fallback */}
                         <OptionWithCustom
-                            label="8. Если нет ответа (Fallback)"
+                            id="field-fallback"
+                            label="8. Если нет ответа"
                             value={answers.fallback}
                             customValue={answers.fallbackCustom}
                             onChange={(v) => updateAnswer("fallback", v)}
                             onCustomChange={(v) => updateAnswer("fallbackCustom", v)}
                             options={[
                                 { value: "contact", label: "Попросить контакт для связи" },
-                                { value: "manager", label: "Перевести на менеджера" },
                                 { value: "no_info", label: 'Сказать "Информации нет"' },
                             ]}
                         />
 
                         {/* 9. Few-shot */}
-                        <div className="space-y-3">
-                            <Label className="text-sm font-medium text-foreground">9. Эталонный пример (Few-shot)</Label>
+                        <div id="field-fewShot" className="space-y-3">
+                            <Label className="text-sm font-medium text-foreground">9. Эталонный пример</Label>
                             <p className="text-xs text-muted-foreground">
                                 Приведите пример идеального диалога. Формат: "Вопрос — Ответ".
                             </p>

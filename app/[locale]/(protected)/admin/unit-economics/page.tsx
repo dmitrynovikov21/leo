@@ -122,7 +122,7 @@ export default function UnitEconomicsPage() {
     <div className='space-y-6'>
       <div>
         <h1 className='text-3xl font-bold'>Юнит-экономика</h1>
-        <p className='text-gray-600'>Анализ выручки и затрат, разбор по моделям</p>
+        <p className='text-muted-foreground'>Анализ выручки и затрат, разбор по моделям</p>
       </div>
 
       {/* Date Range Selector */}
@@ -178,7 +178,7 @@ export default function UnitEconomicsPage() {
               </CardHeader>
               <CardContent>
                 <div className='text-2xl font-bold'>{data.metrics.estimatedRevenueRub.toFixed(2)} ₽</div>
-                <p className='text-xs text-gray-500'>
+                <p className='text-xs text-muted-foreground'>
                   ~${data.metrics.estimatedRevenueUsd.toFixed(2)} USD
                 </p>
               </CardContent>
@@ -193,7 +193,7 @@ export default function UnitEconomicsPage() {
               </CardHeader>
               <CardContent>
                 <div className='text-2xl font-bold'>${data.metrics.totalCostUsd.toFixed(6)}</div>
-                <p className='text-xs text-gray-500'>{data.metrics.totalRequests} запросов</p>
+                <p className='text-xs text-muted-foreground'>{data.metrics.totalRequests} запросов</p>
               </CardContent>
             </Card>
 
@@ -210,7 +210,7 @@ export default function UnitEconomicsPage() {
                 >
                   ${data.metrics.marginUsd.toFixed(6)}
                 </div>
-                <p className='text-xs text-gray-500'>{data.metrics.marginPercent.toFixed(2)}% маржа</p>
+                <p className='text-xs text-muted-foreground'>{data.metrics.marginPercent.toFixed(2)}% маржа</p>
               </CardContent>
             </Card>
 
@@ -223,7 +223,7 @@ export default function UnitEconomicsPage() {
               </CardHeader>
               <CardContent>
                 <div className='text-2xl font-bold'>{(data.metrics.totalTokensUsedLlm / 1000).toFixed(1)}K</div>
-                <p className='text-xs text-gray-500'>
+                <p className='text-xs text-muted-foreground'>
                   {data.metrics.totalTokensUsedPlatform.toFixed(0)} платформенных токенов
                 </p>
               </CardContent>
@@ -296,7 +296,7 @@ export default function UnitEconomicsPage() {
 
       {!data && !loading && (
         <Card>
-          <CardContent className='py-8 text-center text-gray-500'>
+          <CardContent className='py-8 text-center text-muted-foreground'>
             Выберите диапазон дат и нажмите "Загрузить данные" для просмотра юнит-экономики
           </CardContent>
         </Card>

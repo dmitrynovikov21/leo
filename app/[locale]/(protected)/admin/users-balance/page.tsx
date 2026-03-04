@@ -96,7 +96,7 @@ export default function UsersBalancePage() {
     <div className='space-y-6'>
       <div>
         <h1 className='text-3xl font-bold'>Балансы токенов пользователей</h1>
-        <p className='text-gray-600'>Управление и мониторинг балансов токенов пользователей</p>
+        <p className='text-muted-foreground'>Управление и мониторинг балансов токенов пользователей</p>
       </div>
 
       {/* Search and Filter */}
@@ -145,9 +145,9 @@ export default function UsersBalancePage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className='py-8 text-center text-gray-500'>Загрузка пользователей...</div>
+            <div className='py-8 text-center text-muted-foreground'>Загрузка пользователей...</div>
           ) : users.length === 0 ? (
-            <div className='py-8 text-center text-gray-500'>Пользователи не найдены</div>
+            <div className='py-8 text-center text-muted-foreground'>Пользователи не найдены</div>
           ) : (
             <div className='rounded-lg border'>
               <Table>
@@ -180,7 +180,7 @@ export default function UsersBalancePage() {
                           {user.tokenBalance.toLocaleString('ru-RU')}
                         </div>
                       </TableCell>
-                      <TableCell className='text-sm text-gray-500'>
+                      <TableCell className='text-sm text-muted-foreground'>
                         {new Date(user.createdAt).toLocaleDateString('ru-RU')}
                       </TableCell>
                       <TableCell className='text-sm'>

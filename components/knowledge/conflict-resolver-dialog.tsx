@@ -130,8 +130,8 @@ export function ConflictResolverDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl h-[80vh] flex flex-col p-0 gap-0 sm:rounded-xl overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-                <div className="flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-zinc-900">
+            <DialogContent className="max-w-5xl h-[80vh] flex flex-col p-0 gap-0 sm:rounded-xl overflow-hidden bg-muted/50 dark:bg-zinc-950">
+                <div className="flex items-center justify-between px-6 py-4 border-b bg-card dark:bg-zinc-900">
                     <div className="space-y-1">
                         <DialogTitle className="flex items-center gap-2 text-lg">
                             <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -148,8 +148,8 @@ export function ConflictResolverDialog({
 
                 <div className="flex-1 overflow-hidden grid grid-cols-2 divide-x divide-zinc-200 dark:divide-zinc-800">
                     {chunks.length === 0 ? (
-                        <div className="col-span-2 flex flex-col items-center justify-center p-12 text-center text-zinc-500">
-                            <AlertTriangle className="h-12 w-12 text-zinc-300 mb-4" />
+                        <div className="col-span-2 flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
+                            <AlertTriangle className="h-12 w-12 text-muted-foreground/60 mb-4" />
                             <p className="text-lg font-medium">Нет связанных фрагментов</p>
                             <p className="text-sm">ИИ не смог определить конкретные участки текста для этого конфликта.</p>
                             <div className="flex gap-2 mt-6">
@@ -173,8 +173,8 @@ export function ConflictResolverDialog({
                         const chunkText = getChunkText(chunk)
 
                         return (
-                            <div key={chunkId || idx} className="flex flex-col h-full bg-white dark:bg-zinc-900/50">
-                                <div className="p-4 border-b border-zinc-100 bg-zinc-50/50 text-sm font-medium text-zinc-500 flex justify-between items-center">
+                            <div key={chunkId || idx} className="flex flex-col h-full bg-card dark:bg-zinc-900/50">
+                                <div className="p-4 border-b border-border bg-muted/30 text-sm font-medium text-muted-foreground flex justify-between items-center">
                                     <span>Вариант {idx + 1}</span>
                                     {selectedChunkId === chunkId && (
                                         <Badge className="bg-blue-600">Редактируется</Badge>
@@ -195,7 +195,7 @@ export function ConflictResolverDialog({
                                     )}
                                 </div>
 
-                                <div className="p-4 border-t border-zinc-100 bg-zinc-50/50 flex justify-end">
+                                <div className="p-4 border-t border-border bg-muted/30 flex justify-end">
                                     {selectedChunkId === chunkId ? (
                                         <div className="flex gap-2">
                                             <Button variant="ghost" size="sm" onClick={() => setSelectedChunkId(null)}>

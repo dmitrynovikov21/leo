@@ -120,14 +120,14 @@ export function KnowledgeConflictsWidget({ agentId, className }: KnowledgeConfli
                 {conflicts.map((conflict) => (
                     <div
                         key={conflict.id}
-                        className="rounded-xl border border-amber-200 bg-white p-4 space-y-3"
+                        className="rounded-xl border border-amber-200 bg-card p-4 space-y-3"
                     >
                         <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
-                                <h4 className="font-medium text-sm text-zinc-900">
+                                <h4 className="font-medium text-sm text-foreground">
                                     {t("conflictLabel")}: {conflict.topic}
                                 </h4>
-                                <p className="text-xs text-zinc-500 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                     {new Date(conflict.detectedAt).toLocaleDateString("ru-RU", {
                                         day: "numeric",
                                         month: "short",
@@ -144,14 +144,14 @@ export function KnowledgeConflictsWidget({ agentId, className }: KnowledgeConfli
                             {conflict.details.map((file, idx) => (
                                 <div
                                     key={file.file_id}
-                                    className="flex items-center gap-2 text-sm bg-zinc-50 rounded-lg p-2"
+                                    className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-2"
                                 >
-                                    <FileText className="h-4 w-4 text-zinc-400 shrink-0" />
-                                    <span className="font-medium text-zinc-700 truncate flex-1">
+                                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span className="font-medium text-foreground truncate flex-1">
                                         {file.file_name}
                                     </span>
-                                    <span className="text-zinc-500">→</span>
-                                    <span className="text-zinc-900 font-mono text-xs bg-white px-2 py-1 rounded border">
+                                    <span className="text-muted-foreground">→</span>
+                                    <span className="text-foreground font-mono text-xs bg-card px-2 py-1 rounded border">
                                         {file.value_found}
                                     </span>
                                     {idx < conflict.details.length - 1 && (
@@ -162,7 +162,7 @@ export function KnowledgeConflictsWidget({ agentId, className }: KnowledgeConfli
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
+                        <div className="flex items-center gap-2 pt-2 border-t border-border">
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -180,7 +180,7 @@ export function KnowledgeConflictsWidget({ agentId, className }: KnowledgeConfli
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 text-xs text-zinc-500"
+                                className="h-8 text-xs text-muted-foreground"
                                 onClick={() => updateStatus(conflict.id, "IGNORED")}
                                 disabled={updatingId === conflict.id}
                             >
@@ -190,7 +190,7 @@ export function KnowledgeConflictsWidget({ agentId, className }: KnowledgeConfli
                             {conflict.details[0]?.file_id && (
                                 <a
                                     href={`/dashboard/knowledge?file=${conflict.details[0].file_id}`}
-                                    className="h-8 text-xs ml-auto inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors"
+                                    className="h-8 text-xs ml-auto inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                     <ExternalLink className="h-3 w-3" />
                                     {t("goToFile")}

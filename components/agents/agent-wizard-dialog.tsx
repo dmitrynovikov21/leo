@@ -109,26 +109,32 @@ export function AgentWizardDialog() {
 
             // Validation for Corporate Bot
             if (quizAnswers.role === 'corporate_bot') {
-                const missingFields: string[] = []
-                if (!quizAnswers.identityName) missingFields.push("Имя ассистента")
-                if (!quizAnswers.identityPosition) missingFields.push("Должность")
-                if (!quizAnswers.audience) missingFields.push("Аудитория")
-                if (!quizAnswers.strictness) missingFields.push("Источник знаний")
-                if (!quizAnswers.citations) missingFields.push("Ссылки")
-                if (!quizAnswers.conflicts) missingFields.push("Противоречия")
-                if (!quizAnswers.answerDepth) missingFields.push("Глубина")
-                if (!quizAnswers.format) missingFields.push("Оформление")
-                if (!quizAnswers.fallback) missingFields.push("Fallback")
-                if (!quizAnswers.fewShot) missingFields.push("Пример")
+                const missingFieldIds: { id: string; label: string }[] = []
+                if (!quizAnswers.identityName) missingFieldIds.push({ id: "field-identityName", label: "Имя ассистента" })
+                if (!quizAnswers.identityPosition) missingFieldIds.push({ id: "field-identityName", label: "Должность" })
+                if (!quizAnswers.audience) missingFieldIds.push({ id: "field-audience", label: "Аудитория" })
+                if (!quizAnswers.strictness) missingFieldIds.push({ id: "field-strictness", label: "Источник знаний" })
+                if (!quizAnswers.citations) missingFieldIds.push({ id: "field-citations", label: "Ссылки" })
+                if (!quizAnswers.conflicts) missingFieldIds.push({ id: "field-conflicts", label: "Противоречия" })
+                if (!quizAnswers.answerDepth) missingFieldIds.push({ id: "field-answerDepth", label: "Глубина" })
+                if (!quizAnswers.format) missingFieldIds.push({ id: "field-format", label: "Оформление" })
+                if (!quizAnswers.fallback) missingFieldIds.push({ id: "field-fallback", label: "Если нет ответа" })
+                if (!quizAnswers.fewShot) missingFieldIds.push({ id: "field-fewShot", label: "Пример" })
 
-                if (missingFields.length > 0) {
-                    toast.error("Заполните все поля квиза", {
-                        description: `Не заполнено: ${missingFields.join(", ")}`
+                if (missingFieldIds.length > 0) {
+                    const firstField = document.getElementById(missingFieldIds[0].id)
+                    firstField?.scrollIntoView({ behavior: "smooth", block: "center" })
+                    toast.error(`Заполните поле: ${missingFieldIds[0].label}`, {
+                        description: missingFieldIds.length > 1
+                            ? `Ещё не заполнено: ${missingFieldIds.slice(1).map(f => f.label).join(", ")}`
+                            : undefined
                     })
                     return
                 }
 
                 if (quizAnswers.identityName.length < 2) {
+                    const el = document.getElementById("field-identityName")
+                    el?.scrollIntoView({ behavior: "smooth", block: "center" })
                     toast.error("Имя ассистента должно быть минимум 2 символа")
                     return
                 }

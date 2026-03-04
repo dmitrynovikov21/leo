@@ -44,7 +44,6 @@ export default async function RootLayout({ children, params: { locale } }: RootL
             attribute="class"
             defaultTheme="light"
             enableSystem={false}
-            forcedTheme="light"
             disableTransitionOnChange
           >
             <NextIntlClientProvider messages={messages}>

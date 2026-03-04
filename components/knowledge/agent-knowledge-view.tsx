@@ -689,13 +689,13 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             {/* Drag Overlay */}
             {isDraggingGlobal && (
                 <div className="fixed inset-0 z-[100] bg-black/20 backdrop-blur-sm flex items-center justify-center pointer-events-none transition-all duration-300">
-                    <div className="bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-200 border border-white/20">
+                    <div className="bg-card/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in-95 duration-200 border border-white/20">
                         <div className="p-5 rounded-full bg-zinc-900/5 shadow-inner">
-                            <UploadCloud className="h-10 w-10 text-zinc-900 animate-bounce" />
+                            <UploadCloud className="h-10 w-10 text-foreground animate-bounce" />
                         </div>
                         <div className="text-center space-y-1">
-                            <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Отпустите файлы</h3>
-                            <p className="text-zinc-500 font-medium">для добавления в базу знаний агента</p>
+                            <h3 className="text-xl font-bold text-foreground tracking-tight">Отпустите файлы</h3>
+                            <p className="text-muted-foreground font-medium">для добавления в базу знаний агента</p>
                         </div>
                     </div>
                 </div>
@@ -798,7 +798,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+                                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                                     {agentName ? `agent — ${agentName}` : 'База знаний агента'}
                                 </h1>
                                 {!internalAgentId && !isLoading && (
@@ -807,7 +807,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-zinc-500 mt-2">
+                            <p className="text-muted-foreground mt-2">
                                 Управляйте документами и заметками, которые формируют знания вашего агента.
                             </p>
                         </div>
@@ -819,13 +819,13 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                                 placeholder="Поиск файлов..."
                                 value={searchQuery}
                                 readOnly
-                                className="h-9 w-[240px] rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 pl-3 shadow-none placeholder:text-zinc-400"
+                                className="h-9 w-[240px] rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground pl-3 shadow-none placeholder:text-muted-foreground"
                             />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="sm" className={cn(
-                                        "h-9 rounded-xl border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 hover:border-zinc-300 shadow-sm",
-                                        filterType !== 'all' && "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 hover:border-zinc-800 hover:text-white"
+                                        "h-9 rounded-xl border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:border-border shadow-sm",
+                                        filterType !== 'all' && "border-zinc-900 bg-primary text-primary-foreground hover:bg-primary/90 "
                                     )}>
                                         <Filter className="h-4 w-4 mr-2" />
 
@@ -836,64 +836,64 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                                         <ChevronDown className="h-4 w-4 ml-2" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-zinc-100">
-                                    <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                <DropdownMenuContent align="end" className="w-48 p-1 rounded-xl shadow-xl border-border">
+                                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider">
                                         Тип контента
                                     </DropdownMenuLabel>
                                     <DropdownMenuItem
-                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-zinc-100")}
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-muted")}
                                     >
                                         <div className="flex items-center gap-3 w-full">
-                                            <Filter className="h-4 w-4 text-zinc-500" />
+                                            <Filter className="h-4 w-4 text-muted-foreground" />
                                             <span className="font-medium">Все типы</span>
-                                            {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                            {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-foreground" />}
                                         </div>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-zinc-100")}
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-muted")}
                                     >
                                         <div className="flex items-center gap-3 w-full">
                                             <FileText className="h-4 w-4 text-blue-500" />
                                             <span className="font-medium">Документы</span>
-                                            {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                            {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-foreground" />}
                                         </div>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-zinc-100")}
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-muted")}
                                     >
                                         <div className="flex items-center gap-3 w-full">
                                             <Image className="h-4 w-4 text-purple-500" />
                                             <span className="font-medium">Изображения</span>
-                                            {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-zinc-900" />}
+                                            {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-foreground" />}
                                         </div>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button size="sm" className="h-9 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
+                                    <Button size="sm" className="h-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_2px_8px_rgba(0,0,0,0.12)] border border-zinc-800/50 pl-3 pr-4 transition-all active:scale-95">
                                         <Plus className="h-4 w-4 mr-1.5" />
                                         Добавить
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-zinc-100">
-                                    <DropdownMenuLabel className="text-xs font-medium text-zinc-400 px-3 py-2 uppercase tracking-wider">
+                                <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-border">
+                                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-3 py-2 uppercase tracking-wider">
                                         Действия
                                     </DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
-                                        <div className="mr-3 text-zinc-500">
+                                    <DropdownMenuItem onClick={() => setIsUploadDialogOpen(true)} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-muted focus:bg-muted focus:text-foreground">
+                                        <div className="mr-3 text-muted-foreground">
                                             <UploadCloud className="h-4 w-4" />
                                         </div>
                                         <span className="font-medium">Загрузить файлы</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                    <DropdownMenuItem onClick={() => { setSelectedNote(null); setIsNoteDialogOpen(true) }} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-muted focus:bg-muted focus:text-foreground">
                                         <div className="mr-3 text-amber-600">
                                             <Sparkles className="h-4 w-4" />
                                         </div>
                                         <span className="font-medium">Создать заметку</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                    <DropdownMenuItem onClick={handleOpenLibrary} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-zinc-100 focus:bg-zinc-100 focus:text-zinc-900">
+                                    <DropdownMenuSeparator className="my-1 bg-muted" />
+                                    <DropdownMenuItem onClick={handleOpenLibrary} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-muted focus:bg-muted focus:text-foreground">
                                         <div className="mr-3 text-blue-600">
                                             <BookOpen className="h-4 w-4" />
                                         </div>
@@ -922,7 +922,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-9 text-zinc-500 hover:text-zinc-900"
+                        className="h-9 text-muted-foreground hover:text-foreground"
                         onClick={handleRunAudit}
                         disabled={isAuditRunning}
                     >
@@ -938,19 +938,19 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                     {/* Notes Section */}
                     {noteDocs.length > 0 && (
                         <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                                 <Sparkles className="h-4 w-4" /> Заметки агента
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {noteDocs.map((note) => (
                                     <Card
                                         key={note.id}
-                                        className="rounded-2xl border-zinc-200/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-zinc-300 transition-colors cursor-pointer"
+                                        className="rounded-2xl border-border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-border transition-colors cursor-pointer"
                                         onClick={() => handleFileClick(note)}
                                     >
                                         <CardHeader className="p-4">
-                                            <CardTitle className="text-sm font-semibold text-zinc-900">{note.name}</CardTitle>
-                                            <CardDescription className="text-xs text-zinc-500 line-clamp-2">{note.content}</CardDescription>
+                                            <CardTitle className="text-sm font-semibold text-foreground">{note.name}</CardTitle>
+                                            <CardDescription className="text-xs text-muted-foreground line-clamp-2">{note.content}</CardDescription>
                                         </CardHeader>
                                     </Card>
                                 ))}

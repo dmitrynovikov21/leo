@@ -43,7 +43,7 @@ export default function ModelCostsTable({ configs, total }: { configs: ModelCost
   }
 
   if (configs.length === 0) {
-    return <div className='py-8 text-center text-gray-500'>Стоимость моделей не настроена</div>
+    return <div className='py-8 text-center text-muted-foreground'>Стоимость моделей не настроена</div>
   }
 
   return (
@@ -75,7 +75,7 @@ export default function ModelCostsTable({ configs, total }: { configs: ModelCost
                     <Badge variant='secondary'>Неактивен</Badge>
                   )}
                 </TableCell>
-                <TableCell className='text-sm text-gray-500'>
+                <TableCell className='text-sm text-muted-foreground'>
                   {new Date(config.createdAt).toLocaleDateString('ru-RU')}
                 </TableCell>
                 <TableCell>
@@ -97,7 +97,7 @@ export default function ModelCostsTable({ configs, total }: { configs: ModelCost
       </div>
 
       {configs.length < total && (
-        <div className='text-sm text-gray-500'>Показаны {configs.length} из {total} конфигураций</div>
+        <div className='text-sm text-muted-foreground'>Показаны {configs.length} из {total} конфигураций</div>
       )}
     </div>
   )

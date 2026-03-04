@@ -23,20 +23,20 @@ export function DialogVolumeChart({ className, data }: DialogVolumeChartProps) {
     const xAxisKey = timeframe === "24h" ? "time" : timeframe === "7d" ? "day" : "week"
 
     return (
-        <Card className={cn(className, "bg-white border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl")}>
+        <Card className={cn(className, "bg-card border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-2xl")}>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-lg font-semibold text-zinc-900">{t('dialogVolume')}</CardTitle>
-                        <CardDescription className="text-zinc-500">
+                        <CardTitle className="text-lg font-semibold text-foreground">{t('dialogVolume')}</CardTitle>
+                        <CardDescription className="text-muted-foreground">
                             Динамика объема сообщений
                         </CardDescription>
                     </div>
                     <Tabs value={timeframe} onValueChange={(v) => setTimeframe(v as typeof timeframe)}>
-                        <TabsList className="bg-zinc-100/50">
-                            <TabsTrigger value="24h" className="text-xs rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">24ч</TabsTrigger>
-                            <TabsTrigger value="7d" className="text-xs rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">7д</TabsTrigger>
-                            <TabsTrigger value="30d" className="text-xs rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">30д</TabsTrigger>
+                        <TabsList className="bg-muted/50">
+                            <TabsTrigger value="24h" className="text-xs rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">24ч</TabsTrigger>
+                            <TabsTrigger value="7d" className="text-xs rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">7д</TabsTrigger>
+                            <TabsTrigger value="30d" className="text-xs rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">30д</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </div>

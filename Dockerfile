@@ -45,7 +45,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV SKIP_ENV_VALIDATION=1
 
-# Copy .env.prod as .env for build (NEXT_PUBLIC_ vars are needed at build time)
+# NEXT_PUBLIC_* vars нужны на этапе сборки — берём из .env.prod
 RUN cp .env.prod .env || true
 
 # Generate Prisma Client

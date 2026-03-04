@@ -135,7 +135,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
     }
 
     const renderConflictCard = (conflict: KnowledgeConflict) => (
-        <Card key={conflict.id} className="border border-zinc-200/50 shadow-sm">
+        <Card key={conflict.id} className="border border-border shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                     <div>
@@ -158,7 +158,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                         className={
                             conflict.status === "new" ? "bg-amber-50 text-amber-700 border-amber-200" :
                                 conflict.status === "resolved" ? "bg-green-50 text-green-700 border-green-200" :
-                                    "bg-zinc-50 text-zinc-500 border-zinc-200"
+                                    "bg-muted/50 text-muted-foreground border-border"
                         }
                     >
                         {conflict.status === "new" ? t("statusNew") :
@@ -174,19 +174,19 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                     {(Array.isArray(conflict.details) ? conflict.details : []).map((file, idx) => (
                         <div
                             key={file.file_id}
-                            className="flex items-start gap-3 bg-zinc-50 rounded-lg p-3"
+                            className="flex items-start gap-3 bg-muted/50 rounded-lg p-3"
                         >
-                            <FileText className="h-5 w-5 text-zinc-400 shrink-0 mt-1" />
+                            <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
                             <div className="flex-1 min-w-0 space-y-2">
                                 <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm text-zinc-700 block truncate">
+                                    <span className="font-medium text-sm text-foreground block truncate">
                                         {file.file_name}
                                     </span>
                                     {file.file_id && (
                                         <button
                                             onClick={() => handleOpenFile(file.file_id, file.file_name, file.value_found)}
                                             disabled={loadingFileId === file.file_id}
-                                            className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-700 disabled:opacity-50 shrink-0"
+                                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50 shrink-0"
                                             title="Редактировать файл полностью"
                                         >
                                             {loadingFileId === file.file_id ? (
@@ -201,7 +201,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                                     <textarea
                                         readOnly
                                         value={file.value_found}
-                                        className="min-h-[60px] w-full max-w-[400px] resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-mono text-zinc-800 focus:outline-none focus:ring-0"
+                                        className="min-h-[60px] w-full max-w-[400px] resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-0"
                                     />
                                 </div>
                             </div>
@@ -248,7 +248,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-zinc-500 hover:text-zinc-900"
+                                className="text-muted-foreground hover:text-foreground"
                                 onClick={async () => {
                                     setUpdatingId(conflict.id)
                                     try {
@@ -304,9 +304,9 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                     ) : agentConflicts.length === 0 ? (
                         <Card className="border-dashed">
                             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                                <AlertTriangle className="h-12 w-12 text-zinc-300 mb-4" />
-                                <h3 className="font-medium text-zinc-700">{t("noConflicts")}</h3>
-                                <p className="text-sm text-zinc-500 mt-1">{t("noConflictsDesc")}</p>
+                                <AlertTriangle className="h-12 w-12 text-muted-foreground/60 mb-4" />
+                                <h3 className="font-medium text-foreground">{t("noConflicts")}</h3>
+                                <p className="text-sm text-muted-foreground mt-1">{t("noConflictsDesc")}</p>
                             </CardContent>
                         </Card>
                     ) : (

@@ -62,7 +62,7 @@ export function PaymentButton({ planId, amount, planName, isCurrent, className }
     return (
         <Button
             variant={isCurrent ? "secondary" : "outline"}
-            className={cn(className, isCurrent ? "bg-white text-zinc-900 hover:bg-zinc-100" : "border-zinc-200 hover:bg-zinc-50 text-zinc-900")}
+            className={cn(className, isCurrent ? "bg-card text-foreground hover:bg-muted" : "border-border hover:bg-muted/50 text-foreground")}
             onClick={handlePayment}
             disabled={loading || isCurrent}
         >

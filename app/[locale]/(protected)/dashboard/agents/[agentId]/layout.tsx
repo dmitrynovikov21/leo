@@ -78,7 +78,7 @@ export default function AgentLayout({ children }: AgentLayoutProps) {
     return (
         <div className="flex h-full flex-col">
             {/* Agent Context Header */}
-            <div className="flex items-center justify-between border-b border-zinc-200/50 px-6 py-3">
+            <div className="flex items-center justify-between border-b border-border px-6 py-3">
                 <div className="flex items-center gap-4">
                     {/* Emoji Avatar */}
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl">
@@ -108,7 +108,7 @@ export default function AgentLayout({ children }: AgentLayoutProps) {
             </div>
 
             {/* Tabs Navigation */}
-            <div className="flex items-center border-b border-zinc-200/50 px-6 bg-white">
+            <div className="flex items-center border-b border-border px-6 bg-card">
                 <nav className="flex items-center gap-4">
                     {tabs.map((tab) => {
                         const isActive = tab.exact

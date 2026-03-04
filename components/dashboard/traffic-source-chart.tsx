@@ -40,9 +40,9 @@ export function TrafficSourceChart({ data = [] }: TrafficSourceChartProps) {
     }))
 
     return (
-        <Card className="bg-zinc-50/50 border border-zinc-200/50 shadow-none rounded-2xl h-full relative overflow-hidden">
+        <Card className="bg-muted/30 border border-border shadow-none rounded-2xl h-full relative overflow-hidden">
             <CardHeader>
-                <CardTitle className="text-lg font-semibold text-zinc-900">
+                <CardTitle className="text-lg font-semibold text-foreground">
                     {t('trafficSource')}
                 </CardTitle>
             </CardHeader>
@@ -76,7 +76,7 @@ export function TrafficSourceChart({ data = [] }: TrafficSourceChartProps) {
                                 verticalAlign="bottom"
                                 height={36}
                                 formatter={(value, entry: any) => (
-                                    <span className="text-sm text-zinc-600">
+                                    <span className="text-sm text-muted-foreground">
                                         {value}: <span className="font-mono tabular-nums font-semibold">{entry.payload.value}%</span>
                                     </span>
                                 )}
@@ -86,14 +86,14 @@ export function TrafficSourceChart({ data = [] }: TrafficSourceChartProps) {
                 </div>
 
                 {/* Overlay Badge */}
-                <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[2px] z-10 transition-all duration-500">
-                    <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 ring-1 ring-black/5 mx-6">
-                        <div className="p-3 rounded-full bg-linear-to-br from-violet-50 to-fuchsia-50 border border-violet-100/50 shadow-inner">
+                <div className="absolute inset-0 flex items-center justify-center bg-background/40 backdrop-blur-[2px] z-10 transition-all duration-500">
+                    <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-card/90 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-border ring-1 ring-black/5 dark:ring-white/5 mx-6">
+                        <div className="p-3 rounded-full bg-violet-50 dark:bg-violet-950/30 border border-violet-100/50 dark:border-violet-800/50 shadow-inner">
                             <Sparkles className="h-5 w-5 text-violet-500" />
                         </div>
                         <div className="text-center space-y-1.5">
-                            <h4 className="text-sm font-bold text-zinc-900 tracking-tight">Скоро доступно</h4>
-                            <p className="text-xs text-zinc-500 leading-relaxed max-w-[200px]">
+                            <h4 className="text-sm font-bold text-foreground tracking-tight">Скоро доступно</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed max-w-[200px]">
                                 Мы работаем над продвинутой аналитикой источников трафика
                             </p>
                         </div>

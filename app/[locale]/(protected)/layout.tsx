@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 
 import { sidebarLinks } from "@/config/dashboard";
 import { getCurrentUser } from "@/lib/session";
@@ -19,7 +20,10 @@ interface ProtectedLayoutProps {
 export default async function Dashboard({ children }: ProtectedLayoutProps) {
   const user = await getCurrentUser();
 
-  if (!user) redirect("/login");
+  if (!user) {
+    const locale = await getLocale();
+    redirect(`/${locale}/login`);
+  }
 
   const filteredLinks = sidebarLinks.map((section) => ({
     ...section,

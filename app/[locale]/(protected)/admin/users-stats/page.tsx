@@ -41,7 +41,7 @@ export default function UsersStatsPage() {
         <div className="space-y-6">
             <div>
                 <h1 className="text-3xl font-bold">Статистика пользователей</h1>
-                <p className="text-gray-500">Обзор активности пользователей: агенты и диалоги.</p>
+                <p className="text-muted-foreground">Обзор активности пользователей: агенты и диалоги.</p>
             </div>
 
             <Card>

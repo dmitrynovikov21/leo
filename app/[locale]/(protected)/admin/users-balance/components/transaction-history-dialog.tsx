@@ -63,12 +63,12 @@ export default function TransactionHistoryDialog({ open, onOpenChange, user }: P
 
   const getTypeColor = (type: string) => {
     const typeMap: Record<string, string> = {
-      'TOPUP': 'bg-green-100 text-green-800',
-      'DEDUCTION': 'bg-red-100 text-red-800',
-      'ADJUSTMENT': 'bg-blue-100 text-blue-800',
-      'REFUND': 'bg-purple-100 text-purple-800',
+      'TOPUP': 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400',
+      'DEDUCTION': 'bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400',
+      'ADJUSTMENT': 'bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400',
+      'REFUND': 'bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400',
     }
-    return typeMap[type] || 'bg-gray-100 text-gray-800'
+    return typeMap[type] || 'bg-muted text-muted-foreground'
   }
 
   const getTypeLabel = (type: string) => {
@@ -90,9 +90,9 @@ export default function TransactionHistoryDialog({ open, onOpenChange, user }: P
         </DialogHeader>
 
         {loading ? (
-          <div className='py-8 text-center text-gray-500'>Загрузка транзакций...</div>
+          <div className='py-8 text-center text-muted-foreground'>Загрузка транзакций...</div>
         ) : transactions.length === 0 ? (
-          <div className='py-8 text-center text-gray-500'>Транзакции не найдены</div>
+          <div className='py-8 text-center text-muted-foreground'>Транзакции не найдены</div>
         ) : (
           <div className='rounded-lg border'>
             <Table>
@@ -116,10 +116,10 @@ export default function TransactionHistoryDialog({ open, onOpenChange, user }: P
                     <TableCell className={`text-right font-medium ${tx.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {tx.amount >= 0 ? '+' : ''}{tx.amount}
                     </TableCell>
-                    <TableCell className='text-right text-sm text-gray-500'>
+                    <TableCell className='text-right text-sm text-muted-foreground'>
                       {tx.balanceBefore.toLocaleString('ru-RU')}
                     </TableCell>
-                    <TableCell className='text-right text-sm text-gray-500'>
+                    <TableCell className='text-right text-sm text-muted-foreground'>
                       {tx.balanceAfter.toLocaleString('ru-RU')}
                     </TableCell>
                     <TableCell className='text-sm'>{tx.description || '—'}</TableCell>
@@ -127,7 +127,7 @@ export default function TransactionHistoryDialog({ open, onOpenChange, user }: P
                       {new Date(tx.createdAt).toLocaleDateString('ru-RU')}{' '}
                       {new Date(tx.createdAt).toLocaleTimeString('ru-RU')}
                     </TableCell>
-                    <TableCell className='text-sm text-gray-500'>{tx.createdBy || '—'}</TableCell>
+                    <TableCell className='text-sm text-muted-foreground'>{tx.createdBy || '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

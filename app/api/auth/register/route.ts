@@ -67,6 +67,25 @@ export async function POST(req: Request) {
             },
         });
 
+        // Assign FREE subscription
+        const freePlan = await prisma.subscriptionPlan.findUnique({ where: { code: 'FREE' } })
+        if (freePlan) {
+            const now = new Date()
+            const nextReset = new Date(now)
+            nextReset.setMonth(nextReset.getMonth() + 1)
+            await prisma.userSubscription.create({
+                data: {
+                    userId: user.id,
+                    planId: freePlan.id,
+                    puBalance: freePlan.monthlyPuLimit,
+                    puLimit: freePlan.monthlyPuLimit,
+                    billingCycleStartDate: now,
+                    nextResetDate: nextReset,
+                    status: 'ACTIVE',
+                },
+            })
+        }
+
         // Generate verification code (hardcoded for now until email is configured)
         const code = "123456"; // TODO: enable random code when email is ready
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes

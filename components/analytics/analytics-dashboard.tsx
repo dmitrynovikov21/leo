@@ -80,10 +80,10 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
             {/* Header: Title + Controls */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-zinc-900">{t('operationsCenter')}</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('operationsCenter')}</h2>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="sm" className="h-8 rounded-xl text-zinc-500 hover:text-zinc-900 gap-2">
+                    <Button variant="ghost" size="sm" className="h-8 rounded-xl text-muted-foreground hover:text-foreground gap-2">
                         <Lock className="h-3.5 w-3.5" />
                         <span className="text-xs font-medium">Отчеты</span>
                     </Button>
@@ -93,9 +93,9 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
             <TabsContent value="overview" className="space-y-6">
                 {/* KPI Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-900">
+                            <CardTitle className="text-sm font-semibold text-foreground">
                                 Всего диалогов
                             </CardTitle>
                             <div className="h-8 w-8 flex items-center justify-center">
@@ -103,15 +103,15 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">
+                            <div className="text-2xl font-bold text-foreground">
                                 {isLoading ? "-" : stats.totalDialogs.toLocaleString()}
                             </div>
 
                         </CardContent>
                     </Card>
-                    <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-900">
+                            <CardTitle className="text-sm font-semibold text-foreground">
                                 Диалоги сегодня
                             </CardTitle>
                             <div className="h-8 w-8 flex items-center justify-center">
@@ -119,15 +119,15 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">
+                            <div className="text-2xl font-bold text-foreground">
                                 {isLoading ? "-" : stats.todayDialogs.toLocaleString()}
                             </div>
 
                         </CardContent>
                     </Card>
-                    <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-900">
+                            <CardTitle className="text-sm font-semibold text-foreground">
                                 Всего токенов
                             </CardTitle>
                             <div className="h-8 w-8 flex items-center justify-center">
@@ -135,15 +135,15 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">
+                            <div className="text-2xl font-bold text-foreground">
                                 {isLoading ? "-" : stats.totalTokens.toLocaleString()}
                             </div>
 
                         </CardContent>
                     </Card>
-                    <Card className="border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-semibold text-zinc-900">
+                            <CardTitle className="text-sm font-semibold text-foreground">
                                 {t('avgResponseTime')}
                             </CardTitle>
                             <div className="h-8 w-8 flex items-center justify-center">
@@ -151,7 +151,7 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-zinc-900">
+                            <div className="text-2xl font-bold text-foreground">
                                 {isLoading ? "-" : (stats.avgResponseTimeMs / 1000).toFixed(1)}s
                             </div>
 
@@ -161,10 +161,10 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
 
                 {/* CHARTS ROW */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                    <Card className="col-span-7 border border-zinc-200/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-white rounded-2xl">
+                    <Card className="col-span-7 border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-lg font-bold text-zinc-900">Обзор активности</CardTitle>
-                            <CardDescription className="text-zinc-500 font-medium">
+                            <CardTitle className="text-lg font-bold text-foreground">Обзор активности</CardTitle>
+                            <CardDescription className="text-muted-foreground font-medium">
                                 Объем потраченных токенов за последние 7 дней
                             </CardDescription>
                         </CardHeader>

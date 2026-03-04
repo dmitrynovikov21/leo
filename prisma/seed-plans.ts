@@ -6,6 +6,22 @@ const prisma = new PrismaClient()
 async function seedSubscriptionPlans() {
   const plans = [
     {
+      code: 'FREE',
+      name: 'Бесплатный',
+      monthlyPuLimit: new Decimal(50),
+      priceMonthlyRub: new Decimal(0),
+      overagePuPriceRub: new Decimal(0),
+      overageDialogPriceRub: new Decimal(0),
+      features: [
+        { text: '50 Единиц обработки в месяц', included: true },
+        { text: '• 3 документа', included: true },
+        { text: '• 20 диалогов', included: true },
+        { text: 'Базовая поддержка', included: true },
+      ],
+      stripePriceId: null,
+      displayOrder: 0,
+    },
+    {
       code: 'BASIC',
       name: 'Базовый',
       monthlyPuLimit: new Decimal(200),

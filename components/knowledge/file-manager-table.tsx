@@ -261,11 +261,11 @@ export function FileManagerTable() {
                                                     {tCommon('actions')}
                                                 </DropdownMenuLabel>
                                                 {item.type === 'file' && (
-                                                    <DropdownMenuItem className="text-foreground hover:bg-white/5 focus:bg-white/5 cursor-pointer">
+                                                    <DropdownMenuItem className="text-foreground hover:bg-card/5 focus:bg-card/5 cursor-pointer">
                                                         <Eye className="mr-2 h-3.5 w-3.5" /> {t('inspect')}
                                                     </DropdownMenuItem>
                                                 )}
-                                                <DropdownMenuSeparator className="bg-white/10" />
+                                                <DropdownMenuSeparator className="bg-card/10" />
                                                 <DropdownMenuItem className="text-foreground hover:bg-red-500/10 hover:text-red-500 focus:bg-red-500/10 focus:text-red-500 cursor-pointer">
                                                     <Trash2 className="mr-2 h-3.5 w-3.5" /> {tCommon('delete')}
                                                 </DropdownMenuItem>

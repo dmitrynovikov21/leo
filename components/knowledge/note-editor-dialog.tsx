@@ -96,26 +96,26 @@ export function NoteEditorDialog({
                 </div>
 
                 {/* Body */}
-                <div className="flex-1 p-6 overflow-y-auto bg-white dark:bg-zinc-950 flex flex-col gap-4">
+                <div className="flex-1 p-6 overflow-y-auto bg-card dark:bg-zinc-950 flex flex-col gap-4">
                     <div className="grid gap-2">
-                        <Label htmlFor="title" className="text-sm font-medium text-zinc-700 ml-1">Заголовок</Label>
+                        <Label htmlFor="title" className="text-sm font-medium text-foreground ml-1">Заголовок</Label>
                         <Input
                             id="title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder="например, Политика отпусков 2025"
-                            className="h-11 rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 px-4 placeholder:text-zinc-400 text-base"
+                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground px-4 placeholder:text-muted-foreground text-base"
                         />
                     </div>
 
                     <div className="flex-1 flex flex-col gap-2 min-h-0">
-                        <Label htmlFor="content" className="text-sm font-medium text-zinc-700 ml-1">Содержание</Label>
+                        <Label htmlFor="content" className="text-sm font-medium text-foreground ml-1">Содержание</Label>
                         <Textarea
                             id="content"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             placeholder="Введите текст заметки здесь..."
-                            className="flex-1 resize-none rounded-xl border-transparent bg-zinc-100/50 focus:bg-white focus:ring-2 focus:ring-zinc-200 transition-all font-medium text-zinc-900 p-4 text-base leading-relaxed placeholder:text-zinc-400"
+                            className="flex-1 resize-none rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground p-4 text-base leading-relaxed placeholder:text-muted-foreground"
                         />
                     </div>
                 </div>

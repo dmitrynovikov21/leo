@@ -19,6 +19,7 @@ export const {
   handlers: { GET, POST },
   auth,
 } = NextAuth({
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   pages: {

@@ -54,19 +54,19 @@ export function DebugPanel() {
     ]
 
     return (
-        <div className="flex h-full flex-col border-l bg-zinc-50/50">
-            <div className="flex h-14 items-center border-b border-zinc-200 px-4 bg-white">
-                <span className="text-sm font-semibold flex items-center gap-2 text-zinc-900">
-                    <Activity className="h-4 w-4 text-zinc-500" />
+        <div className="flex h-full flex-col border-l bg-muted/30">
+            <div className="flex h-14 items-center border-b border-border px-4 bg-card">
+                <span className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                    <Activity className="h-4 w-4 text-muted-foreground" />
                     {t('debugConsole')}
                 </span>
             </div>
 
             <Tabs defaultValue="xray" className="flex-1 overflow-hidden flex flex-col">
-                <div className="px-4 py-2 border-b bg-white">
-                    <TabsList className="grid w-full grid-cols-2 bg-zinc-100 rounded-xl">
-                        <TabsTrigger value="config" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('config')}</TabsTrigger>
-                        <TabsTrigger value="xray" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">{t('xray')}</TabsTrigger>
+                <div className="px-4 py-2 border-b bg-card">
+                    <TabsList className="grid w-full grid-cols-2 bg-muted rounded-xl">
+                        <TabsTrigger value="config" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('config')}</TabsTrigger>
+                        <TabsTrigger value="xray" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm">{t('xray')}</TabsTrigger>
                     </TabsList>
                 </div>
 
@@ -77,17 +77,17 @@ export function DebugPanel() {
                             <div className="p-4 space-y-6">
                                 {/* Metrics */}
                                 <div className="space-y-3">
-                                    <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{t('metrics')}</h4>
+                                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('metrics')}</h4>
                                     <div className="flex flex-wrap gap-2">
-                                        <Badge variant="outline" className="gap-1.5 bg-white border-zinc-200 text-zinc-700">
+                                        <Badge variant="outline" className="gap-1.5 bg-card border-border text-foreground">
                                             <Zap className="h-3 w-3 text-amber-500" />
                                             <span>1.2s</span>
                                         </Badge>
-                                        <Badge variant="outline" className="gap-1.5 bg-white border-zinc-200 text-zinc-700">
+                                        <Badge variant="outline" className="gap-1.5 bg-card border-border text-foreground">
                                             <Database className="h-3 w-3 text-blue-500" />
                                             <span>450 Tok</span>
                                         </Badge>
-                                        <Badge variant="outline" className="gap-1.5 bg-white border-zinc-200 text-zinc-700">
+                                        <Badge variant="outline" className="gap-1.5 bg-card border-border text-foreground">
                                             <Coins className="h-3 w-3 text-emerald-500" />
                                             <span>₽0.45</span>
                                         </Badge>
@@ -99,17 +99,17 @@ export function DebugPanel() {
                                 {/* Retrieval */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{t('retrieval')}</h4>
-                                        <Badge variant="secondary" className="text-[10px] bg-zinc-100 text-zinc-600">2 Chunks</Badge>
+                                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t('retrieval')}</h4>
+                                        <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground">2 Chunks</Badge>
                                     </div>
 
                                     <div className="space-y-3">
                                         {sources.map((source) => (
-                                            <div key={source.id} className="group rounded-xl border border-zinc-200 bg-white p-3 shadow-sm transition-all hover:border-zinc-300">
+                                            <div key={source.id} className="group rounded-xl border border-border bg-card p-3 shadow-sm transition-all hover:border-border">
                                                 <div className="flex items-start justify-between mb-2">
                                                     <div className="flex items-center gap-2 overflow-hidden">
-                                                        <FileText className="h-4 w-4 shrink-0 text-zinc-400" />
-                                                        <span className="text-sm font-medium truncate text-zinc-900">{source.file}</span>
+                                                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                        <span className="text-sm font-medium truncate text-foreground">{source.file}</span>
                                                     </div>
                                                     <Badge variant={source.score > 0.9 ? "default" : "secondary"} className="ml-2 shrink-0 rounded-md">
                                                         {Math.round(source.score * 100)}%
@@ -117,28 +117,28 @@ export function DebugPanel() {
                                                 </div>
 
                                                 <div className="mb-3 space-y-1">
-                                                    <div className="flex justify-between text-xs text-zinc-500">
+                                                    <div className="flex justify-between text-xs text-muted-foreground">
                                                         <span>{t('relevance')}</span>
                                                         <span>Page {source.page}</span>
                                                     </div>
-                                                    <Progress value={source.score * 100} className="h-1.5 rounded-full bg-zinc-100" />
+                                                    <Progress value={source.score * 100} className="h-1.5 rounded-full bg-muted" />
                                                 </div>
 
                                                 <Popover>
                                                     <PopoverTrigger asChild>
-                                                        <Button size="sm" variant="ghost" className="w-full text-xs h-7 border border-dashed border-zinc-200 text-zinc-500 hover:text-zinc-900">
+                                                        <Button size="sm" variant="ghost" className="w-full text-xs h-7 border border-dashed border-border text-muted-foreground hover:text-foreground">
                                                             <Search className="mr-2 h-3 w-3" />
                                                             {t('inspectContent')}
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent side="left" className="w-80 p-0 rounded-xl" align="start">
-                                                        <div className="p-3 bg-zinc-50/50 border-b">
-                                                            <div className="text-xs font-medium flex items-center gap-2 text-zinc-700">
+                                                        <div className="p-3 bg-muted/30 border-b">
+                                                            <div className="text-xs font-medium flex items-center gap-2 text-foreground">
                                                                 <FileText className="h-3 w-3" />
                                                                 {source.file}
                                                             </div>
                                                         </div>
-                                                        <div className="p-4 text-sm leading-relaxed max-h-[300px] overflow-y-auto bg-white">
+                                                        <div className="p-4 text-sm leading-relaxed max-h-[300px] overflow-y-auto bg-card">
                                                             <span className="bg-yellow-100 text-yellow-900 px-0.5 rounded">
                                                                 {source.text}
                                                             </span>
@@ -159,9 +159,9 @@ export function DebugPanel() {
                             <div className="p-4 space-y-6">
                                 <div className="space-y-4">
                                     <div className="grid gap-2">
-                                        <Label className="text-zinc-700">{t('model')}</Label>
+                                        <Label className="text-foreground">{t('model')}</Label>
                                         <Select defaultValue="gpt-4o">
-                                            <SelectTrigger className="rounded-xl border-zinc-200 bg-white">
+                                            <SelectTrigger className="rounded-xl border-border bg-card">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
@@ -174,8 +174,8 @@ export function DebugPanel() {
 
                                     <div className="grid gap-3">
                                         <div className="flex items-center justify-between">
-                                            <Label className="text-zinc-700">{t('temperature')}</Label>
-                                            <span className="text-sm font-mono text-zinc-500">{temperature[0]}</span>
+                                            <Label className="text-foreground">{t('temperature')}</Label>
+                                            <span className="text-sm font-mono text-muted-foreground">{temperature[0]}</span>
                                         </div>
                                         <Slider
                                             value={temperature}
@@ -184,7 +184,7 @@ export function DebugPanel() {
                                             onValueChange={setTemperature}
                                             className="py-1"
                                         />
-                                        <p className="text-xs text-zinc-500">
+                                        <p className="text-xs text-muted-foreground">
                                             {t('tempDesc')}
                                         </p>
                                     </div>
@@ -192,10 +192,10 @@ export function DebugPanel() {
                                     <Separator />
 
                                     <div className="grid gap-2">
-                                        <Label className="text-zinc-700">{t('systemPromptOverride')}</Label>
+                                        <Label className="text-foreground">{t('systemPromptOverride')}</Label>
                                         <Textarea
                                             placeholder={t('overridePlaceholder')}
-                                            className="min-h-[150px] font-mono text-xs rounded-xl border-zinc-200 bg-zinc-50 focus:bg-white resize-none p-3"
+                                            className="min-h-[150px] font-mono text-xs rounded-xl border-border bg-muted/50 focus:bg-card resize-none p-3"
                                         />
                                         <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100">
                                             {t('ephemeralWarning')}

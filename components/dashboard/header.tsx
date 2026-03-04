@@ -16,7 +16,7 @@ export function DashboardHeader({
   return (
     <div className="flex items-center justify-between">
       <div className="grid gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900">{heading}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{heading}</h1>
         {text && <p className="text-sm text-muted-foreground">{text}</p>}
       </div>
       {children}

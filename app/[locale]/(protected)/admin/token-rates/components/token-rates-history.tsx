@@ -14,7 +14,7 @@ interface TokenRateConfig {
 
 export default function TokenRatesHistory({ configs, total }: { configs: TokenRateConfig[]; total: number }) {
   if (configs.length === 0) {
-    return <div className='py-8 text-center text-gray-500'>Конфигурации курсов не найдены</div>
+    return <div className='py-8 text-center text-muted-foreground'>Конфигурации курсов не найдены</div>
   }
 
   return (
@@ -47,7 +47,7 @@ export default function TokenRatesHistory({ configs, total }: { configs: TokenRa
                 </TableCell>
                 <TableCell>1 LLM = {config.llmTokenToTokenRate} токенов</TableCell>
                 <TableCell>{new Date(config.createdAt).toLocaleDateString('ru-RU')}</TableCell>
-                <TableCell className='text-sm text-gray-500'>{config.updatedBy}</TableCell>
+                <TableCell className='text-sm text-muted-foreground'>{config.updatedBy}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -55,7 +55,7 @@ export default function TokenRatesHistory({ configs, total }: { configs: TokenRa
       </div>
 
       {configs.length < total && (
-        <div className='text-sm text-gray-500'>Показаны {configs.length} из {total} конфигураций</div>
+        <div className='text-sm text-muted-foreground'>Показаны {configs.length} из {total} конфигураций</div>
       )}
     </div>
   )
