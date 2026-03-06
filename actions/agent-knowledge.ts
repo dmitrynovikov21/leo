@@ -137,18 +137,44 @@ async function processDocumentAsync(
                 content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
                 index
             }))
-            textContent = chunks.map((c: any) => c.content).join('\n\n')
+            // Capture fullText from parse response for contextual retrieval
+            textContent = parseData.fullText || chunks.map((c: any) => c.content).join('\n\n')
         }
-        // Case 2: We have Text (Website scraped content) -> Skip Parse
+        // Case 2: We have Text (Website scraped content) -> Parse via gateway for smart chunking
         else if (data.text) {
             textContent = data.text
-            // Simple chunking for background if not already chunked
-            const size = 2000
-            for (let i = 0; i < textContent.length; i += size) {
-                chunks.push({
-                    content: textContent.slice(i, i + size),
-                    index: Math.floor(i / size)
+
+            // Use gateway /parse endpoint instead of dumb 2000-char split
+            try {
+                const textBlob = new Blob([Buffer.from(textContent, 'utf-8')], { type: 'text/plain' })
+                const textFormData = new FormData()
+                textFormData.append('file', textBlob, filename || 'website-content.txt')
+
+                const textParseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+                    method: 'POST',
+                    body: textFormData,
                 })
+
+                if (textParseResponse.ok) {
+                    const textParseData = await textParseResponse.json()
+                    chunks = (textParseData.chunks || []).map((chunk: any, index: number) => ({
+                        content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
+                        index
+                    }))
+                    textContent = textParseData.fullText || textContent
+                } else {
+                    throw new Error('Gateway parse failed for text')
+                }
+            } catch (parseErr) {
+                console.warn(`[AsyncUpload] Gateway parse failed for text, falling back to simple split:`, parseErr)
+                // Fallback to simple chunking
+                const size = 2000
+                for (let i = 0; i < textContent.length; i += size) {
+                    chunks.push({
+                        content: textContent.slice(i, i + size),
+                        index: Math.floor(i / size)
+                    })
+                }
             }
         } else {
             throw new Error("No data provided for processing")
@@ -186,7 +212,7 @@ async function processDocumentAsync(
             })
         }
 
-        // 5. Vectorize (Save) via Gateway
+        // 5. Vectorize (Save) via Gateway (with fullText for contextual enrichment)
         const vectorizeResponse = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -196,6 +222,7 @@ async function processDocumentAsync(
                 filename,
                 fileSize,
                 mimeType,
+                fullText: textContent,
                 chunks: chunks.map((c: any) => ({ index: c.index, text: c.content })),
             }),
         })
@@ -244,14 +271,30 @@ async function processDocumentAsync(
         console.error(`[AsyncUpload] Failed for ${filename}:`, error)
 
         // Update pending record to ERROR with reason
+        // Try our original PENDING record first, then any gateway-created record
         try {
-            await prisma.knowledgeBase.update({
+            const updated = await prisma.knowledgeBase.updateMany({
                 where: { id: pendingDocId },
                 data: {
                     status: 'ERROR',
                     aiMetadata: { error: errorMsg }
                 }
             })
+
+            // If original PENDING was already deleted by gateway, find the gateway's record
+            if (updated.count === 0) {
+                await prisma.knowledgeBase.updateMany({
+                    where: {
+                        agentId,
+                        filename,
+                        status: { in: ['PENDING', 'PARSED'] }
+                    },
+                    data: {
+                        status: 'ERROR',
+                        aiMetadata: { error: errorMsg }
+                    }
+                })
+            }
         } catch (e) {
             console.error("Failed to update error status:", e)
         }

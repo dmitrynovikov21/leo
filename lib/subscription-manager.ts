@@ -77,7 +77,7 @@ export async function dailyCycleResetJob() {
       nextResetDate: { lte: today },
       status: 'ACTIVE',
     },
-    select: { userId: true, stripeSubscriptionId: true },
+    select: { userId: true, stripeSubscriptionId: true, tochkaOperationId: true },
   })
 
   console.log(`[Cron] Found ${usersToReset.length} subscriptions to reset`)
@@ -99,6 +99,10 @@ export async function dailyCycleResetJob() {
       if (sub.stripeSubscriptionId) {
         await resetSubscriptionCycle(sub.userId)
         console.log(`[Cron] Reset cycle for Stripe user ${sub.userId}`)
+      } else if (sub.tochkaOperationId) {
+        // Tochka auto-renewal — don't expire, Tochka handles charging
+        // The webhook will trigger resetSubscriptionCycle when payment arrives
+        console.log(`[Cron] Skipping Tochka user ${sub.userId} — waiting for payment webhook`)
       } else {
         // Manual subscription -> Expire
         await handleSubscriptionFailure(sub.userId)

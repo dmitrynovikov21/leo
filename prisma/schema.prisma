@@ -303,16 +303,18 @@ enum KnowledgeStatus {
 }
 
 model DocumentChunk {
-  id              String        @id @default(cuid())
+  id              String                    @id @default(cuid())
   knowledgeBaseId String
-  content         String        @db.Text
-  chunkIndex      Int           @map(name: "chunk_index")
-  metadata        Json?         // Дополнительные данные (page, source, etc)
-  createdAt       DateTime      @default(now()) @map(name: "created_at")
-  updatedAt       DateTime      @updatedAt @map(name: "updated_at")
-  
+  content         String                    @db.Text
+  context         String?                   @db.Text
+  chunkIndex      Int                       @map(name: "chunk_index")
+  metadata        Json?                     // Дополнительные данные (page, source, etc)
+  searchVector    Unsupported("tsvector")?  @map(name: "search_vector")
+  createdAt       DateTime                  @default(now()) @map(name: "created_at")
+  updatedAt       DateTime                  @updatedAt @map(name: "updated_at")
+
   knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
-  
+
   @@index([knowledgeBaseId])
   @@map("document_chunks")
 }
@@ -664,6 +666,9 @@ model UserSubscription {
   // Stripe integration
   stripeSubscriptionId  String?  @unique @map("stripe_subscription_id")
   stripeStatus          String?  @map("stripe_status") // 'active', 'past_due', 'canceled', etc.
+
+  // Tochka Bank integration
+  tochkaOperationId     String?  @unique @map("tochka_operation_id")
 
   // Usage tracking this cycle
   puUsedThisCycle       Decimal  @default(0) @map("pu_used_this_cycle") @db.Decimal(12, 4)

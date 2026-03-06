@@ -68,7 +68,7 @@ export default function TokenRatesForm() {
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='llmToToken'>LLM токены в платформенные токены (1 LLM = ? токенов)</Label>
+          <Label htmlFor='llmToToken'>LLM → платформенные (1 LLM = ? токенов)</Label>
           <Input
             id='llmToToken'
             type='number'

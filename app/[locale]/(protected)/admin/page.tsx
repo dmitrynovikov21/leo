@@ -1,131 +1,67 @@
-import { redirect } from "next/navigation";
-import Link from "next/link";
+import { redirect } from 'next/navigation'
+import { Users, Bot, Zap, DollarSign, Activity, Power } from 'lucide-react'
 
-import { getCurrentUser } from "@/lib/session";
-import { DashboardHeader } from "@/components/dashboard/header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Icons } from "@/components/shared/icons";
-import { Coins, TrendingUp, BarChart3, Terminal } from "lucide-react";
+import { getCurrentUser } from '@/lib/session'
+import { getDashboardStats, getDashboardCharts, getActivityFeed } from '@/actions/admin-dashboard'
+import { StatCard } from './components/stat-card'
+import { DashboardChartsSection } from './components/dashboard-charts'
+import { ActivityFeed } from './components/activity-feed'
 
-export default async function AdminPage() {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") redirect("/login");
+export default async function AdminDashboardPage() {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'ADMIN') redirect('/login')
+
+  const [stats, charts, feed] = await Promise.all([
+    getDashboardStats(),
+    getDashboardCharts(),
+    getActivityFeed(),
+  ])
 
   return (
-    <>
-      <DashboardHeader
-        heading="Панель администратора"
-        text="Управление пользователями, настройками и системной конфигурацией."
-      />
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Link href="/admin/unit-economics" className="block">
-          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Юнит-экономика</CardTitle>
-              <TrendingUp className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">📊</div>
-              <p className="text-xs text-muted-foreground">
-                Анализ выручки vs затрат
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/admin/users-balance" className="block">
-          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Балансы пользователей</CardTitle>
-              <Icons.user className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">👥</div>
-              <p className="text-xs text-muted-foreground">
-                Управление балансами PU
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Статус системы</CardTitle>
-            <Icons.check className="size-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Онлайн</div>
-            <p className="text-xs text-muted-foreground">
-              Все системы работают
-            </p>
-          </CardContent>
-        </Card>
-
-        <Link href="/admin/subscriptions" className="block">
-          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Подписки</CardTitle>
-              <Coins className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">🎁</div>
-              <p className="text-xs text-muted-foreground">
-                Управление подписками пользователей
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/admin/prompts" className="block">
-          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Системные промпты</CardTitle>
-              <Icons.post className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">AI</div>
-              <p className="text-xs text-muted-foreground">
-                Редактировать промпты для генерации
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/admin/users-stats" className="block">
-          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Статистика пользователей</CardTitle>
-              <BarChart3 className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">📈</div>
-              <p className="text-xs text-muted-foreground">
-                Агенты и диалоги
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/admin/system-logs" className="block">
-          <Card className="h-full transition-colors hover:bg-muted/50 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Системные логи</CardTitle>
-              <Terminal className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">💻</div>
-              <p className="text-xs text-muted-foreground">
-                Логи Docker контейнеров
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Общая картина платформы</p>
       </div>
-    </>
-  );
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          title="Всего пользователей"
+          value={stats.totalUsers.toLocaleString('ru-RU')}
+          icon={Users}
+        />
+        <StatCard
+          title="Активных сегодня"
+          value={stats.activeToday.toLocaleString('ru-RU')}
+          sub="отправили ≥1 сообщение"
+          icon={Activity}
+        />
+        <StatCard
+          title="Всего агентов"
+          value={stats.totalAgents.toLocaleString('ru-RU')}
+          icon={Bot}
+        />
+        <StatCard
+          title="Агентов онлайн"
+          value={stats.runningAgents.toLocaleString('ru-RU')}
+          sub="статус RUNNING"
+          icon={Power}
+        />
+        <StatCard
+          title="Потрачено PU сегодня"
+          value={stats.puSpentToday.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}
+          icon={Zap}
+        />
+        <StatCard
+          title="Реальные траты сегодня"
+          value={`$${stats.realCostToday.toFixed(4)}`}
+          icon={DollarSign}
+        />
+      </div>
+
+      <DashboardChartsSection charts={charts} />
+
+      <ActivityFeed events={feed} />
+    </div>
+  )
 }
