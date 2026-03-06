@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache"
 import { calculateFileCharge, saveFileProcessingCache } from "@/lib/file-charging"
 import { getBillingSystem } from "@/lib/billing-adapter"
 import crypto from "crypto"
+import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch"
 
 export interface LibraryItemWithChunks {
     id: string
@@ -181,7 +182,7 @@ async function processLibraryItemAsync(
 ) {
     try {
         console.log(`[LibraryAsync] Starting for ${filename} (${itemId})`)
-        const gatewayUrl = process.env.AI_GATEWAY_URL
+        const gatewayUrl = getGatewayUrl()
         if (!gatewayUrl) throw new Error("AI Gateway not configured")
 
         let chunks: any[] = []
@@ -192,7 +193,7 @@ async function processLibraryItemAsync(
             const blob = new Blob([data.buffer.buffer as ArrayBuffer], { type: mimeType })
             parseFormData.append('file', blob, filename)
 
-            const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+            const parseResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/parse`, {
                 method: 'POST',
                 body: parseFormData,
             })

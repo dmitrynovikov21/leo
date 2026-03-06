@@ -23,6 +23,8 @@ export const env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
     // Tochka Bank
     TOCHKA_CUSTOMER_CODE: z.string().min(1).optional(),
+    // Shared secret for ai-master service auth
+    AI_API_SECRET: z.string().min(1).optional(),
   },
 
 
@@ -51,6 +53,7 @@ export const env = createEnv({
     STRIPE_API_KEY: process.env.STRIPE_API_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     TOCHKA_CUSTOMER_CODE: process.env.TOCHKA_CUSTOMER_CODE,
+    AI_API_SECRET: process.env.AI_API_SECRET,
     NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID:
       process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID,
     NEXT_PUBLIC_STRIPE_PRO_YEARLY_PLAN_ID:

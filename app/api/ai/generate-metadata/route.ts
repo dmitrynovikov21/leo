@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { getActivePromptContent } from "@/actions/system-prompts";
 import { getBillingSystem } from "@/lib/billing-adapter";
 import { trackTokenUsage } from "@/lib/token-tracking";
+import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch";
 
 // AI Metadata generation types
 interface AIMetadata {
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const gatewayUrl = process.env.AI_GATEWAY_URL || process.env.NEXT_PUBLIC_AI_GATEWAY_URL;
+        const gatewayUrl = getGatewayUrl();
 
         if (!gatewayUrl) {
             console.error("Gateway URL is not defined");
@@ -95,7 +96,7 @@ ${textSnippet}`;
         const systemPrompt = await getActivePromptContent("metadata_generation") || FALLBACK_SYSTEM_PROMPT;
 
         // Call LLM via Gateway
-        const response = await fetch(`${gatewayUrl}/api/v1/chat/completions`, {
+        const response = await aiFetch(`${gatewayUrl}/api/v1/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

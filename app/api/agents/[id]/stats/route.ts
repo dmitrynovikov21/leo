@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { env } from "@/env.mjs"
+import { aiFetch, getOrchestratorUrl } from "@/lib/ai-fetch"
 
 export async function GET(
     req: NextRequest,
@@ -14,14 +14,14 @@ export async function GET(
         }
 
         const agentId = params.id
-        const orchestratorUrl = env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL?.replace("localhost", "host.docker.internal")
+        const orchestratorUrl = getOrchestratorUrl()
 
         if (!orchestratorUrl) {
             return new NextResponse("Orchestrator URL not configured", { status: 500 })
         }
 
         // Proxy request to orchestrator
-        const response = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stats`, {
+        const response = await aiFetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stats`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'

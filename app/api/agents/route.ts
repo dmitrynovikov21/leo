@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { aiFetch, getOrchestratorUrl } from "@/lib/ai-fetch";
 
 export async function GET() {
     try {
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
 
         // Server-side URL (for Docker: use host.docker.internal)
         // Falls back to NEXT_PUBLIC_ for local dev without Docker
-        const orchestratorUrl = process.env.AGENT_ORCHESTRATOR_URL || process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL;
+        const orchestratorUrl = getOrchestratorUrl();
 
         if (!orchestratorUrl) {
             console.error("Orchestrator URL is not defined");
@@ -106,7 +107,7 @@ export async function POST(req: Request) {
         }
 
         // Proxy to Orchestrator
-        const response = await fetch(`${orchestratorUrl}/api/v1/agents`, {
+        const response = await aiFetch(`${orchestratorUrl}/api/v1/agents`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

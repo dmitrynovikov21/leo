@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch";
 
 // GET /api/v1/conflicts - List all conflicts for current user
 export async function GET(req: Request) {
@@ -104,9 +105,9 @@ export async function POST(req: Request) {
 
                 // If not found in library, try agent documents via Gateway
                 try {
-                    const gatewayUrl = process.env.AI_GATEWAY_URL;
+                    const gatewayUrl = getGatewayUrl();
                     if (gatewayUrl) {
-                        const response = await fetch(
+                        const response = await aiFetch(
                             `${gatewayUrl}/api/v1/agents/${agentId}/documents?filename=${encodeURIComponent(file.file_name)}`,
                             { headers: { 'Pragma': 'no-cache' } }
                         );

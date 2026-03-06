@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getBillingSystem } from "@/lib/billing-adapter";
 import { trackTokenUsage } from "@/lib/token-tracking";
+import { aiFetch, getOrchestratorUrl } from "@/lib/ai-fetch";
 
 // Quiz answers structure to send to orchestrator
 interface QuizAnswers {
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
         }
 
         // Use orchestrator URL
-        const orchestratorUrl = process.env.AGENT_ORCHESTRATOR_URL;
+        const orchestratorUrl = getOrchestratorUrl();
 
         if (!orchestratorUrl) {
             console.error("AGENT_ORCHESTRATOR_URL is not defined");
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
         console.log(`[Proxy] Forwarding quiz-based prompt generation to ${orchestratorUrl}/api/v1/generate-agent-prompt-from-quiz`);
 
         // Proxy request to orchestrator with quiz data
-        const response = await fetch(`${orchestratorUrl}/api/v1/generate-agent-prompt-from-quiz`, {
+        const response = await aiFetch(`${orchestratorUrl}/api/v1/generate-agent-prompt-from-quiz`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

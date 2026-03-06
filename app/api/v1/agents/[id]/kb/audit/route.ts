@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getActivePromptContent } from "@/actions/system-prompts";
 import { checkUserBalance } from "@/lib/balance";
 import { trackTokenUsage } from "@/lib/token-tracking";
+import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch";
 
 // POST /api/v1/agents/[id]/kb/audit
 export async function POST(
@@ -91,10 +92,10 @@ CRITICAL RULES:
         // Replace placeholder with actual data
         const prompt = auditPromptTemplate.replace("{chunksData}", JSON.stringify(chunksData, null, 2));
 
-        const gatewayUrl = process.env.AI_GATEWAY_URL;
+        const gatewayUrl = getGatewayUrl();
 
         // 3. Call AI
-        const response = await fetch(`${gatewayUrl}/api/v1/chat/completions`, {
+        const response = await aiFetch(`${gatewayUrl}/api/v1/chat/completions`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch";
 
 // PATCH /api/v1/agents/[id]/kb/chunks/[chunkId]
 export async function PATCH(
@@ -31,12 +32,12 @@ export async function PATCH(
         }
 
         const docId = chunk.knowledgeBaseId;
-        const gatewayUrl = process.env.AI_GATEWAY_URL;
+        const gatewayUrl = getGatewayUrl();
 
         // Forward edit to gateway for re-enrichment + Chroma re-vectorization
         if (gatewayUrl) {
             try {
-                const gatewayResponse = await fetch(
+                const gatewayResponse = await aiFetch(
                     `${gatewayUrl}/api/v1/agent-documents/${agentId}/documents/${docId}/chunks/${chunkId}`,
                     {
                         method: 'PATCH',

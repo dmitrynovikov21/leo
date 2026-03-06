@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { env } from "@/env.mjs"
+import { aiFetch, getOrchestratorUrl } from "@/lib/ai-fetch"
 
 export async function GET(req: NextRequest) {
     try {
@@ -11,8 +11,7 @@ export async function GET(req: NextRequest) {
         }
 
         const userId = session.user.id
-        // Replace localhost with host.docker.internal for Docker networking
-        const orchestratorUrl = env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL?.replace("localhost", "host.docker.internal")
+        const orchestratorUrl = getOrchestratorUrl()
 
 
 
@@ -21,7 +20,7 @@ export async function GET(req: NextRequest) {
             return new NextResponse("Service Configuration Error", { status: 500 })
         }
 
-        const res = await fetch(`${orchestratorUrl}/api/v1/agents/stats/overview`, {
+        const res = await aiFetch(`${orchestratorUrl}/api/v1/agents/stats/overview`, {
             headers: {
                 "x-user-id": userId || "",
                 "Content-Type": "application/json"

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { env } from "@/env.mjs"
+import { aiFetch, getOrchestratorUrl } from "@/lib/ai-fetch"
 
 export async function GET(
     req: NextRequest,
@@ -22,8 +22,7 @@ export async function GET(
             return new NextResponse("Missing 'from' or 'to' query params", { status: 400 })
         }
 
-        // Replace localhost with host.docker.internal for Docker networking
-        const orchestratorUrl = env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL?.replace("localhost", "host.docker.internal")
+        const orchestratorUrl = getOrchestratorUrl()
 
 
 
@@ -36,7 +35,7 @@ export async function GET(
         const upstreamUrl = `${orchestratorUrl}/api/v1/agents/${agentId}/stats/period?from=${fromParam}&to=${toParam}`
         console.log("[AGENT_STATS_PERIOD] Proxying to:", upstreamUrl)
 
-        const res = await fetch(upstreamUrl, {
+        const res = await aiFetch(upstreamUrl, {
             headers: {
                 "x-user-id": session.user.id || "",
                 "Content-Type": "application/json"

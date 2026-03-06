@@ -8,6 +8,7 @@ import crypto from "crypto"
 import { revalidatePath } from "next/cache"
 import { getActivePromptContent } from "@/actions/system-prompts"
 import { trackTokenUsage } from "@/lib/token-tracking"
+import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch"
 
 export async function getAgentDocuments(agentId: string) {
     const user = await getCurrentUser()
@@ -112,7 +113,7 @@ async function processDocumentAsync(
 ) {
     try {
         console.log(`[AsyncUpload] Starting processing for ${filename} (${pendingDocId})`)
-        const gatewayUrl = process.env.AI_GATEWAY_URL
+        const gatewayUrl = getGatewayUrl()
         if (!gatewayUrl) throw new Error("AI Gateway not configured")
 
         let chunks: any[] = []
@@ -125,7 +126,7 @@ async function processDocumentAsync(
             const blob = new Blob([data.buffer.buffer as ArrayBuffer], { type: mimeType })
             parseFormData.append('file', blob, filename)
 
-            const parseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+            const parseResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/parse`, {
                 method: 'POST',
                 body: parseFormData,
             })
@@ -150,7 +151,7 @@ async function processDocumentAsync(
                 const textFormData = new FormData()
                 textFormData.append('file', textBlob, filename || 'website-content.txt')
 
-                const textParseResponse = await fetch(`${gatewayUrl}/api/v1/documents/parse`, {
+                const textParseResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/parse`, {
                     method: 'POST',
                     body: textFormData,
                 })
@@ -213,7 +214,7 @@ async function processDocumentAsync(
         }
 
         // 5. Vectorize (Save) via Gateway (with fullText for contextual enrichment)
-        const vectorizeResponse = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+        const vectorizeResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -400,14 +401,14 @@ async function generateDocumentMetadata(
     textContent: string,
     isLibraryItem: boolean
 ) {
-    const gatewayUrl = process.env.AI_GATEWAY_URL
+    const gatewayUrl = getGatewayUrl()
     if (!gatewayUrl) return
 
     const snippet = textContent
 
     const systemPrompt = await getActivePromptContent("metadata_generation") || FALLBACK_METADATA_PROMPT
 
-    const response = await fetch(`${gatewayUrl}/api/v1/chat/completions`, {
+    const response = await aiFetch(`${gatewayUrl}/api/v1/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
