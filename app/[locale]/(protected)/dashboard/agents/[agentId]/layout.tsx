@@ -1,36 +1,46 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
-import { usePathname, useParams } from "next/navigation"
+import { usePathname, useParams, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Bot, LineChart, MessageSquare, Settings, Sparkles, Wifi, AlertTriangle } from "lucide-react"
+import { Bot, LineChart, MessageSquare, Settings, Sparkles, Wifi, AlertTriangle, Wand2 } from "lucide-react"
 import { EmojiAvatar } from "@/components/shared/emoji-avatar"
 import { useUserData } from "@/components/providers/user-data-provider"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 
 interface AgentLayoutProps {
     children: React.ReactNode
 }
 
 export default function AgentLayout({ children }: AgentLayoutProps) {
-    const { agents } = useUserData()
+    const { agents, isLoading } = useUserData()
     const t = useTranslations('Agents.detail');
     const tCommon = useTranslations('Agents');
     const pathname = usePathname()
     const params = useParams()
+    const router = useRouter()
     const agentId = params.agentId as string
     const locale = params.locale as string
 
-    // Find current agent
     const agent = agents.find(a => a.id === agentId)
+    const isOnWizard = pathname.includes('/wizard')
+    // Only treat as DRAFT if agents are loaded and agent is actually DRAFT
+    // While loading, if we're on wizard page — assume DRAFT to avoid tab flash
+    const isDraft = isLoading ? isOnWizard : (agent?.status === 'DRAFT')
     const isRunning = agent?.status === 'RUNNING'
 
-    // Ensure we are in the correct dashboard path context
     const baseUrl = `/${locale}/dashboard/agents/${agentId}`
 
-    const tabs = [
+    // Redirect DRAFT agents to wizard if they navigate away
+    useEffect(() => {
+        if (!isLoading && agent?.status === 'DRAFT' && !isOnWizard) {
+            router.replace(`${baseUrl}/wizard`)
+        }
+    }, [isLoading, agent, isOnWizard, baseUrl, router])
+
+    const allTabs = [
         {
             title: t('overview'),
             href: baseUrl,
@@ -75,35 +85,51 @@ export default function AgentLayout({ children }: AgentLayoutProps) {
         },
     ]
 
+    const wizardTab = {
+        title: "Настройка",
+        href: `${baseUrl}/wizard`,
+        icon: Wand2,
+        exact: false,
+    }
+
+    // DRAFT agents: show only wizard tab
+    const tabs = isDraft ? [wizardTab] : allTabs
+
+    const statusLabel = agent
+        ? agent.status === 'DRAFT' ? 'Черновик'
+        : agent.status === 'STARTING' ? tCommon('starting')
+        : agent.status === 'RUNNING' ? tCommon('online')
+        : agent.status === 'STOPPED' ? tCommon('paused')
+        : agent.status
+        : '...'
+
+    const statusColor = isDraft ? 'bg-amber-400' : isRunning ? 'bg-emerald-500' : 'bg-zinc-400'
+
     return (
         <div className="flex h-full flex-col">
             {/* Agent Context Header */}
             <div className="flex items-center justify-between border-b border-border px-6 py-3">
                 <div className="flex items-center gap-4">
-                    {/* Emoji Avatar */}
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl">
                         <EmojiAvatar
-                            value={agent?.role === 'system' ? "🤖" : "🧙‍♂️"}
+                            value={agent?.avatarEmoji || "🤖"}
                             size="lg"
                             className="text-3xl"
                         />
                     </div>
                     <div>
-                        <h2 className="text-lg font-semibold tracking-tight">{agent?.name || 'Loading...'}</h2>
+                        <h2 className="text-lg font-semibold tracking-tight">{agent?.name || 'Новый агент'}</h2>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className={`flex h-1.5 w-1.5 rounded-full ${isRunning ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
-                            {agent ? (
-                                agent.status === 'STARTING' ? tCommon('starting') :
-                                    agent.status === 'RUNNING' ? tCommon('online') :
-                                        agent.status === 'STOPPED' ? tCommon('paused') : agent.status
-                            ) : '...'}
-                            <span>•</span>
-                            <span>v1.0</span>
+                            <span className={`flex h-1.5 w-1.5 rounded-full ${statusColor}`} />
+                            {statusLabel}
+                            {!isDraft && (
+                                <>
+                                    <span>•</span>
+                                    <span>v1.0</span>
+                                </>
+                            )}
                         </div>
                     </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    {/* Button removed as per request */}
                 </div>
             </div>
 

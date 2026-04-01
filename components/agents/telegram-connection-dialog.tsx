@@ -99,24 +99,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     const handleConnect = async () => {
         setLoading(true)
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-
-            if (!orchestratorUrl) {
-                // Mock
-                await new Promise(r => setTimeout(r, 1000))
-                toast.success("Token updated (mock)")
-                if (isRunning) {
-                    setStep('restart')
-                } else {
-                    setStep("start")
-                }
-                await refreshAgents()
-                onSuccess?.()
-                setLoading(false)
-                return
-            }
-
-            const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+            const res = await fetch(`/api/orchestrator/agents/${agentId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ telegram_token: token })
@@ -145,25 +128,16 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     const handleRestart = async () => {
         setLoading(true)
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) {
-                await new Promise(r => setTimeout(r, 1500))
-                toast.success("Agent restarted (mock)")
-                setStep('success')
-                setLoading(false)
-                return
-            }
-
             // Stop
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stop`, { method: 'POST' })
+            await fetch(`/api/orchestrator/agents/${agentId}/stop`, { method: 'POST' })
 
             // Start
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+            await fetch(`/api/orchestrator/agents/${agentId}/start`, { method: 'POST' })
 
             // Poll for running status
             for (let i = 0; i < 5; i++) {
                 await new Promise(r => setTimeout(r, 1000))
-                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                const statusRes = await fetch(`/api/orchestrator/agents/${agentId}/status`)
                 if (statusRes.ok) {
                     const statusData = await statusRes.json()
                     const newStatus = statusData.agent?.status || statusData.status
@@ -186,21 +160,12 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     const handleRestartAfterDisconnect = async () => {
         setLoading(true)
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) {
-                await new Promise(r => setTimeout(r, 1500))
-                toast.success("Telegram отключён, агент перезапущен")
-                setOpen(false)
-                setLoading(false)
-                return
-            }
-
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stop`, { method: 'POST' })
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+            await fetch(`/api/orchestrator/agents/${agentId}/stop`, { method: 'POST' })
+            await fetch(`/api/orchestrator/agents/${agentId}/start`, { method: 'POST' })
 
             for (let i = 0; i < 5; i++) {
                 await new Promise(r => setTimeout(r, 1000))
-                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                const statusRes = await fetch(`/api/orchestrator/agents/${agentId}/status`)
                 if (statusRes.ok) {
                     const statusData = await statusRes.json()
                     const newStatus = statusData.agent?.status || statusData.status
@@ -223,21 +188,12 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     const handleStart = async () => {
         setLoading(true)
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) {
-                await new Promise(r => setTimeout(r, 1500))
-                toast.success("Agent started (mock)")
-                setStep('success')
-                setLoading(false)
-                return
-            }
-
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+            await fetch(`/api/orchestrator/agents/${agentId}/start`, { method: 'POST' })
 
             // Poll for running status
             for (let i = 0; i < 5; i++) {
                 await new Promise(r => setTimeout(r, 1000))
-                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                const statusRes = await fetch(`/api/orchestrator/agents/${agentId}/status`)
                 if (statusRes.ok) {
                     const statusData = await statusRes.json()
                     const newStatus = statusData.agent?.status || statusData.status
@@ -260,24 +216,7 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
     const handleDisconnect = async () => {
         setLoading(true)
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-
-            if (!orchestratorUrl) {
-                // Mock
-                await new Promise(r => setTimeout(r, 1000))
-                toast.success("Disconnected (mock)")
-                setToken("")
-                await refreshAgents()
-                onSuccess?.()
-                if (isRunning) {
-                    setStep('disconnected')
-                } else {
-                    setOpen(false)
-                }
-                return
-            }
-
-            const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+            const res = await fetch(`/api/orchestrator/agents/${agentId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ telegram_token: "" })
@@ -542,7 +481,14 @@ export function TelegramConnectionDialog({ children, agentId, initialToken, onSu
                                             {botInfo ? (
                                                 <>
                                                     <p className="text-lg font-bold text-foreground truncate">{botInfo.first_name}</p>
-                                                    <p className="text-sm text-muted-foreground truncate">@{botInfo.username}</p>
+                                                    <a
+                                                        href={`https://t.me/${botInfo.username}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm text-[#0088cc] hover:underline truncate block"
+                                                    >
+                                                        @{botInfo.username}
+                                                    </a>
                                                 </>
                                             ) : (
                                                 <>

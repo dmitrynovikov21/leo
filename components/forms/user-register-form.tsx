@@ -36,6 +36,7 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
     });
     const [isLoading, setIsLoading] = React.useState<boolean>(false);
     const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
+    const [isYandexLoading, setIsYandexLoading] = React.useState<boolean>(false);
 
     async function onSubmit(data: FormData) {
         setIsLoading(true);
@@ -161,22 +162,40 @@ export function UserRegisterForm({ className, ...props }: UserRegisterFormProps)
                     </span>
                 </div>
             </div>
-            <button
-                type="button"
-                className={cn(buttonVariants({ variant: "outline" }))}
-                onClick={() => {
-                    setIsGoogleLoading(true);
-                    signIn("google");
-                }}
-                disabled={isLoading || isGoogleLoading}
-            >
-                {isGoogleLoading ? (
-                    <Icons.spinner className="mr-2 size-4 animate-spin" />
-                ) : (
-                    <Icons.google className="mr-2 size-4" />
-                )}{" "}
-                Google
-            </button>
+            <div className="grid gap-2">
+                <button
+                    type="button"
+                    className={cn(buttonVariants({ variant: "outline" }))}
+                    onClick={() => {
+                        setIsGoogleLoading(true);
+                        signIn("google");
+                    }}
+                    disabled={isLoading || isGoogleLoading || isYandexLoading}
+                >
+                    {isGoogleLoading ? (
+                        <Icons.spinner className="mr-2 size-4 animate-spin" />
+                    ) : (
+                        <Icons.google className="mr-2 size-4" />
+                    )}{" "}
+                    Google
+                </button>
+                <button
+                    type="button"
+                    className={cn(buttonVariants({ variant: "outline" }))}
+                    onClick={() => {
+                        setIsYandexLoading(true);
+                        signIn("yandex");
+                    }}
+                    disabled={isLoading || isGoogleLoading || isYandexLoading}
+                >
+                    {isYandexLoading ? (
+                        <Icons.spinner className="mr-2 size-4 animate-spin" />
+                    ) : (
+                        <Icons.yandex className="mr-2 size-4" />
+                    )}{" "}
+                    Яндекс
+                </button>
+            </div>
         </div>
     );
 }

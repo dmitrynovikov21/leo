@@ -28,29 +28,28 @@ export function FriendlyDangerZone() {
     const [isDeleting, setIsDeleting] = React.useState(false)
 
     const handleDelete = async () => {
-        const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-        if (!orchestratorUrl) {
-            toast.error("Orchestrator URL not configured")
-            return
-        }
-
         setIsDeleting(true)
         try {
             // First stop the agent if running
             if (agent?.status === 'RUNNING') {
-                await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stop`, {
+                await fetch(`/api/orchestrator/agents/${agentId}/stop`, {
                     method: 'POST'
                 })
             }
 
-            // Delete the agent
-            const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+            // Delete from orchestrator (stops container + removes orchestrator records)
+            const res = await fetch(`/api/orchestrator/agents/${agentId}`, {
                 method: 'DELETE'
             })
 
             if (!res.ok) {
-                throw new Error("Failed to delete agent")
+                throw new Error("Failed to delete agent from orchestrator")
             }
+
+            // Also delete from local DB (cascades to knowledge, messages, etc.)
+            await fetch(`/api/agents/${agentId}`, {
+                method: 'DELETE'
+            }).catch(() => {}) // Non-critical if orchestrator already cleaned up
 
             toast.success("Агент успешно удалён")
             await refreshAgents()
@@ -72,7 +71,7 @@ export function FriendlyDangerZone() {
         <div className="space-y-6 pt-6 border-t border-dashed border-border">
 
 
-            <Card className="border border-red-100 bg-red-50/10 shadow-none rounded-2xl overflow-hidden">
+            <Card className="border border-border shadow-none rounded-2xl overflow-hidden">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                         <div>

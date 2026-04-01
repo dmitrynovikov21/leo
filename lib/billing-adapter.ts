@@ -112,18 +112,11 @@ export async function getBillingSystem(userId: string): Promise<BillingSystem> {
     return new PuBillingSystem()
   }
 
-  // If no subscription, create a default FREE/BASIC one to migrate user to PU system
+  // If no subscription, create a FREE one
   try {
-    // Find BASIC plan
-    let plan = await prisma.subscriptionPlan.findUnique({
-      where: { code: 'BASIC' }
-    })
-
-    // If no BASIC plan, strictly speaking we should fail or wait for admin seed.
-    // But to be robust, let's assume one exists or pick the first one.
-    if (!plan) {
-      plan = await prisma.subscriptionPlan.findFirst()
-    }
+    const plan = await prisma.subscriptionPlan.findUnique({
+      where: { code: 'FREE' }
+    }) || await prisma.subscriptionPlan.findFirst()
 
     if (plan) {
       const now = new Date()
@@ -134,7 +127,7 @@ export async function getBillingSystem(userId: string): Promise<BillingSystem> {
         data: {
           userId,
           planId: plan.id,
-          puBalance: new Decimal(10), // Give minimal starting balance? Or 0? Let's give 10 free PU.
+          puBalance: plan.monthlyPuLimit,
           puLimit: plan.monthlyPuLimit,
           billingCycleStartDate: now,
           nextResetDate: nextMonth,
@@ -147,7 +140,6 @@ export async function getBillingSystem(userId: string): Promise<BillingSystem> {
     }
   } catch (err) {
     console.error("Failed to auto-create subscription:", err)
-    // Fallback
   }
 
   // Fallback to legacy if we absolutely cannot create a subscription

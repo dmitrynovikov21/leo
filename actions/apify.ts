@@ -19,7 +19,7 @@ export async function scrapeWebsite(url: string) {
         const items = await runApifyCrawler(url)
 
         if (!items || items.length === 0) {
-            return { success: false, error: "Scraping returned no results" }
+            return { success: false, error: "Не удалось получить данные со страницы. Проверьте URL и попробуйте снова." }
         }
 
         const combinedText = items
@@ -28,7 +28,7 @@ export async function scrapeWebsite(url: string) {
             .join("\n\n---\n\n")
 
         if (combinedText.length === 0) {
-            return { success: false, error: "Scraped content is empty" }
+            return { success: false, error: "Страница не содержит текстового контента" }
         }
 
         const title = items[0]?.metadata?.title || items[0]?.title || url

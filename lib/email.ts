@@ -88,17 +88,23 @@ export async function sendEmail({
 export async function sendVerificationCode(
   email: string,
   code: string,
-  name: string
+  name: string,
+  type: "verification" | "password-reset" = "verification"
 ) {
+  const subject = type === "password-reset"
+    ? `${code} — код для сброса пароля ${siteConfig.name}`
+    : `${code} — код подтверждения для ${siteConfig.name}`;
+
   try {
     const { data, error } = await resend.emails.send({
       from: env.EMAIL_FROM,
       to: email,
-      subject: `${code} — код подтверждения для ${siteConfig.name}`,
+      subject,
       react: VerificationCodeEmail({
         firstName: name,
         code,
         siteName: siteConfig.name,
+        type,
       }),
       headers: {
         "X-Entity-Ref-ID": new Date().getTime() + "",
@@ -111,7 +117,7 @@ export async function sendVerificationCode(
 
     return data;
   } catch (error) {
-    console.error("Failed to send verification code email:", error);
-    throw new Error("Failed to send verification code email.");
+    console.error("Ошибка отправки письма:", error);
+    throw new Error("Не удалось отправить письмо с кодом.");
   }
 }

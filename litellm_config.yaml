@@ -53,17 +53,18 @@ model_list:
       input_cost_per_token: 0.0000008
       output_cost_per_token: 0.000004
 
-  # OpenAI
-  - model_name: gpt-4o
+  # Gemini (fallbacks)
+  - model_name: gemini-3.1-pro-preview
     litellm_params:
-      model: gpt-4o
-      api_key: os.environ/OPENAI_API_KEY
+      model: gemini/gemini-3.1-pro-preview
+      api_key: os.environ/GOOGLE_API_KEY
 
-  - model_name: gpt-4o-mini
+  - model_name: gemini-2.5-pro
     litellm_params:
-      model: gpt-4o-mini
-      api_key: os.environ/OPENAI_API_KEY
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GOOGLE_API_KEY
 
+  # Embeddings (OpenAI)
   - model_name: text-embedding-3-small
     litellm_params:
       model: text-embedding-3-small
@@ -79,6 +80,15 @@ model_list:
     litellm_params:
       model: openrouter/anthropic/claude-3.5-haiku
       api_key: os.environ/OPENROUTER_KEY
+
+router_settings:
+  routing_strategy: "simple-shuffle"
+  num_retries: 2
+  timeout: 120
+  retry_after: 3
+  allowed_fails: 1
+  fallbacks:
+    - claude-sonnet-4-6: ["claude-opus-4-6", "claude-sonnet-4-5", "gemini-3.1-pro-preview", "gemini-2.5-pro"]
 
 litellm_settings:
   drop_params: true

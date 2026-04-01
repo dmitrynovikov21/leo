@@ -71,13 +71,7 @@ export default function AdminPromptsPage() {
     const handleResetCache = async () => {
         setIsResettingCache(true)
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) {
-                toast.error("Gateway URL не настроен")
-                return
-            }
-
-            const res = await fetch(`${gatewayUrl}/api/v1/system-prompts/refresh`, {
+            const res = await fetch(`/api/gateway/system-prompts/refresh`, {
                 method: 'POST'
             })
 

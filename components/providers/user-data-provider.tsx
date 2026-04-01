@@ -12,8 +12,9 @@ interface Agent {
     systemPrompt: string
     telegramToken?: string
     avatarEmoji?: string
+    conversationExamples?: string
     isTelegramConnected?: boolean
-    status: 'STOPPED' | 'STARTING' | 'RUNNING' | 'ERROR'
+    status: 'DRAFT' | 'STOPPED' | 'STARTING' | 'RUNNING' | 'ERROR'
     containerId?: string
     createdAt: string
     updatedAt: string
@@ -62,23 +63,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setError(null)
         try {
             // Load agents
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
             let agentsResponse: Response | null = null
 
-            // Try orchestrator first, but fallback to local API on any error
-            if (orchestratorUrl) {
-                try {
-                    agentsResponse = await fetch(`${orchestratorUrl}/api/v1/agents?userId=${session.user.id}`, {
-                        signal: AbortSignal.timeout(3000) // 3 second timeout
-                    })
-                    if (!agentsResponse.ok) {
-                        console.warn('[UserProvider] Orchestrator failed, falling back to local API')
-                        agentsResponse = null
-                    }
-                } catch (orchestratorError) {
-                    console.warn('[UserProvider] Orchestrator unavailable:', orchestratorError)
+            // Try orchestrator proxy first, but fallback to local API on any error
+            try {
+                agentsResponse = await fetch(`/api/orchestrator/agents?userId=${session.user.id}`, {
+                    signal: AbortSignal.timeout(3000) // 3 second timeout
+                })
+                if (!agentsResponse.ok) {
+                    console.warn('[UserProvider] Orchestrator failed, falling back to local API')
                     agentsResponse = null
                 }
+            } catch (orchestratorError) {
+                console.warn('[UserProvider] Orchestrator unavailable:', orchestratorError)
+                agentsResponse = null
             }
 
             // Fallback to local API
@@ -94,22 +92,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             // When orchestrator is the primary source, it may not return telegram_token.
             // Fetch tokens from local DB to supplement.
             let localTokens: Record<string, string> = {}
-            if (orchestratorUrl) {
-                try {
-                    const localRes = await fetch('/api/agents')
-                    if (localRes.ok) {
-                        const localAgents = await localRes.json()
-                        if (Array.isArray(localAgents)) {
-                            for (const a of localAgents) {
-                                if (a.telegramToken) {
-                                    localTokens[a.id] = a.telegramToken
-                                }
+            try {
+                const localRes = await fetch('/api/agents')
+                if (localRes.ok) {
+                    const localAgents = await localRes.json()
+                    if (Array.isArray(localAgents)) {
+                        for (const a of localAgents) {
+                            if (a.telegramToken) {
+                                localTokens[a.id] = a.telegramToken
                             }
                         }
                     }
-                } catch {
-                    // Local DB unavailable — continue without tokens
                 }
+            } catch {
+                // Local DB unavailable — continue without tokens
             }
 
             // Нормализуем данные (snake_case -> camelCase)
@@ -123,6 +119,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     systemPrompt: agent.system_prompt || agent.systemPrompt || '',
                     telegramToken: token,
                     avatarEmoji: agent.avatar_emoji || agent.avatarEmoji,
+                    conversationExamples: agent.conversation_examples || agent.conversationExamples || '',
                     isTelegramConnected: agent.is_telegram_connected || agent.isTelegramConnected || !!token,
                     status: agent.status || 'STOPPED',
                     containerId: agent.container_id || agent.containerId,

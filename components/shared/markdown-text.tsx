@@ -8,85 +8,60 @@ interface MarkdownTextProps {
 }
 
 /**
- * Простой компонент для рендеринга текста с базовым markdown:
+ * Компонент для рендеринга текста с поддержкой:
+ * - HTML-тегов: <b>, <i>, <code> (как от Telegram-ботов)
+ * - Markdown: **bold**, *italic*
  * - \n -> перенос строки
- * - **text** -> жирный текст
- * - *text* -> курсив
- * - Сохраняет эмодзи
+ * - Эмодзи
  */
 export function MarkdownText({ children, className }: MarkdownTextProps) {
-    const renderMarkdown = (text: string): React.ReactNode[] => {
+    const html = React.useMemo(() => {
+        let text = children || ''
+
         // Заменяем \\n на \n (если API возвращает escaped)
-        const normalized = text.replace(/\\n/g, '\n')
+        text = text.replace(/\\n/g, '\n')
 
-        // Разбиваем по строкам
-        const lines = normalized.split('\n')
+        // Escape HTML кроме разрешённых тегов
+        // Сначала временно заменяем разрешённые теги на плейсхолдеры
+        const allowed: [RegExp, string][] = [
+            [/<b>([\s\S]*?)<\/b>/gi, '%%B_OPEN%%$1%%B_CLOSE%%'],
+            [/<strong>([\s\S]*?)<\/strong>/gi, '%%B_OPEN%%$1%%B_CLOSE%%'],
+            [/<i>([\s\S]*?)<\/i>/gi, '%%I_OPEN%%$1%%I_CLOSE%%'],
+            [/<em>([\s\S]*?)<\/em>/gi, '%%I_OPEN%%$1%%I_CLOSE%%'],
+            [/<code>([\s\S]*?)<\/code>/gi, '%%CODE_OPEN%%$1%%CODE_CLOSE%%'],
+        ]
 
-        return lines.map((line, lineIdx) => {
-            // Обрабатываем **bold** и *italic*
-            const parts = parseInlineMarkdown(line)
-
-            return (
-                <React.Fragment key={lineIdx}>
-                    {parts}
-                    {lineIdx < lines.length - 1 && <br />}
-                </React.Fragment>
-            )
-        })
-    }
-
-    const parseInlineMarkdown = (text: string): React.ReactNode[] => {
-        const result: React.ReactNode[] = []
-        let remaining = text
-        let key = 0
-
-        while (remaining.length > 0) {
-            // Ищем **bold**
-            const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
-            // Ищем *italic* (но не **)
-            const italicMatch = remaining.match(/(?<!\*)\*([^*]+)\*(?!\*)/)
-
-            // Определяем какой паттерн раньше
-            const boldIdx = boldMatch ? remaining.indexOf(boldMatch[0]) : Infinity
-            const italicIdx = italicMatch ? remaining.indexOf(italicMatch[0]) : Infinity
-
-            if (boldIdx === Infinity && italicIdx === Infinity) {
-                // Нет больше паттернов
-                result.push(remaining)
-                break
-            }
-
-            if (boldIdx <= italicIdx && boldMatch) {
-                // Bold первый
-                if (boldIdx > 0) {
-                    result.push(remaining.substring(0, boldIdx))
-                }
-                result.push(
-                    <strong key={key++} className="font-semibold">
-                        {boldMatch[1]}
-                    </strong>
-                )
-                remaining = remaining.substring(boldIdx + boldMatch[0].length)
-            } else if (italicMatch) {
-                // Italic первый
-                if (italicIdx > 0) {
-                    result.push(remaining.substring(0, italicIdx))
-                }
-                result.push(
-                    <em key={key++}>
-                        {italicMatch[1]}
-                    </em>
-                )
-                remaining = remaining.substring(italicIdx + italicMatch[0].length)
-            }
+        for (const [regex, replacement] of allowed) {
+            text = text.replace(regex, replacement)
         }
 
-        return result
-    }
+        // Escape remaining HTML
+        text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+        // Restore allowed tags
+        text = text
+            .replace(/%%B_OPEN%%/g, '<strong class="font-semibold">')
+            .replace(/%%B_CLOSE%%/g, '</strong>')
+            .replace(/%%I_OPEN%%/g, '<em>')
+            .replace(/%%I_CLOSE%%/g, '</em>')
+            .replace(/%%CODE_OPEN%%/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">')
+            .replace(/%%CODE_CLOSE%%/g, '</code>')
+
+        // Markdown: **bold** -> <strong>
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+        // Markdown: *italic* -> <em> (but not **)
+        text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
+
+        // Newlines -> <br>
+        text = text.replace(/\n/g, '<br/>')
+
+        return text
+    }, [children])
 
     return (
-        <span className={className}>
-            {renderMarkdown(children)}
-        </span>
+        <span
+            className={className}
+            dangerouslySetInnerHTML={{ __html: html }}
+        />
     )
 }

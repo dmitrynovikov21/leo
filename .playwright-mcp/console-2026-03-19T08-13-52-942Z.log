@@ -1,0 +1,8 @@
+[     728ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 1494907ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 2274870ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/ru/admin/plans:0
+[ 2274872ms] [ERROR] Error loading balance: TypeError: Cannot read properties of undefined (reading 'balance')
+    at e (https://app.leoagent.ru/_next/static/chunks/app/%5Blocale%5D/(protected)/layout-e34618b28ad8df5b.js:1:2647) @ https://app.leoagent.ru/_next/static/chunks/2915-266e06feb6c497fa.js:0
+[ 2275020ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/ru/admin/plans:0
+[ 2275021ms] [ERROR] Error loading balance: TypeError: Cannot read properties of undefined (reading 'balance')
+    at u (https://app.leoagent.ru/_next/static/chunks/app/%5Blocale%5D/(protected)/layout-e34618b28ad8df5b.js:1:1479) @ https://app.leoagent.ru/_next/static/chunks/2915-266e06feb6c497fa.js:0

@@ -1,0 +1,22 @@
+[     790ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 1021060ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 1028390ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 1081165ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://app.leoagent.ru/_next/static/chunks/5902-5599e3fb6d900a33.js:0
+[ 1087096ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://app.leoagent.ru/_next/static/chunks/5902-5599e3fb6d900a33.js:0
+[ 1146478ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://app.leoagent.ru/_next/static/chunks/5902-5599e3fb6d900a33.js:0
+[ 1216890ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://app.leoagent.ru/_next/static/chunks/5902-5599e3fb6d900a33.js:0
+[ 1475762ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 1518106ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://app.leoagent.ru/_next/static/chunks/5902-5599e3fb6d900a33.js:0
+[ 1521201ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ https://app.leoagent.ru/_next/static/chunks/5902-5599e3fb6d900a33.js:0
+[ 1851216ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/ru/dashboard/agents/cmncxxq3l0008vuzw3zwpqddo/knowledge:0
+[ 1851217ms] [ERROR] Error fetching documents: TypeError: Cannot read properties of undefined (reading 'filter')
+    at https://app.leoagent.ru/_next/static/chunks/6681-a38381cf57213687.js:1:6388 @ https://app.leoagent.ru/_next/static/chunks/2915-266e06feb6c497fa.js:0
+[ 1855435ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 1878095ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0
+[ 2298010ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/ru/dashboard/billing:0
+[ 2298011ms] [ERROR] Error loading balance: TypeError: Cannot read properties of undefined (reading 'balance')
+    at e (https://app.leoagent.ru/_next/static/chunks/app/%5Blocale%5D/(protected)/layout-8ee3d68482aa44b4.js:1:2647) @ https://app.leoagent.ru/_next/static/chunks/2915-266e06feb6c497fa.js:0
+[ 2298170ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/ru/dashboard/billing:0
+[ 2298171ms] [ERROR] Error loading balance: TypeError: Cannot read properties of undefined (reading 'balance')
+    at u (https://app.leoagent.ru/_next/static/chunks/app/%5Blocale%5D/(protected)/layout-8ee3d68482aa44b4.js:1:1479) @ https://app.leoagent.ru/_next/static/chunks/2915-266e06feb6c497fa.js:0
+[ 2324919ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://app.leoagent.ru/_vercel/insights/script.js:0

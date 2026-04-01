@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import {
     Card,
     CardContent,
@@ -12,8 +11,6 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { EmojiAvatar } from "@/components/shared/emoji-avatar"
-import { X, ExternalLink } from "lucide-react"
 
 export function OrganizationTab() {
     /* const members = [
@@ -39,35 +36,10 @@ export function OrganizationTab() {
                             className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="support-email" className="text-foreground font-medium">Почта поддержки</Label>
-                        <Input
-                            id="support-email"
-                            defaultValue="support@acme.com"
-                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
-                        />
-                    </div>
                 </CardContent>
                 <CardFooter className="flex justify-end pb-6 px-6">
                     <Button className="rounded-xl h-10 px-6 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">Сохранить изменения</Button>
                 </CardFooter>
-            </Card>
-
-            {/* Section 2: Plan Info */}
-            <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
-                <CardHeader>
-                    <CardTitle className="text-xl font-bold text-foreground">Текущий тариф</CardTitle>
-                    <CardDescription className="text-muted-foreground">Информация о подписке и лимитах.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex items-center justify-between pb-8">
-                    <div>
-                        <div className="font-bold text-lg text-foreground">Пробный период</div>
-                        <p className="text-sm text-muted-foreground font-medium">Истекает через 14 дней</p>
-                    </div>
-                    <Button variant="outline" className="rounded-xl h-10 border-border hover:bg-muted text-foreground font-medium">
-                        Открыть настройки тарифа <ExternalLink className="ml-2 h-4 w-4" />
-                    </Button>
-                </CardContent>
             </Card>
 
             {/* Section 3 & 4: Team */}

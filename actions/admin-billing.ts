@@ -33,7 +33,7 @@ export async function getBillingPuStats(period: Period = '30d') {
       _sum: { puAmount: true },
     }),
     prisma.$queryRaw<Array<{ date: string; spent: number }>>`
-      SELECT TO_CHAR(created_at, 'MM-DD') as date, ABS(SUM("puAmount"))::float as spent
+      SELECT TO_CHAR(created_at, 'MM-DD') as date, ABS(SUM(pu_amount))::float as spent
       FROM pu_transactions
       WHERE type = 'OVERAGE_DEDUCTION' AND created_at >= ${since}
       GROUP BY date ORDER BY date
@@ -42,7 +42,7 @@ export async function getBillingPuStats(period: Period = '30d') {
 
   type TopUser = { user_id: string; email: string | null; total: number }
   const topUsers = await prisma.$queryRaw<TopUser[]>`
-    SELECT pt.user_id, u.email, ABS(SUM(pt."puAmount"))::float as total
+    SELECT pt.user_id, u.email, ABS(SUM(pt.pu_amount))::float as total
     FROM pu_transactions pt
     JOIN users u ON u.id = pt.user_id
     WHERE pt.type = 'OVERAGE_DEDUCTION' AND pt.created_at >= ${since}

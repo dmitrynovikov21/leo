@@ -16,6 +16,7 @@ import { updateConflictStatus } from "@/actions/conflicts"
 
 interface ConflictFile {
     file_id: string
+    chunk_id?: string
     file_name: string
     value_found: string
 }
@@ -45,6 +46,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
     const [loadingFileId, setLoadingFileId] = React.useState<string | null>(null)
 
     const [editingFileHighlight, setEditingFileHighlight] = React.useState<string | undefined>(undefined)
+    const [editingConflictId, setEditingConflictId] = React.useState<string | null>(null)
 
     const fetchConflicts = React.useCallback(async () => {
         setIsLoading(true)
@@ -69,9 +71,10 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
         fetchConflicts()
     }, [fetchConflicts])
 
-    // Filter out Audit conflicts (they are handled in Knowledge Base view)
+    // API already normalizes all formats to [{file_id, file_name, value_found}]
+    // Just filter out conflicts with empty details
     const agentConflicts = React.useMemo(() => {
-        return conflicts.filter(c => Array.isArray(c.details))
+        return conflicts.filter(c => Array.isArray(c.details) && c.details.length > 0)
     }, [conflicts])
 
     const updateStatus = async (id: string, status: "resolved" | "ignored") => {
@@ -97,16 +100,10 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
         }
     }
 
-    const handleOpenFile = async (fileId: string, fileName: string, highlightText?: string) => {
+    const handleOpenFile = async (fileId: string, fileName: string, highlightText?: string, conflictId?: string) => {
         setLoadingFileId(fileId)
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) {
-                toast.error("Gateway URL not configured")
-                return
-            }
-
-            const response = await fetch(`${gatewayUrl}/api/v1/agents/${agentId}/documents/${fileId}`)
+            const response = await fetch(`/api/gateway/agents/${agentId}/documents/${fileId}`)
             if (response.ok) {
                 const data = await response.json()
                 const chunks = (data.chunks || []).map((c: any, index: number) => ({
@@ -123,6 +120,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                     isAgentDocument: true
                 })
                 setEditingFileHighlight(highlightText)
+                if (conflictId) setEditingConflictId(conflictId)
             } else {
                 toast.error("Не удалось загрузить файл")
             }
@@ -173,7 +171,7 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                 <div className="space-y-2">
                     {(Array.isArray(conflict.details) ? conflict.details : []).map((file, idx) => (
                         <div
-                            key={file.file_id}
+                            key={file.file_id || `chunk-${idx}`}
                             className="flex items-start gap-3 bg-muted/50 rounded-lg p-3"
                         >
                             <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
@@ -201,9 +199,25 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
                                     <textarea
                                         readOnly
                                         value={file.value_found}
-                                        className="min-h-[60px] w-full max-w-[400px] resize-none rounded-lg border border-border bg-card px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-0"
+                                        className="min-h-[120px] w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-0"
                                     />
                                 </div>
+                                {conflict.status === "new" && file.file_id && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-2 text-blue-700 hover:text-blue-800 hover:bg-blue-50 border-blue-200"
+                                        onClick={() => handleOpenFile(file.file_id, file.file_name, file.value_found, conflict.id)}
+                                        disabled={loadingFileId === file.file_id}
+                                    >
+                                        {loadingFileId === file.file_id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        ) : (
+                                            <Edit className="h-4 w-4 mr-2" />
+                                        )}
+                                        Исправить
+                                    </Button>
+                                )}
                             </div>
                             {idx < conflict.details.length - 1 && (
                                 <div className="self-center px-1">
@@ -319,10 +333,23 @@ export function KnowledgeConflictsPage({ agentId }: KnowledgeConflictsPageProps)
 
             <FileEditorDialog
                 open={!!editingFile}
-                onOpenChange={(open) => {
+                onOpenChange={async (open) => {
                     if (!open) {
                         setEditingFile(null)
                         setEditingFileHighlight(undefined)
+                        // Auto-resolve the conflict after editing
+                        if (editingConflictId) {
+                            try {
+                                const res = await updateConflictStatus(editingConflictId, "RESOLVED")
+                                if (res.success) {
+                                    setConflicts(prev => prev.filter(c => c.id !== editingConflictId))
+                                    toast.success("Конфликт разрешён после исправления")
+                                }
+                            } catch (e) {
+                                console.warn("Failed to auto-resolve conflict:", e)
+                            }
+                            setEditingConflictId(null)
+                        }
                     }
                 }}
                 file={editingFile}

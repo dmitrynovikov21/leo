@@ -2,13 +2,13 @@
 
 import { getCurrentUser } from "@/lib/session"
 import { prisma } from "@/lib/db"
-import { calculateFileCharge, saveFileProcessingCache } from "@/lib/file-charging"
 import { getBillingSystem } from "@/lib/billing-adapter"
 import crypto from "crypto"
 import { revalidatePath } from "next/cache"
 import { getActivePromptContent } from "@/actions/system-prompts"
 import { trackTokenUsage } from "@/lib/token-tracking"
 import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch"
+import { fixFilename } from "@/lib/utils"
 
 export async function getAgentDocuments(agentId: string) {
     const user = await getCurrentUser()
@@ -50,6 +50,11 @@ export async function getAgentDocuments(agentId: string) {
     }
 }
 
+const ALLOWED_EXTENSIONS = new Set([
+    'pdf','doc','docx','xls','xlsx','csv','json','html','htm',
+    'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
+])
+
 export async function uploadAgentDocument(data: {
     agentId: string
     file: FormData
@@ -61,9 +66,15 @@ export async function uploadAgentDocument(data: {
     if (!file) throw new Error("File not found")
 
     const agentId = data.agentId
-    const filename = file.name
+    const filename = fixFilename(file.name)
     const fileSize = file.size
     const mimeType = file.type || 'application/octet-stream'
+
+    // Validate file type
+    const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+        return { success: false, error: `Формат .${ext} не поддерживается. Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, изображения.` }
+    }
 
     // 1. Verify ownership
     const agent = await prisma.agent.findUnique({
@@ -122,8 +133,10 @@ async function processDocumentAsync(
         // Case 1: We have a Buffer (File) -> Need to Parse
         if (data.buffer) {
             const parseFormData = new FormData()
-            // Convert Buffer to BlobPart compatible format
-            const blob = new Blob([data.buffer.buffer as ArrayBuffer], { type: mimeType })
+            // Use Uint8Array slice to avoid Node.js Buffer pool issues
+            // (Buffer.buffer returns the full pool ArrayBuffer, not just the file data)
+            const safeArray = new Uint8Array(data.buffer)
+            const blob = new Blob([safeArray], { type: mimeType })
             parseFormData.append('file', blob, filename)
 
             const parseResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/parse`, {
@@ -131,7 +144,10 @@ async function processDocumentAsync(
                 body: parseFormData,
             })
 
-            if (!parseResponse.ok) throw new Error("Failed to parse document")
+            if (!parseResponse.ok) {
+                const errData = await parseResponse.json().catch(() => ({}))
+                throw new Error(errData.error || "Не удалось обработать документ")
+            }
 
             const parseData = await parseResponse.json()
             chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
@@ -181,37 +197,10 @@ async function processDocumentAsync(
             throw new Error("No data provided for processing")
         }
 
-        const contentTokens = Math.ceil(textContent.length / 4) // Rough
         console.log(`[AsyncUpload] Prepared ${chunks.length} chunks`)
 
-        // 3. Calculate Charge
-        const charge = await calculateFileCharge(
-            agentId,
-            filename,
-            Buffer.from(textContent),
-            contentTokens
-        )
-
-        // 4. Check & Deduct Balance
-        const billing = await getBillingSystem(userId)
-        const hasBalance = await billing.checkBalance(userId, charge.puCost)
-
-        if (!hasBalance) {
-            throw new Error(`Недостаточно PU. Требуется: ${charge.puCost.toFixed(2)} PU`)
-        }
-
-        if (charge.puCost > 0) {
-            await billing.deductUsage(userId, charge.puCost, {
-                source: 'FILE_UPLOAD',
-                description: `Загрузка в базу знаний: ${filename}`,
-                metadata: {
-                    agentId,
-                    fileName: filename,
-                    chargeReason: charge.reason,
-                    chargePercentage: charge.chargePercentage
-                }
-            })
-        }
+        // PU charging is handled by the gateway vectorize endpoint
+        // to avoid double-charging (gateway also calculates & deducts PU)
 
         // 5. Vectorize (Save) via Gateway (with fullText for contextual enrichment)
         const vectorizeResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
@@ -229,21 +218,13 @@ async function processDocumentAsync(
         })
 
         if (!vectorizeResponse.ok) {
-            throw new Error("Failed to vectorize document")
+            const errData = await vectorizeResponse.json().catch(() => ({}))
+            const errMsg = errData.message || errData.error || `Vectorize failed (${vectorizeResponse.status})`
+            console.error(`[AsyncUpload] Vectorize error for ${filename}:`, vectorizeResponse.status, errData)
+            throw new Error(errMsg)
         }
 
-        // 6. Save Cache
-        const contentHash = crypto.createHash('sha256').update(textContent).digest('hex')
-
-        await saveFileProcessingCache(
-            agentId,
-            filename,
-            contentHash,
-            fileSize,
-            chunks.length,
-            charge.puCost,
-            charge.chargePercentage
-        )
+        // Cache is saved by the gateway vectorize endpoint
 
         // Success! Gateway created a NEW record. Delete our temporary PENDING record.
         try {
@@ -268,8 +249,18 @@ async function processDocumentAsync(
         }
 
     } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error)
+        const rawMsg = error instanceof Error ? error.message : String(error)
         console.error(`[AsyncUpload] Failed for ${filename}:`, error)
+
+        // Map technical errors to user-friendly messages
+        let errorMsg = rawMsg
+        if (rawMsg.includes('fetch failed') || rawMsg.includes('ECONNREFUSED') || rawMsg.includes('ETIMEDOUT')) {
+            errorMsg = `Не удалось обработать файл "${filename}". Сервис временно недоступен, попробуйте позже.`
+        } else if (rawMsg.includes('tokens') && rawMsg.includes('max')) {
+            errorMsg = `Файл "${filename}" слишком большой для обработки. Попробуйте разбить его на части.`
+        } else if (rawMsg.includes('Insufficient') && rawMsg.includes('balance')) {
+            errorMsg = `Недостаточно средств для обработки файла "${filename}".`
+        }
 
         // Update pending record to ERROR with reason
         // Try our original PENDING record first, then any gateway-created record
@@ -288,7 +279,7 @@ async function processDocumentAsync(
                     where: {
                         agentId,
                         filename,
-                        status: { in: ['PENDING', 'PARSED'] }
+                        status: { in: ['PENDING', 'PARSED', 'ERROR'] }
                     },
                     data: {
                         status: 'ERROR',
@@ -330,14 +321,14 @@ export async function asyncScrapeAgentWebsite(agentId: string, url: string) {
                 const { runApifyCrawler } = await import("@/lib/apify")
                 const items = await runApifyCrawler(url)
 
-                if (!items || items.length === 0) throw new Error("Scraping returned no results")
+                if (!items || items.length === 0) throw new Error("Не удалось получить данные со страницы. Проверьте URL и попробуйте снова.")
 
                 const combinedText = items
                     .map((item: any) => item.text || item.markdown || "")
                     .filter((t: string) => t.length > 0)
                     .join("\n\n---\n\n")
 
-                if (combinedText.length === 0) throw new Error("Scraped content is empty")
+                if (combinedText.length === 0) throw new Error("Страница не содержит текстового контента")
 
                 const title = items[0]?.metadata?.title || items[0]?.title || url
 
@@ -417,7 +408,7 @@ async function generateDocumentMetadata(
                 { role: "system", content: systemPrompt },
                 { role: "user", content: `Original Filename: ${filename}\n\nText:\n${snippet}` }
             ],
-            model: "gpt-4o-mini",
+            model: "claude-sonnet-4-6",
             temperature: 0.3,
             max_tokens: 500
         })
@@ -444,18 +435,25 @@ async function generateDocumentMetadata(
 
         await trackTokenUsage({
             userId,
-            model: "gpt-4o-mini",
+            model: "claude-sonnet-4-6",
             promptTokens,
             completionTokens,
             responseTimeMs: 0,
             isTest: false,
         })
 
+        // Resolve agentId from document
+        let docAgentId: string | undefined
+        if (!isLibraryItem) {
+            const kb = await prisma.knowledgeBase.findUnique({ where: { id: documentId }, select: { agentId: true } })
+            docAgentId = kb?.agentId || undefined
+        }
+
         const billing = await getBillingSystem(userId)
         await billing.deductUsage(userId, puCost, {
             source: 'LLM_USAGE',
-            description: `Metadata generation: ${totalTokens} tokens for ${filename}`,
-            metadata: { model: 'gpt-4o-mini', promptTokens, completionTokens, documentId },
+            description: `Анализ документа: ${filename}`,
+            metadata: { model: 'claude-sonnet-4-6', promptTokens, completionTokens, documentId, agentId: docAgentId, fileName: filename },
         })
     }
 
@@ -477,6 +475,58 @@ async function generateDocumentMetadata(
 
 // Export for use in library.ts
 export { generateDocumentMetadata }
+
+// Regenerate missing metadata for VECTORIZED docs that somehow lost their description
+export async function regenerateMissingMetadata(agentId: string) {
+    const user = await getCurrentUser()
+    if (!user || !user.id) return { triggered: 0 }
+
+    try {
+        // Find all VECTORIZED docs for this agent with their chunks
+        const allDocs = await prisma.knowledgeBase.findMany({
+            where: {
+                agentId,
+                agent: { userId: user.id },
+                status: 'VECTORIZED',
+            },
+            include: {
+                chunks: {
+                    orderBy: { chunkIndex: 'asc' },
+                    take: 20,
+                    select: { content: true }
+                }
+            }
+        })
+
+        // Filter to docs that need metadata regeneration
+        const needsRegen = allDocs.filter(d => {
+            const meta = d.aiMetadata as any
+            if (!meta) return true                    // null metadata
+            if (typeof meta !== 'object') return true // invalid metadata
+            if (meta.error) return false              // has error — don't retry automatically
+            if (meta.summary) return false            // already has summary
+            return true                               // metadata exists but no summary
+        })
+
+        if (needsRegen.length === 0) return { triggered: 0 }
+
+        console.log(`[RegenMetadata] Found ${needsRegen.length} docs without metadata for agent ${agentId}`)
+
+        // Fire-and-forget regeneration for each doc
+        for (const doc of needsRegen) {
+            const textContent = doc.chunks.map(c => c.content).join('\n\n')
+            if (textContent.length < 10) continue // skip empty docs
+
+            generateDocumentMetadata(user.id, doc.id, doc.filename, textContent, false)
+                .catch(err => console.warn(`[RegenMetadata] Failed for ${doc.id}:`, err))
+        }
+
+        return { triggered: needsRegen.length }
+    } catch (error) {
+        console.error("[RegenMetadata] Failed:", error)
+        return { triggered: 0 }
+    }
+}
 
 // Cleanup stale PENDING docs older than 30 minutes (handles server restarts mid-processing)
 export async function cleanupStalePendingDocs(agentId: string) {

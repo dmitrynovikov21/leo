@@ -416,22 +416,6 @@ export function SmartQuizStep({ answers, onChange, isGenerating }: SmartQuizStep
                             ]}
                         />
 
-                        {/* 9. Few-shot */}
-                        <div id="field-fewShot" className="space-y-3">
-                            <Label className="text-sm font-medium text-foreground">9. Эталонный пример</Label>
-                            <p className="text-xs text-muted-foreground">
-                                Приведите пример идеального диалога. Формат: "Вопрос — Ответ".
-                            </p>
-                            <textarea
-                                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="User: Как оформить отпуск?
-Agent: Для оформления отпуска нужно:
-1. Зайти на портал...
-2. Заполнить форму..."
-                                value={answers.fewShot}
-                                onChange={(e) => updateAnswer("fewShot", e.target.value)}
-                            />
-                        </div>
 
                     </motion.div>
                 )}

@@ -6,24 +6,19 @@ export const BLOG_CATEGORIES: {
   {
     title: "News",
     slug: "news",
-    description: "Updates and announcements from Next SaaS Starter.",
+    description: "Новости и обновления LEO.",
   },
   {
     title: "Education",
     slug: "education",
-    description: "Educational content about SaaS management.",
+    description: "Обучающие материалы по работе с LEO.",
   },
 ];
 
 export const BLOG_AUTHORS = {
-  mickasmt: {
-    name: "mickasmt",
-    image: "/_static/avatars/mickasmt.png",
-    twitter: "miickasmt",
-  },
-  shadcn: {
-    name: "shadcn",
-    image: "/_static/avatars/shadcn.jpeg",
-    twitter: "shadcn",
+  leo: {
+    name: "LEO Team",
+    image: "/_static/avatars/leo.png",
+    twitter: "",
   },
 };

@@ -52,9 +52,8 @@ export async function POST(req: Request) {
             );
         }
 
-        // Generate verification code (hardcoded for now until email is configured)
-        const code = "123456"; // TODO: enable random code when email is ready
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
 
         await prisma.emailVerificationCode.deleteMany({
             where: { userId: user.id },
@@ -68,15 +67,14 @@ export async function POST(req: Request) {
             },
         });
 
-        // TODO: enable email sending when configured
-        // await sendVerificationCode(
-        //     user.email!,
-        //     code,
-        //     user.name || "User"
-        // );
+        await sendVerificationCode(
+            user.email!,
+            code,
+            user.name || "Пользователь"
+        );
 
         return NextResponse.json(
-            { message: "Verification code sent" },
+            { message: "Код отправлен на вашу почту" },
             { status: 200 }
         );
     } catch (error) {

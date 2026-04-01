@@ -7,6 +7,7 @@ import { calculateFileCharge, saveFileProcessingCache } from "@/lib/file-chargin
 import { getBillingSystem } from "@/lib/billing-adapter"
 import crypto from "crypto"
 import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch"
+import { fixFilename } from "@/lib/utils"
 
 export interface LibraryItemWithChunks {
     id: string
@@ -130,6 +131,11 @@ export async function clearLibrary() {
     }
 }
 
+const ALLOWED_EXTENSIONS = new Set([
+    'pdf','doc','docx','xls','xlsx','csv','json','html','htm',
+    'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
+])
+
 export async function uploadLibraryDocument(data: {
     file: FormData
 }) {
@@ -139,9 +145,15 @@ export async function uploadLibraryDocument(data: {
     const file = data.file.get('file') as File
     if (!file) throw new Error("File not found")
 
-    const filename = file.name
+    const filename = fixFilename(file.name)
     const fileSize = file.size
     const mimeType = file.type || 'application/octet-stream'
+
+    // Validate file type
+    const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+        return { success: false, error: `Формат .${ext} не поддерживается. Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, изображения.` }
+    }
 
     try {
         // Create PENDING record immediately
@@ -190,7 +202,8 @@ async function processLibraryItemAsync(
 
         if (data.buffer) {
             const parseFormData = new FormData()
-            const blob = new Blob([data.buffer.buffer as ArrayBuffer], { type: mimeType })
+            const safeArray = new Uint8Array(data.buffer)
+            const blob = new Blob([safeArray], { type: mimeType })
             parseFormData.append('file', blob, filename)
 
             const parseResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/parse`, {
@@ -198,7 +211,10 @@ async function processLibraryItemAsync(
                 body: parseFormData,
             })
 
-            if (!parseResponse.ok) throw new Error("Failed to parse document")
+            if (!parseResponse.ok) {
+                const errData = await parseResponse.json().catch(() => ({}))
+                throw new Error(errData.error || "Не удалось обработать документ")
+            }
 
             const parseData = await parseResponse.json()
             chunks = (parseData.chunks || []).map((chunk: any, index: number) => ({
@@ -208,12 +224,37 @@ async function processLibraryItemAsync(
             textContent = chunks.map((c: any) => c.content).join('\n\n')
         } else if (data.text) {
             textContent = data.text
-            const size = 2000
-            for (let i = 0; i < textContent.length; i += size) {
-                chunks.push({
-                    content: textContent.slice(i, i + size),
-                    index: Math.floor(i / size)
+
+            // Use gateway /parse for smart chunking (same as agent-knowledge.ts)
+            try {
+                const textBlob = new Blob([Buffer.from(textContent, 'utf-8')], { type: 'text/plain' })
+                const textFormData = new FormData()
+                textFormData.append('file', textBlob, filename || 'website-content.txt')
+
+                const textParseResponse = await aiFetch(`${gatewayUrl}/api/v1/documents/parse`, {
+                    method: 'POST',
+                    body: textFormData,
                 })
+
+                if (textParseResponse.ok) {
+                    const textParseData = await textParseResponse.json()
+                    chunks = (textParseData.chunks || []).map((chunk: any, index: number) => ({
+                        content: typeof chunk === 'string' ? chunk : chunk.content || chunk.text || '',
+                        index
+                    }))
+                    textContent = textParseData.fullText || textContent
+                } else {
+                    throw new Error('Gateway parse failed for text')
+                }
+            } catch (parseErr) {
+                console.warn(`[LibraryAsync] Gateway parse failed for text, falling back to simple split:`, parseErr)
+                const size = 2000
+                for (let i = 0; i < textContent.length; i += size) {
+                    chunks.push({
+                        content: textContent.slice(i, i + size),
+                        index: Math.floor(i / size)
+                    })
+                }
             }
         }
 
@@ -235,7 +276,7 @@ async function processLibraryItemAsync(
         if (charge.puCost > 0) {
             await billing.deductUsage(userId, charge.puCost, {
                 source: 'FILE_UPLOAD',
-                description: `Загрузка в библиотеку: ${filename}`,
+                description: `Загрузка документа: ${filename}`,
                 metadata: {
                     libraryItemId: itemId,
                     fileName: filename,
@@ -251,12 +292,15 @@ async function processLibraryItemAsync(
         // However, we can use the same logic: Gateway only returns vectorized status or we do it here.
         // Actually, the LibraryItem needs the chunks in DB.
 
+        // Sanitize: remove null bytes (0x00) that PostgreSQL TEXT columns reject
+        const sanitize = (s: string) => s.replace(/\0/g, '')
+
         await prisma.$transaction([
             prisma.libraryChunk.deleteMany({ where: { libraryItemId: itemId } }),
             prisma.libraryChunk.createMany({
                 data: chunks.map(c => ({
                     libraryItemId: itemId,
-                    content: c.content,
+                    content: sanitize(c.content),
                     chunkIndex: c.index,
                     metadata: {}
                 }))
@@ -264,7 +308,7 @@ async function processLibraryItemAsync(
             prisma.libraryItem.update({
                 where: { id: itemId },
                 data: {
-                    content: textContent,
+                    content: sanitize(textContent),
                     status: 'VECTORIZED' as any as any
                 }
             })
@@ -320,19 +364,21 @@ export async function createLibraryItem(data: {
     await ensureDevUser(user.id)
 
     try {
+        const sanitize = (s: string) => s.replace(/\0/g, '')
+
         const item = await prisma.libraryItem.create({
             data: {
                 userId: user.id,
                 name: data.name,
                 type: data.type,
-                content: data.content,
+                content: data.content ? sanitize(data.content) : data.content,
                 fileUrl: data.fileUrl,
                 fileSize: data.fileSize,
                 mimeType: data.mimeType,
                 status: 'VECTORIZED', // Legacy sync created items are ready immediately
                 chunks: {
                     create: data.chunks.map(chunk => ({
-                        content: chunk.content,
+                        content: sanitize(chunk.content),
                         chunkIndex: chunk.index,
                         metadata: chunk.metadata || {}
                     }))
@@ -514,14 +560,14 @@ export async function asyncScrapeLibraryWebsite(url: string) {
                 const { runApifyCrawler } = await import("@/lib/apify")
                 const items = await runApifyCrawler(url)
 
-                if (!items || items.length === 0) throw new Error("Scraping returned no results")
+                if (!items || items.length === 0) throw new Error("Не удалось получить данные со страницы. Проверьте URL и попробуйте снова.")
 
                 const combinedText = items
                     .map((item: any) => item.text || item.markdown || "")
                     .filter((t: string) => t.length > 0)
                     .join("\n\n---\n\n")
 
-                if (combinedText.length === 0) throw new Error("Scraped content is empty")
+                if (combinedText.length === 0) throw new Error("Страница не содержит текстового контента")
 
                 const title = items[0]?.metadata?.title || items[0]?.title || url
 

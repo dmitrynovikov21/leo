@@ -1,15 +1,15 @@
 import Link from "next/link"
 import { Suspense } from "react"
 
-import { cn } from "@/lib/utils"
+import { cn, constructMetadata } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Icons } from "@/components/shared/icons"
 import { UserRegisterForm } from "@/components/forms/user-register-form"
 
-export const metadata = {
-  title: "Регистрация",
-  description: "Создайте аккаунт для начала работы.",
-}
+export const metadata = constructMetadata({
+  title: "Регистрация – LEO",
+  description: "Создайте аккаунт LEO — платформа AI-агентов.",
+})
 
 export default function RegisterPage() {
   return (

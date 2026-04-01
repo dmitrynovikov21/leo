@@ -54,8 +54,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     const [isHistoryOpen, setIsHistoryOpen] = React.useState(false)
     const [historyItems, setHistoryItems] = React.useState<{ id: string, sessionId: string | null, messageCount: number, createdAt: Date }[]>([])
 
-    const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL || ''
-    const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL || ''
+    const gatewayProxy = '/api/gateway'
     const STORAGE_KEY = `test_session_${agentId}`
 
     // Load from localStorage on mount
@@ -105,10 +104,10 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     // Fetch welcome message on mount
     React.useEffect(() => {
         const fetchWelcomeMessage = async () => {
-            if (!orchestratorUrl || !agentId) return
+            if (!agentId) return
 
             try {
-                const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`)
+                const res = await fetch(`/api/orchestrator/agents/${agentId}/behavior`)
                 if (res.ok) {
                     const data = await res.json()
                     if (data.welcomeMessage) {
@@ -121,7 +120,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
         }
 
         fetchWelcomeMessage()
-    }, [agentId, orchestratorUrl])
+    }, [agentId])
 
     // Show welcome message when session starts
     React.useEffect(() => {
@@ -140,11 +139,11 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
     // Load chat history on mount if we have a session
     React.useEffect(() => {
         const loadHistory = async () => {
-            if (!sessionId || !gatewayUrl) return
+            if (!sessionId) return
 
             try {
                 const response = await fetch(
-                    `${gatewayUrl}/api/v1/agents/${agentId}/chat/history?session_id=${sessionId}`
+                    `${gatewayProxy}/agents/${agentId}/chat/history?session_id=${sessionId}`
                 )
                 if (response.ok) {
                     const data = await response.json()
@@ -164,7 +163,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
         }
 
         loadHistory()
-    }, [sessionId, agentId, gatewayUrl])
+    }, [sessionId, agentId, gatewayProxy])
 
     const handleSend = async () => {
         if (!input.trim() || isLoading) return
@@ -190,7 +189,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                 requestBody.session_id = sessionId
             }
 
-            const response = await fetch(`${gatewayUrl}/api/v1/agents/${agentId}/chat`, {
+            const response = await fetch(`${gatewayProxy}/agents/${agentId}/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody)
@@ -264,7 +263,7 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
 
         try {
             const body = sessionId ? { session_id: sessionId } : {}
-            const response = await fetch(`${gatewayUrl}/api/v1/agents/${agentId}/chat/reset`, {
+            const response = await fetch(`${gatewayProxy}/agents/${agentId}/chat/reset`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -501,25 +500,6 @@ export function ManualTestInterface({ onFeedbackSubmit }: ManualTestInterfacePro
                 </div>
             </div>
 
-            {/* Context Overflow Warning */}
-            {messages.length >= 10 && (
-                <div className="px-3 py-2 bg-amber-50 border-t border-amber-100 flex items-center justify-between gap-2 shrink-0">
-                    <div className="flex items-center gap-2 text-amber-700 text-xs">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span>Контекст переполнен. Рекомендуем очистить чат 🧹</span>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs text-amber-700 hover:text-amber-900 hover:bg-amber-100 px-2"
-                        onClick={handleResetSession}
-                        disabled={isResetting}
-                    >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Очистить
-                    </Button>
-                </div>
-            )}
 
             {/* Input Area */}
             <div className="p-3 bg-card border-t border-border shrink-0">

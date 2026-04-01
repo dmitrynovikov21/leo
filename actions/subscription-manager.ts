@@ -2,7 +2,6 @@
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
-import { stripe } from '@/lib/stripe'
 import { getUserSubscription } from '@/lib/subscription-manager'
 import { getPuTransactionHistory } from '@/lib/pu-balance'
 
@@ -62,46 +61,6 @@ export async function getUserPuHistory(limit: number = 50, offset: number = 0) {
   }
 
   return getPuTransactionHistory(session.user.id, limit, offset)
-}
-
-/**
- * Create a checkout session for PU pack purchase
- */
-export async function createPuPackCheckout(puAmount: number, packName: string) {
-  const session = await auth()
-
-  if (!session?.user?.id) {
-    throw new Error('Unauthorized')
-  }
-
-  // Get user's email
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { email: true },
-  })
-
-  if (!user?.email) {
-    throw new Error('User email not found')
-  }
-
-  // Create payment intent
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(puAmount * 100), // Assuming 1 PU = 1 RUB for simplicity, adjust as needed
-    currency: 'rub',
-    metadata: {
-      userId: session.user.id,
-      type: 'pu_pack',
-      puAmount: puAmount.toString(),
-      packName,
-    },
-    description: `PU Pack purchase: ${packName}`,
-  })
-
-  return {
-    clientSecret: paymentIntent.client_secret,
-    amount: puAmount,
-    packName,
-  }
 }
 
 /**
@@ -203,6 +162,56 @@ export async function getAvailablePuPacks() {
       discount: '12%',
     },
   ]
+}
+
+/**
+ * Cancel current subscription — switch to FREE at end of billing cycle
+ */
+export async function cancelSubscription() {
+  const session = await auth()
+  if (!session?.user?.id) throw new Error('Unauthorized')
+
+  const sub = await prisma.userSubscription.findUnique({
+    where: { userId: session.user.id },
+    include: { plan: true },
+  })
+
+  if (!sub) throw new Error('Подписка не найдена')
+
+  const freePlan = await prisma.subscriptionPlan.findUnique({
+    where: { code: 'FREE' },
+  })
+  if (!freePlan) throw new Error('Бесплатный план не найден')
+
+  // Already on FREE
+  if (sub.plan.code === 'FREE') throw new Error('Вы уже на бесплатном плане')
+
+  // Already canceled
+  if (sub.status === 'CANCELED') throw new Error('Подписка уже отменена')
+
+  await prisma.userSubscription.update({
+    where: { userId: session.user.id },
+    data: {
+      status: 'CANCELED',
+    },
+  })
+
+  await prisma.puTransaction.create({
+    data: {
+      userId: session.user.id,
+      type: 'RESET',
+      puAmount: 0,
+      balanceBefore: sub.puBalance,
+      balanceAfter: sub.puBalance,
+      source: 'SUBSCRIPTION_CANCEL',
+      description: `Отмена подписки ${sub.plan.name}. Доступ до ${sub.nextResetDate.toLocaleDateString('ru-RU')}`,
+    },
+  })
+
+  return {
+    success: true,
+    accessUntil: sub.nextResetDate,
+  }
 }
 
 /**

@@ -156,15 +156,11 @@ export async function seedDefaultModelCosts() {
   }
 
   const defaults = [
-    { modelName: 'gpt-4o', inputCostPerMillion: 2.5, outputCostPerMillion: 10.0 },
-    { modelName: 'gpt-4o-mini', inputCostPerMillion: 0.15, outputCostPerMillion: 0.6 },
-    { modelName: 'claude-haiku-4', inputCostPerMillion: 0.25, outputCostPerMillion: 1.25 },
-    {
-      modelName: 'claude-3-5-sonnet-20241022',
-      inputCostPerMillion: 3.0,
-      outputCostPerMillion: 15.0,
-    },
-    { modelName: 'claude-opus-4', inputCostPerMillion: 15.0, outputCostPerMillion: 75.0 },
+    { modelName: 'claude-sonnet-4-6', inputCostPerMillion: 3.0, outputCostPerMillion: 15.0 },
+    { modelName: 'claude-opus-4-6', inputCostPerMillion: 15.0, outputCostPerMillion: 75.0 },
+    { modelName: 'claude-sonnet-4-5', inputCostPerMillion: 3.0, outputCostPerMillion: 15.0 },
+    { modelName: 'gemini-3.1-pro-preview', inputCostPerMillion: 2.0, outputCostPerMillion: 12.0 },
+    { modelName: 'gemini-2.5-pro', inputCostPerMillion: 1.25, outputCostPerMillion: 10.0 },
   ]
 
   const created = []

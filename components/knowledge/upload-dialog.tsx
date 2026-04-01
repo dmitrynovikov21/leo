@@ -114,13 +114,41 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
         }
     }
 
+    const ALLOWED_EXTENSIONS = new Set([
+        'pdf','doc','docx','xls','xlsx','csv','json','html','htm',
+        'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
+    ])
+
+    // Guard against double-processing (externalFiles effect + handleDrop can both fire)
+    const isUploadingRef = React.useRef(false)
+
     const handleFiles = async (files: File[]) => {
+        if (isUploadingRef.current) return
+        isUploadingRef.current = true
+
+        // Filter unsupported files before uploading
+        const valid = files.filter(f => {
+            const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
+            return ALLOWED_EXTENSIONS.has(ext)
+        })
+        const invalid = files.length - valid.length
+        if (invalid > 0) {
+            toast.error(`${invalid} файл(ов) не поддерживается`, {
+                description: 'Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, изображения'
+            })
+        }
+        if (valid.length === 0) {
+            setOpen(false)
+            isUploadingRef.current = false
+            return
+        }
+
         // Close dialog immediately, upload in background
         setOpen(false)
-        toast.info(`Загрузка ${files.length} файл(ов)...`)
+        toast.info(`Загрузка ${valid.length} файл(ов)...`)
 
         try {
-            for (const file of files) {
+            for (const file of valid) {
                 await processFile(file)
             }
             toast.success("Файлы загружены, обработка идёт в фоне")
@@ -131,6 +159,8 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                 return
             }
             toast.error("Не удалось загрузить некоторые файлы")
+        } finally {
+            isUploadingRef.current = false
         }
     }
 
@@ -159,20 +189,23 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     }
 
     React.useEffect(() => {
-        if (!open && (!externalFiles || externalFiles.length === 0)) {
+        if (!open) {
             // Reset state after dialog closes (animation delay)
             const timer = setTimeout(() => {
                 setIsUploaded(false)
                 setIsProcessing(false)
                 setProgress(0)
+                processedFilesRef.current.clear()
+                isUploadingRef.current = false
             }, 300)
             return () => clearTimeout(timer)
         }
         // Force reset when opened manually
-        if (open && !externalFiles) {
+        if (open && (!externalFiles || externalFiles.length === 0)) {
             setIsUploaded(false)
             setActiveTab("files")
             setWebsiteUrl("")
+            processedFilesRef.current.clear()
         }
     }, [open, externalFiles])
 

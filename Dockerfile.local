@@ -1,0 +1,18 @@
+FROM node:20-slim
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY .next/standalone ./
+COPY .next/static ./.next/static
+COPY public ./public
+COPY prisma ./prisma
+# Prisma CLI for migrations (standalone already has runtime deps)
+COPY node_modules/.prisma ./node_modules/.prisma
+COPY node_modules/@prisma ./node_modules/@prisma
+COPY node_modules/prisma ./node_modules/prisma
+RUN mkdir -p node_modules/.bin && ln -s ../prisma/build/index.js node_modules/.bin/prisma
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+EXPOSE 3000
+CMD ["node", "server.js"]

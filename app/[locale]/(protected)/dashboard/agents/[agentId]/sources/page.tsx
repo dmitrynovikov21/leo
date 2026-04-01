@@ -33,6 +33,22 @@ export default function SourcesPage() {
     const agent = agents.find(a => a.id === agentId)
     const isTelegramConnected = !!agent?.isTelegramConnected || !!agent?.telegramToken
 
+    // Fetch bot username if connected
+    const [botUsername, setBotUsername] = React.useState<string | null>(null)
+    React.useEffect(() => {
+        if (agent?.telegramToken) {
+            fetch(`https://api.telegram.org/bot${agent.telegramToken}/getMe`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok && data.result?.username) {
+                        setBotUsername(data.result.username)
+                    }
+                })
+                .catch(() => {})
+        }
+    }, [agent?.telegramToken])
+
+
     const SOURCES: SourceCard[] = [
         {
             id: 'telegram',
@@ -41,7 +57,7 @@ export default function SourcesPage() {
             icon: Send,
             status: 'active',
             connected: isTelegramConnected,
-            color: 'text-sky-500' // Telegram blue-ish
+            color: 'text-sky-500'
         },
         {
             id: 'whatsapp',
@@ -55,7 +71,7 @@ export default function SourcesPage() {
             id: 'amocrm',
             title: 'amoCRM',
             description: 'Автоматическое создание сделок и сохранение истории переписки в карточках клиентов.',
-            icon: Sparkles, // Placeholder for AmoCRM logo
+            icon: Sparkles,
             status: 'coming_soon',
             color: 'text-blue-500'
         },
@@ -63,7 +79,7 @@ export default function SourcesPage() {
             id: 'yclients',
             title: 'YCLIENTS',
             description: 'Запись клиентов на услуги прямо в диалоге, проверка свободных слотов и управление расписанием.',
-            icon: Calendar, // Placeholder for YClients (booking)
+            icon: Calendar,
             status: 'coming_soon',
             color: 'text-yellow-500'
         },
@@ -97,7 +113,7 @@ export default function SourcesPage() {
         <div className="space-y-6 max-w-5xl">
             {/* Page Header */}
             <div>
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">Источники коммуникации</h2>
+                <h2 className="text-2xl font-bold tracking-tight text-foreground">Каналы коммуникации</h2>
                 <p className="text-muted-foreground mt-1">
                     Подключите агента к платформам, где находятся ваши клиенты.
                 </p>
@@ -129,33 +145,43 @@ export default function SourcesPage() {
                                     </CardTitle>
                                 </div>
                                 <CardDescription className="text-sm text-muted-foreground leading-relaxed">
-                                    {source.description}
+                                    {source.connected
+                                        ? 'Telegram-бот подключён и готов к работе.'
+                                        : source.description
+                                    }
                                 </CardDescription>
                             </CardHeader>
 
                             <CardContent className="flex-1">
+                                {source.connected && botUsername && (
+                                    <a
+                                        href={`https://t.me/${botUsername}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 text-sm text-sky-600 hover:text-sky-700 font-medium transition-colors"
+                                    >
+                                        @{botUsername}
+                                        <ArrowRight className="h-3 w-3" />
+                                    </a>
+                                )}
                             </CardContent>
 
                             <CardFooter className="pt-0 pb-6">
-                                {source.status === 'active' ? (
-                                    source.connected ? (
-                                        <Button
-                                            className="w-full rounded-xl h-10 font-medium shadow-none bg-muted/50 hover:bg-muted border border-border text-foreground"
-                                            variant="secondary"
-                                        >
-                                            <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                                            Настроить
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            className="w-full rounded-xl h-10 font-medium shadow-none"
-                                            variant="default"
-                                        >
-                                            Подключить <ArrowRight className="ml-2 h-4 w-4" />
-                                        </Button>
-                                    )
+                                {source.connected ? (
+                                    <Button
+                                        className="w-full rounded-xl h-10 font-medium shadow-none bg-muted/50 hover:bg-muted border border-border text-foreground"
+                                        variant="secondary"
+                                    >
+                                        <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                                        Настроить
+                                    </Button>
                                 ) : (
-                                    <div className="w-full h-10" /> // Spacer
+                                    <Button
+                                        className="w-full rounded-xl h-10 font-medium shadow-none"
+                                        variant="default"
+                                    >
+                                        Подключить <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Button>
                                 )}
                             </CardFooter>
 

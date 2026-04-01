@@ -2,50 +2,50 @@ import { FeatureLdg, InfoLdg, TestimonialType } from "types";
 
 export const infos: InfoLdg[] = [
   {
-    title: "Empower your projects",
+    title: "Умные AI-агенты для бизнеса",
     description:
-      "Unlock the full potential of your projects with our open-source SaaS platform. Collaborate seamlessly, innovate effortlessly, and scale limitlessly.",
+      "Создавайте агентов с базой знаний, подключайте к Telegram и получайте аналитику по каждому диалогу. Настройка за минуты, без программирования.",
     image: "/_static/illustrations/work-from-home.jpg",
     list: [
       {
-        title: "Collaborative",
-        description: "Work together with your team members in real-time.",
+        title: "База знаний",
+        description: "Загружайте документы — агент отвечает на основе ваших данных.",
         icon: "laptop",
       },
       {
-        title: "Innovative",
-        description: "Stay ahead of the curve with access constant updates.",
+        title: "Интеграции",
+        description: "Telegram, веб-виджет и API для любых сценариев.",
         icon: "settings",
       },
       {
-        title: "Scalable",
+        title: "Аналитика",
         description:
-          "Our platform offers the scalability needed to adapt to your needs.",
+          "Отслеживайте качество ответов, расходы и активность агентов.",
         icon: "search",
       },
     ],
   },
   {
-    title: "Seamless Integration",
+    title: "Простая интеграция",
     description:
-      "Integrate our open-source SaaS seamlessly into your existing workflows. Effortlessly connect with your favorite tools and services for a streamlined experience.",
+      "Подключите агента к вашим каналам коммуникации за пару кликов. Telegram-бот готов к работе сразу после создания.",
     image: "/_static/illustrations/work-from-home.jpg",
     list: [
       {
-        title: "Flexible",
+        title: "Гибкая настройка",
         description:
-          "Customize your integrations to fit your unique requirements.",
+          "Тон, поведение, ограничения — всё настраивается под ваши задачи.",
         icon: "laptop",
       },
       {
-        title: "Efficient",
-        description: "Streamline your processes and reducing manual effort.",
+        title: "Автоматизация",
+        description: "Расписание работы, автоответы и умная маршрутизация.",
         icon: "search",
       },
       {
-        title: "Reliable",
+        title: "Надёжность",
         description:
-          "Rely on our robust infrastructure and comprehensive documentation.",
+          "Фоллбеки между моделями, мониторинг и логирование каждого запроса.",
         icon: "settings",
       },
     ],
@@ -54,97 +54,83 @@ export const infos: InfoLdg[] = [
 
 export const features: FeatureLdg[] = [
   {
-    title: "Feature 1",
+    title: "AI-агенты",
     description:
-      "Amet praesentium deserunt ex commodi tempore fuga voluptatem. Sit, sapiente.",
-    link: "/",
-    icon: "nextjs",
-  },
-  {
-    title: "Feature 2",
-    description:
-      "Amet praesentium deserunt ex commodi tempore fuga voluptatem. Sit, sapiente.",
-    link: "/",
-    icon: "google",
-  },
-  {
-    title: "Feature 3",
-    description:
-      "Amet praesentium deserunt ex commodi tempore fuga voluptatem. Sit, sapiente.",
-    link: "/",
-    icon: "gitHub",
-  },
-  {
-    title: "Feature 4",
-    description:
-      "Amet praesentium deserunt ex commodi tempore fuga voluptatem. Sit, sapiente.",
+      "Создавайте агентов с уникальным поведением, тоном и базой знаний для любых задач.",
     link: "/",
     icon: "laptop",
   },
   {
-    title: "Feature 5",
+    title: "База знаний",
     description:
-      "Amet praesentium deserunt ex commodi tempore fuga voluptatem. Sit, sapiente.",
-    link: "/",
-    icon: "user",
-  },
-  {
-    title: "Feature 6",
-    description:
-      "Amet praesentium deserunt ex commodi tempore fuga voluptatem. Sit, sapiente.",
+      "Загружайте PDF, DOCX, сайты — агент использует ваши данные для точных ответов.",
     link: "/",
     icon: "copy",
+  },
+  {
+    title: "Telegram-интеграция",
+    description:
+      "Подключите бота к Telegram за 2 минуты. Агент сразу начнёт отвечать клиентам.",
+    link: "/",
+    icon: "settings",
+  },
+  {
+    title: "Аналитика и тестирование",
+    description:
+      "Автоматические тесты качества ответов, детальная статистика по каждому агенту.",
+    link: "/",
+    icon: "search",
+  },
+  {
+    title: "Мультимодельность",
+    description:
+      "Claude, Gemini и другие модели с автоматическим переключением при сбоях.",
+    link: "/",
+    icon: "settings",
+  },
+  {
+    title: "Биллинг и контроль",
+    description:
+      "Прозрачный учёт расходов по моделям, агентам и пользователям. Оплата в рублях.",
+    link: "/",
+    icon: "user",
   },
 ];
 
 export const testimonials: TestimonialType[] = [
   {
-    name: "John Doe",
-    job: "Full Stack Developer",
+    name: "Алексей К.",
+    job: "Владелец интернет-магазина",
     image: "https://randomuser.me/api/portraits/men/1.jpg",
     review:
-      "The next-saas-stripe-starter repo has truly revolutionized my development workflow. With its comprehensive features and seamless integration with Stripe, I've been able to build and deploy projects faster than ever before. The documentation is clear and concise, making it easy to navigate through the setup process. I highly recommend next-saas-stripe-starter to any developer.",
+      "Подключили LEO-агента к Telegram за час. Теперь бот отвечает на вопросы по ассортименту и доставке 24/7 — нагрузка на поддержку снизилась вдвое.",
   },
   {
-    name: "Alice Smith",
-    job: "UI/UX Designer",
+    name: "Мария С.",
+    job: "HR-менеджер",
     image: "https://randomuser.me/api/portraits/women/2.jpg",
     review:
-      "Thanks to next-saas-stripe-starter, I've been able to create modern and attractive user interfaces in record time. The starter kit provides a solid foundation for building sleek and intuitive designs, allowing me to focus more on the creative aspects of my work.",
+      "Загрузили в базу знаний все внутренние регламенты. Сотрудники теперь спрашивают бота вместо того, чтобы искать в документах. Экономим часы каждую неделю.",
   },
   {
-    name: "David Johnson",
-    job: "DevOps Engineer",
+    name: "Дмитрий П.",
+    job: "Технический директор",
     image: "https://randomuser.me/api/portraits/men/3.jpg",
     review:
-      "Thanks to next-saas-stripe-starter, I was able to streamline the entire process and get payments up and running in no time. ",
+      "Нравится прозрачность — видим расходы по каждой модели, можем переключаться между Claude и Gemini без изменений в коде.",
   },
   {
-    name: "Michael Wilson",
-    job: "Project Manager",
-    image: "https://randomuser.me/api/portraits/men/5.jpg",
-    review:
-      "I'm impressed by the quality of code and clear documentation of next-saas-stripe-starter. Kudos to the team!",
-  },
-  {
-    name: "Sophia Garcia",
-    job: "Data Analyst",
-    image: "https://randomuser.me/api/portraits/women/6.jpg",
-    review:
-      "next-saas-stripe-starter provided me with the tools I needed to efficiently manage user data. Thank you so much!",
-  },
-  {
-    name: "Emily Brown",
-    job: "Marketing Manager",
+    name: "Елена В.",
+    job: "Руководитель поддержки",
     image: "https://randomuser.me/api/portraits/women/4.jpg",
     review:
-      "next-saas-stripe-starter has been an invaluable asset in my role as a marketing manager. With its seamless integration with Stripe, I've been able to launch targeted marketing campaigns with built-in payment functionality, allowing us to monetize our products and services more effectively.",
+      "Автоматическое тестирование качества ответов — киллер-фича. Сразу видно, где агент ошибается, и можно быстро исправить базу знаний.",
   },
   {
-    name: "Jason Stan",
-    job: "Web Designer",
-    image: "https://randomuser.me/api/portraits/men/9.jpg",
+    name: "Сергей Л.",
+    job: "Продакт-менеджер",
+    image: "https://randomuser.me/api/portraits/men/5.jpg",
     review:
-      "Thanks to next-saas-stripe-starter, I've been able to create modern and attractive user interfaces in record time. The starter kit provides a solid foundation for building sleek and intuitive designs, allowing me to focus more on the creative aspects of my work.",
+      "Создали агента для онбординга новых клиентов. Настройка тона и поведения — очень удобная, агент звучит именно так, как нам нужно.",
   },
 ];

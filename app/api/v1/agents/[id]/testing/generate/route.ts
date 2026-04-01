@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getActivePromptContent } from "@/actions/system-prompts";
-import { checkUserBalance } from "@/lib/balance";
+import { getBillingSystem } from "@/lib/billing-adapter";
 import { trackTokenUsage } from "@/lib/token-tracking";
 import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch";
 
@@ -35,11 +35,12 @@ export async function POST(
             return NextResponse.json({ error: "Agent not found" }, { status: 404 });
         }
 
-        // Check user balance before proceeding (estimated ~500 tokens per request)
-        const hasBalance = await checkUserBalance(session.user.id, 500);
+        // Check user PU balance before proceeding
+        const billing = await getBillingSystem(session.user.id);
+        const hasBalance = await billing.checkBalance(session.user.id, 1);
         if (!hasBalance) {
             return NextResponse.json(
-                { error: "Insufficient token balance. Please top up your account." },
+                { error: "Недостаточно PU баланса." },
                 { status: 402 }
             );
         }
@@ -118,7 +119,7 @@ export async function POST(
                     },
                     body: JSON.stringify({
                         userId: session.user.id,
-                        model: "gpt-4o",
+                        model: "claude-sonnet-4-6",
                         messages: [
                             { role: "user", content: prompt }
                         ],
@@ -135,7 +136,7 @@ export async function POST(
                             await trackTokenUsage({
                                 userId: session.user.id,
                                 agentId: agent.id,
-                                model: "gpt-4o",
+                                model: "claude-sonnet-4-6",
                                 promptTokens: data.usage.prompt_tokens || 0,
                                 completionTokens: data.usage.completion_tokens || 0,
                                 responseTimeMs: 0, // Not available from gateway

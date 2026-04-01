@@ -1,16 +1,14 @@
 import { jwtVerify, importSPKI, type CryptoKey, type KeyObject } from 'jose'
 
-interface CreateSubscriptionParams {
-  amount: number // Price in RUB (kopecks not needed — Tochka uses rubles)
+interface CreatePaymentParams {
+  amount: number // Price in RUB
   purpose: string
   redirectUrl: string
   failRedirectUrl: string
-  email: string
-  itemName: string
-  trancheCount?: number
+  paymentMode?: string[] // 'sbp', 'card', 'tinkoff', 'dolyame'
 }
 
-interface SubscriptionResponse {
+interface PaymentResponse {
   operationId: string
   paymentLink: string
   status: string
@@ -53,35 +51,21 @@ export class TochkaService {
   }
 
   /**
-   * Create subscription with receipt (fiscalization)
-   * Uses recurring=false — Tochka auto-charges monthly
+   * Create a one-time payment via Tochka acquiring API
+   * Returns operationId and paymentLink for redirect
    */
-  async createSubscriptionWithReceipt(params: CreateSubscriptionParams): Promise<SubscriptionResponse> {
-    const url = `${this.baseUrl}/acquiring/v1.0/subscriptions-with-receipt`
+  async createPayment(params: CreatePaymentParams): Promise<PaymentResponse> {
+    const url = `${this.baseUrl}/acquiring/v1.0/payments`
 
     const body = {
-      customerCode: this.customerCode,
-      amount: params.amount,
-      purpose: params.purpose,
-      redirectUrl: params.redirectUrl,
-      failRedirectUrl: params.failRedirectUrl,
-      recurring: false,
-      options: {
-        period: 'Month',
-        trancheCount: params.trancheCount || 12,
+      Data: {
+        customerCode: this.customerCode,
+        amount: params.amount.toFixed(2),
+        purpose: params.purpose,
+        redirectUrl: params.redirectUrl,
+        failRedirectUrl: params.failRedirectUrl,
+        paymentMode: params.paymentMode || ['sbp', 'card'],
       },
-      client: {
-        email: params.email,
-      },
-      items: [
-        {
-          name: params.itemName,
-          amount: params.amount,
-          quantity: 1,
-          vatType: 'None',
-        },
-      ],
-      taxSystemCode: 'usn_income',
     }
 
     const response = await fetch(url, {
@@ -92,23 +76,24 @@ export class TochkaService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[Tochka] Create subscription error:', response.status, errorText)
+      console.error('[Tochka] Create payment error:', response.status, errorText)
       throw new Error(`Tochka API error: ${response.status} ${errorText}`)
     }
 
     const data = await response.json()
+    const paymentData = data.Data || data
     return {
-      operationId: data.operationId,
-      paymentLink: data.paymentLink,
-      status: data.status,
+      operationId: paymentData.operationId,
+      paymentLink: paymentData.paymentLink,
+      status: paymentData.status,
     }
   }
 
   /**
-   * Get subscription status
+   * Get payment status
    */
-  async getSubscriptionStatus(operationId: string): Promise<{ status: string }> {
-    const url = `${this.baseUrl}/acquiring/v1.0/subscriptions/${operationId}/status`
+  async getPaymentStatus(operationId: string): Promise<{ status: string }> {
+    const url = `${this.baseUrl}/acquiring/v1.0/payments/${operationId}`
 
     const response = await fetch(url, {
       method: 'GET',
@@ -120,43 +105,8 @@ export class TochkaService {
       throw new Error(`Tochka API error: ${response.status} ${errorText}`)
     }
 
-    return response.json()
-  }
-
-  /**
-   * Cancel subscription (irreversible)
-   */
-  async cancelSubscription(operationId: string): Promise<void> {
-    const url = `${this.baseUrl}/acquiring/v1.0/subscriptions/${operationId}/status`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify({ status: 'Cancelled' }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Tochka API error: ${response.status} ${errorText}`)
-    }
-  }
-
-  /**
-   * Charge subscription manually (for recurring=true mode, future use)
-   */
-  async chargeSubscription(operationId: string, amount: number): Promise<void> {
-    const url = `${this.baseUrl}/acquiring/v1.0/subscriptions/${operationId}/charge`
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify({ amount }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Tochka API error: ${response.status} ${errorText}`)
-    }
+    const data = await response.json()
+    return data.Data || data
   }
 
   /**
@@ -176,7 +126,7 @@ export class TochkaService {
     }
 
     const data = await response.json()
-    return data.customers || data.data || data
+    return data.Data?.Customer || data.customers || data.data || data
   }
 
   /**

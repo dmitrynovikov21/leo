@@ -6,6 +6,8 @@
 import { prisma } from '@/lib/db'
 import { addMonths } from 'date-fns'
 import { createUiNotification } from './pu-notifications-ui'
+import { readdir, stat, unlink } from 'fs/promises'
+import path from 'path'
 
 let isRunning = false
 
@@ -95,6 +97,98 @@ export async function runCycleReset() {
     console.log('[Cron] Cycle reset completed')
   } catch (error) {
     console.error('[Cron] Cycle reset failed:', error)
+  }
+}
+
+/**
+ * Transition CANCELED subscriptions to FREE when billing cycle ends
+ */
+export async function runCanceledToFree() {
+  console.log('[Cron] Checking canceled subscriptions for FREE transition...')
+
+  try {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const freePlan = await prisma.subscriptionPlan.findUnique({
+      where: { code: 'FREE' },
+    })
+
+    if (!freePlan) {
+      console.warn('[Cron] FREE plan not found, skipping canceled->free transition')
+      return
+    }
+
+    const canceledSubs = await prisma.userSubscription.findMany({
+      where: {
+        status: 'CANCELED',
+        nextResetDate: { lte: today },
+      },
+      include: { plan: true },
+    })
+
+    console.log(`[Cron] Found ${canceledSubs.length} canceled subscriptions to transition to FREE`)
+
+    for (const sub of canceledSubs) {
+      try {
+        const now = new Date()
+        const nextReset = addMonths(now, 1)
+
+        await prisma.$transaction(async (tx) => {
+          // Burn remaining balance
+          if (Number(sub.puBalance) > 0) {
+            await tx.puTransaction.create({
+              data: {
+                userId: sub.userId,
+                type: 'RESET',
+                puAmount: -sub.puBalance,
+                balanceBefore: sub.puBalance,
+                balanceAfter: 0,
+                source: 'CANCEL_TO_FREE',
+                description: `Переход на бесплатный план. Сожжено ${sub.puBalance} PU`,
+              },
+            })
+          }
+
+          // Grant FREE plan balance
+          await tx.puTransaction.create({
+            data: {
+              userId: sub.userId,
+              type: 'SUBSCRIPTION_GRANT',
+              puAmount: freePlan.monthlyPuLimit,
+              balanceBefore: 0,
+              balanceAfter: freePlan.monthlyPuLimit,
+              source: 'CANCEL_TO_FREE',
+              description: `Бесплатный план: ${freePlan.monthlyPuLimit} PU`,
+            },
+          })
+
+          // Switch to FREE plan
+          await tx.userSubscription.update({
+            where: { userId: sub.userId },
+            data: {
+              planId: freePlan.id,
+              status: 'ACTIVE',
+              puBalance: freePlan.monthlyPuLimit,
+              puLimit: freePlan.monthlyPuLimit,
+              puUsedThisCycle: 0,
+              overagePuUsed: 0,
+              isOverdraft: false,
+              isBlocked: false,
+              tochkaOperationId: null,
+              billingCycleStartDate: now,
+              nextResetDate: nextReset,
+            },
+          })
+        })
+
+        console.log(`[Cron] Transitioned user ${sub.userId} from ${sub.plan.code} to FREE`)
+      } catch (error) {
+        console.error(`[Cron] Failed to transition user ${sub.userId} to FREE:`, error)
+      }
+    }
+  } catch (error) {
+    console.error('[Cron] Canceled->FREE transition failed:', error)
   }
 }
 
@@ -204,6 +298,46 @@ export async function runSendNotifications() {
 }
 
 /**
+ * Clean up support attachments older than 7 days
+ */
+export async function runCleanupSupportFiles() {
+  console.log('[Cron] Starting support files cleanup...')
+
+  try {
+    const uploadDir = path.join(process.cwd(), 'uploads', 'support')
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+
+    let files: string[]
+    try {
+      files = await readdir(uploadDir)
+    } catch {
+      // Directory doesn't exist yet — nothing to clean
+      return
+    }
+
+    let deleted = 0
+    for (const file of files) {
+      try {
+        const filePath = path.join(uploadDir, file)
+        const fileStat = await stat(filePath)
+        if (fileStat.mtimeMs < sevenDaysAgo) {
+          await unlink(filePath)
+          deleted++
+        }
+      } catch (e) {
+        // Skip individual file errors
+      }
+    }
+
+    if (deleted > 0) {
+      console.log(`[Cron] Deleted ${deleted} support attachments older than 7 days`)
+    }
+  } catch (error) {
+    console.error('[Cron] Support files cleanup failed:', error)
+  }
+}
+
+/**
  * Run all cron jobs
  * Called on app startup and periodically
  */
@@ -221,11 +355,17 @@ export async function runAllCronJobs() {
     // Run cycle reset first (most important)
     await runCycleReset()
 
+    // Transition canceled subscriptions to FREE
+    await runCanceledToFree()
+
     // Clean up frozen data
     await runCleanupFrozen()
 
     // Check and create notifications
     await runSendNotifications()
+
+    // Clean up old support attachments
+    await runCleanupSupportFiles()
 
     console.log('[Cron] All cron jobs completed successfully')
   } catch (error) {

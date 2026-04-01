@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
+import Yandex from "next-auth/providers/yandex";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
@@ -11,6 +12,12 @@ export default {
     Google({
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
+    }),
+    Yandex({
+      clientId: env.YANDEX_CLIENT_ID,
+      clientSecret: env.YANDEX_CLIENT_SECRET,
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       name: "credentials",
@@ -57,8 +64,14 @@ export default {
         }
 
         // Block login if email not verified
+        // Skip for OAuth users — their email is verified by the provider
         if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED");
+          const oauthAccount = await prisma.account.findFirst({
+            where: { userId: user.id },
+          });
+          if (!oauthAccount) {
+            throw new Error("EMAIL_NOT_VERIFIED");
+          }
         }
 
         return {

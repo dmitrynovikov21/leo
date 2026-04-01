@@ -54,7 +54,8 @@ export const mockDailySpend: DailySpend[] = Array.from({ length: 30 }, (_, i) =>
 })).reverse();
 
 export const mockModelBreakdown = [
-    { model: 'GPT-4o', percentage: 60, cost: 900 },
-    { model: 'Claude 3.5', percentage: 30, cost: 450 },
+    { model: 'Claude Sonnet 4.6', percentage: 60, cost: 900 },
+    { model: 'Claude Opus 4.6', percentage: 20, cost: 300 },
+    { model: 'Gemini 2.5 Pro', percentage: 10, cost: 150 },
     { model: 'Embeddings', percentage: 10, cost: 150 },
 ];

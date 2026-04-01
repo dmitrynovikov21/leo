@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { FileText, MoreHorizontal, File, AlertCircle, CheckCircle2, Loader2, Eye, Trash2, Sheet, Search, Folder, Info } from "lucide-react"
+import { FileText, MoreHorizontal, File, AlertCircle, CheckCircle2, Loader2, Eye, Trash2, Sheet, Search, Folder, Info, ImageIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -93,7 +93,7 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
                                         <div className={cn(
                                             "p-2.5 rounded-xl bg-transparent text-muted-foreground group-hover:bg-card group-hover:shadow-sm transition-all border border-transparent group-hover:border-border"
                                         )}>
-                                            {doc.type === 'spreadsheet' ? <Sheet size={16} /> : doc.type === 'folder' ? <Folder size={16} fill="currentColor" className="opacity-50" /> : <FileText size={16} />}
+                                            {doc.type === 'spreadsheet' ? <Sheet size={16} /> : doc.type === 'folder' ? <Folder size={16} fill="currentColor" className="opacity-50" /> : doc.type === 'Изображение' ? <ImageIcon size={16} /> : <FileText size={16} />}
                                         </div>
                                         <div className="flex flex-col gap-0.5">
                                             <span className="text-sm font-semibold text-foreground">{doc.name}</span>
@@ -109,6 +109,10 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
                                     ) : doc.type === 'folder' ? (
                                         <Badge variant="outline" className="text-xs font-medium text-blue-700 bg-blue-50 border-blue-200 rounded-lg px-2 py-0.5 shadow-none">
                                             Папка
+                                        </Badge>
+                                    ) : doc.type === 'Изображение' ? (
+                                        <Badge variant="outline" className="text-xs font-medium text-purple-700 bg-purple-50 border-purple-200 rounded-lg px-2 py-0.5 shadow-none">
+                                            Изображение
                                         </Badge>
                                     ) : (
                                         <Badge variant="outline" className="text-xs font-medium text-muted-foreground bg-muted border-border rounded-lg px-2 py-0.5 shadow-none">
@@ -152,7 +156,7 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
                                             </Tooltip>
                                         </TooltipProvider>
                                     ) : doc.status === 'error' ? (
-                                        <span className="text-red-500 text-sm">Ошибка обработки</span>
+                                        <span className="text-red-500 text-sm">{(doc.aiMetadata as any)?.error || 'Ошибка обработки'}</span>
                                     ) : (
                                         <span className="text-muted-foreground italic text-sm">
                                             Описание будет сгенерировано после обработки...
@@ -169,7 +173,7 @@ export function DocumentsTable({ onInspect, onRowClick, onDelete, docs }: Docume
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="rounded-xl border-border shadow-lg">
                                             <DropdownMenuLabel>Действия</DropdownMenuLabel>
-                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onInspect?.(doc) }} className="rounded-lg">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); (onRowClick)?.(doc) }} className="rounded-lg">
                                                 <Search className="mr-2 h-4 w-4" />
                                                 Просмотр
                                             </DropdownMenuItem>

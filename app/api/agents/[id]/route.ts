@@ -75,7 +75,7 @@ export async function PATCH(
         }
 
         const body = await req.json();
-        const { name, description, avatarEmoji } = body;
+        const { name, description, avatarEmoji, conversationExamples } = body;
 
         const updatedAgent = await prisma.agent.update({
             where: { id: params.id },
@@ -83,6 +83,7 @@ export async function PATCH(
                 ...(name !== undefined && { name }),
                 ...(description !== undefined && { description }),
                 ...(avatarEmoji !== undefined && { avatarEmoji }),
+                ...(conversationExamples !== undefined && { conversationExamples }),
             },
         });
 

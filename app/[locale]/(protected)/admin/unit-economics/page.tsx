@@ -50,15 +50,27 @@ export default function UnitEconomicsPage() {
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState(false)
 
-  // Set default date range (last 30 days)
+  // Set default date range (last 7 days) and auto-load
   useEffect(() => {
     const now = new Date()
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
     const formatDate = (d: Date) => d.toISOString().split('T')[0]
 
-    setDateFrom(formatDate(thirtyDaysAgo))
-    setDateTo(formatDate(now))
+    const from = formatDate(sevenDaysAgo)
+    const to = formatDate(now)
+    setDateFrom(from)
+    setDateTo(to)
+
+    // Auto-load data
+    setLoading(true)
+    getUnitEconomics({
+      dateFrom: new Date(from),
+      dateTo: new Date(to + 'T23:59:59'),
+    })
+      .then(setData)
+      .catch(() => toast.error('Не удалось загрузить данные'))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleLoadData = async () => {
@@ -72,7 +84,7 @@ export default function UnitEconomicsPage() {
     try {
       const result = await getUnitEconomics({
         dateFrom: new Date(dateFrom),
-        dateTo: new Date(dateTo),
+        dateTo: new Date(dateTo + 'T23:59:59'),
       })
       setData(result)
       toast.success('Данные успешно загружены')

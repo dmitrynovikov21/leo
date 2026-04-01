@@ -61,7 +61,7 @@ export default function SourcesPage() {
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Источники коммуникации</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Каналы коммуникации</h1>
                     <p className="text-sm text-muted-foreground">
                         Управление подключенными каналами для всех ваших агентов.
                     </p>

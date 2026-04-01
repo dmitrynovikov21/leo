@@ -53,11 +53,18 @@ export function AutoTestRunner() {
     const [logs, setLogs] = React.useState<string[]>([])
     const [results, setResults] = React.useState<TestResult[]>([])
     const [sessionId, setSessionId] = React.useState<string | null>(null)
+    const [hasDocuments, setHasDocuments] = React.useState(true)
     const scrollRef = React.useRef<HTMLDivElement>(null)
 
     // Load initial data
     React.useEffect(() => {
         fetchData()
+        // Check if agent has documents
+        import('@/actions/agent-knowledge').then(({ getAgentDocuments }) => {
+            getAgentDocuments(agentId).then(docs => {
+                setHasDocuments(docs.length > 0)
+            }).catch(() => {})
+        })
     }, [agentId])
 
     const fetchData = async () => {
@@ -161,7 +168,7 @@ export function AutoTestRunner() {
                 }
                 if (currentSessionId) requestBody.session_id = currentSessionId
 
-                const response = await fetch(`${process.env.NEXT_PUBLIC_AI_GATEWAY_URL || ''}/api/v1/agents/${agentId}/chat`, {
+                const response = await fetch(`/api/gateway/agents/${agentId}/chat`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
@@ -335,21 +342,26 @@ export function AutoTestRunner() {
                                     <div className="space-y-2">
                                         <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('autoLab')}</h2>
                                         <p className="text-muted-foreground max-w-lg mx-auto">
-                                            Запустите автотестирование, мы проанализируем вашу базу знаний и составим вопросы для теста.
+                                            {hasDocuments
+                                                ? 'Запустите автотестирование, мы проанализируем вашу базу знаний и составим вопросы для теста.'
+                                                : 'Загрузите документы в базу знаний агента, чтобы запустить автотестирование.'
+                                            }
                                         </p>
                                     </div>
-                                    <div className="flex gap-4 justify-center pt-4">
-                                        <Button
-                                            size="lg"
-                                            variant="outline"
-                                            className="h-12 px-6 rounded-xl"
-                                            onClick={handleGenerateQuestions}
-                                            disabled={status === "generating"}
-                                        >
-                                            {status === "generating" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-                                            Анализировать базу
-                                        </Button>
-                                    </div>
+                                    {hasDocuments && (
+                                        <div className="flex gap-4 justify-center pt-4">
+                                            <Button
+                                                size="lg"
+                                                variant="outline"
+                                                className="h-12 px-6 rounded-xl"
+                                                onClick={handleGenerateQuestions}
+                                                disabled={status === "generating"}
+                                            >
+                                                {status === "generating" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+                                                Анализировать базу
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             ) : status === "complete" ? (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">

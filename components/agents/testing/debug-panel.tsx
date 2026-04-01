@@ -160,14 +160,16 @@ export function DebugPanel() {
                                 <div className="space-y-4">
                                     <div className="grid gap-2">
                                         <Label className="text-foreground">{t('model')}</Label>
-                                        <Select defaultValue="gpt-4o">
+                                        <Select defaultValue="claude-sonnet-4-6">
                                             <SelectTrigger className="rounded-xl border-border bg-card">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl">
-                                                <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-                                                <SelectItem value="claude-3-5">Claude 3.5 Sonnet</SelectItem>
-                                                <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
+                                                <SelectItem value="claude-sonnet-4-6">Claude Sonnet 4.6</SelectItem>
+                                                <SelectItem value="claude-opus-4-6">Claude Opus 4.6</SelectItem>
+                                                <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
+                                                <SelectItem value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</SelectItem>
+                                                <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

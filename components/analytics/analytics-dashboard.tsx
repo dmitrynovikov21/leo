@@ -83,10 +83,10 @@ export function AnalyticsDashboard({ agentId }: { agentId?: string }) {
                     <h2 className="text-2xl font-bold tracking-tight text-foreground">{t('operationsCenter')}</h2>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="sm" className="h-8 rounded-xl text-muted-foreground hover:text-foreground gap-2">
+                    <span className="inline-flex items-center h-8 px-3 rounded-xl text-muted-foreground/60 gap-2">
                         <Lock className="h-3.5 w-3.5" />
-                        <span className="text-xs font-medium">Отчеты</span>
-                    </Button>
+                        <span className="text-xs font-medium">Отчеты — скоро</span>
+                    </span>
                 </div>
             </div>
 

@@ -169,7 +169,7 @@
             "overview": "Обзор",
             "behavior": "Поведение",
             "knowledge": "Знания",
-            "sources": "Источники",
+            "sources": "Каналы",
             "testing": "Тестирование",
             "conflicts": "Проблемы",
             "settings": "Настройки",
@@ -230,7 +230,7 @@
         "segmentsFound": "сегментов найдено"
     },
     "Billing": {
-        "title": "Биллинг и использование",
+        "title": "Биллинг",
         "description": "Отслеживайте AI-расходы и управляйте балансом",
         "currentBalance": "Текущий баланс",
         "estimatedRunway": "Примерный запас",
@@ -374,6 +374,9 @@
         "resumeAI": "Возобновить AI",
         "manualMode": "Ручной режим",
         "negativeSentiment": "Негативный тон"
+    },
+    "Support": {
+        "title": "Тех. запросы"
     },
     "Settings": {
         "title": "Настройки",

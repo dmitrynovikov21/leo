@@ -114,6 +114,11 @@ export function BalanceWidget({
                             >
                                 {loading ? '—' : currentBalance.toLocaleString()} {currency}
                             </p>
+                            {!loading && currentBalance > 0 && (
+                                <p className="text-[10px] text-muted-foreground/70">
+                                    хватит на ~{runwayDays} дн.
+                                </p>
+                            )}
                         </div>
                     </div>
                     <CreditCard className="h-4 w-4 text-muted-foreground" />

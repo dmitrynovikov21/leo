@@ -39,7 +39,7 @@ async function verifyBilling() {
       -d '{
         "agentId": "YOUR_AGENT_ID",
         "telegramUserId": 12345,
-        "model": "gpt-4o",
+        "model": "claude-sonnet-4-6",
         "promptTokens": 100,
         "completionTokens": 50
       }'`)

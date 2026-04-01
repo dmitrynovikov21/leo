@@ -134,4 +134,19 @@ export const Icons = {
   ),
   user: User,
   warning: AlertTriangle,
+  yandex: ({ ...props }: LucideProps) => (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      role="img"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      {...props}
+    >
+      <path
+        d="M2.04 12c0-5.523 4.476-10 10-10 5.522 0 10 4.477 10 10s-4.478 10-10 10c-5.524 0-10-4.477-10-10zm13.32 6.13h-2.065V6.133h-1.2c-2.164 0-3.3 1.07-3.3 2.686 0 1.86.83 2.734 2.507 3.86l1.39.928L9.78 18.13H7.56l2.74-4.1c-1.986-1.39-3.1-2.6-3.1-4.847 0-2.76 1.907-4.5 5.14-4.5h3.02v13.45z"
+        fill="currentColor"
+      />
+    </svg>
+  ),
 };

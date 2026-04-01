@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Icons } from "@/components/shared/icons";
+import { ForgotPasswordDialog } from "@/components/forms/forgot-password-dialog";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   type?: string;
@@ -31,8 +32,17 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
   });
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState<boolean>(false);
+  const [isYandexLoading, setIsYandexLoading] = React.useState<boolean>(false);
   const [authError, setAuthError] = React.useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = React.useState(false);
   const searchParams = useSearchParams();
+
+  React.useEffect(() => {
+    const error = searchParams?.get("error");
+    if (error === "OAuthAccountNotLinked") {
+      setAuthError("Этот email уже зарегистрирован через пароль. Войдите используя email и пароль.");
+    }
+  }, [searchParams]);
 
   async function onSubmit(data: FormData) {
     setIsLoading(true);
@@ -101,7 +111,16 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
             )}
           </div>
           <div className="grid gap-1">
-            <Label htmlFor="password">Пароль</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Пароль</Label>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                onClick={() => setShowForgotPassword(true)}
+              >
+                Забыли пароль?
+              </button>
+            </div>
             <Input
               id="password"
               placeholder="••••••••"
@@ -134,22 +153,45 @@ export function UserAuthForm({ className, type, ...props }: UserAuthFormProps) {
           </span>
         </div>
       </div>
-      <button
-        type="button"
-        className={cn(buttonVariants({ variant: "outline" }))}
-        onClick={() => {
-          setIsGoogleLoading(true);
-          signIn("google");
-        }}
-        disabled={isLoading || isGoogleLoading}
-      >
-        {isGoogleLoading ? (
-          <Icons.spinner className="mr-2 size-4 animate-spin" />
-        ) : (
-          <Icons.google className="mr-2 size-4" />
-        )}{" "}
-        Google
-      </button>
+      <div className="grid gap-2">
+        <button
+          type="button"
+          className={cn(buttonVariants({ variant: "outline" }))}
+          onClick={() => {
+            setIsGoogleLoading(true);
+            signIn("google");
+          }}
+          disabled={isLoading || isGoogleLoading || isYandexLoading}
+        >
+          {isGoogleLoading ? (
+            <Icons.spinner className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Icons.google className="mr-2 size-4" />
+          )}{" "}
+          Google
+        </button>
+        <button
+          type="button"
+          className={cn(buttonVariants({ variant: "outline" }))}
+          onClick={() => {
+            setIsYandexLoading(true);
+            signIn("yandex");
+          }}
+          disabled={isLoading || isGoogleLoading || isYandexLoading}
+        >
+          {isYandexLoading ? (
+            <Icons.spinner className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Icons.yandex className="mr-2 size-4" />
+          )}{" "}
+          Яндекс
+        </button>
+      </div>
+
+      <ForgotPasswordDialog
+        open={showForgotPassword}
+        onOpenChange={setShowForgotPassword}
+      />
     </div>
   );
 }

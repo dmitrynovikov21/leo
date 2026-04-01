@@ -5,9 +5,10 @@ import { DashboardHeader } from "@/components/dashboard/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PaymentButton } from "@/components/billing/payment-button";
+import { TopupDialog } from "@/components/billing/topup-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CreditCard, Check, Zap, FileText, Download } from "lucide-react";
+import { AlertTriangle, CreditCard, Check, Zap, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -20,8 +21,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const metadata = constructMetadata({
-  title: "Billing & Usage – SaaS Starter",
-  description: "Monitor your AI spending and manage your balance.",
+  title: "Billing – LEO",
+  description: "Управление подпиской и балансом.",
+  noIndex: true,
 });
 
 // Mock Data removed
@@ -42,9 +44,10 @@ export default async function BillingPage() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   // Fetch data
-  const [validation, usageStats, monthlyStats, lastMonthStats, agentStats, dbTransactions] = await Promise.all([
+  const [validation, usageStats, monthlyStats, lastMonthStats, agentStats, dbTransactions, weeklySpend] = await Promise.all([
     prisma.user.findUnique({
       where: { id: user?.id },
       include: { subscription: true }
@@ -111,15 +114,25 @@ export default async function BillingPage() {
       where: { userId: user?.id },
       orderBy: { createdAt: 'desc' },
       take: 10
+    }),
+    // Weekly PU spend for runway — only recurring costs (dialogs), not one-time uploads
+    prisma.puTransaction.aggregate({
+      _sum: { puAmount: true },
+      where: {
+        userId: user?.id,
+        type: 'OVERAGE_DEDUCTION',
+        createdAt: { gte: sevenDaysAgo },
+        source: { in: ['LLM_CHAT', 'LLM_USAGE'] },
+      },
     })
   ]);
 
-  // Fetch agent details for the stats
-  const agentIds = agentStats.filter(s => s.agentId).map(s => s.agentId as string);
+  // Fetch all user's agents for stats + transaction descriptions
   const agents = await prisma.agent.findMany({
-    where: { id: { in: agentIds } },
+    where: { userId: user?.id },
     select: { id: true, name: true, role: true, avatarEmoji: true }
   });
+  const agentNameMap = new Map(agents.map(a => [a.id, a.name]));
 
   // Calculate monthly spending in RUB
   const USD_TO_RUB = 90;
@@ -173,30 +186,101 @@ export default async function BillingPage() {
   // Format 1.2M style
   const formattedTotalTokens = formatTokens(totalTokensUsed);
 
-  // Map PU transactions
+  // Map PU transactions — human-readable descriptions
   const transactions = dbTransactions.map(tx => {
     let method = 'usage';
-    let description = tx.description || 'Использование ресурсов';
+    let description = 'Использование ресурсов';
+    let displayAmount = tx.puAmount.toNumber();
+    let amountSuffix = 'PU';
+    let status: 'success' | 'pending' = 'success';
+    const meta = tx.metadata as Record<string, any> | null;
+    const costRub = tx.costRub ? tx.costRub.toNumber() : null;
 
-    if (tx.type === 'SUBSCRIPTION_GRANT' || tx.type === 'PACK_TOPUP') {
+    if (tx.source === 'UPGRADE_PENDING') {
+      // Payment initiated but not confirmed yet
       method = 'card';
-      description = tx.description || 'Пополнение баланса';
+      const planName = meta?.targetPlanName || 'тариф';
+      description = `Оплата подписки ${planName}`;
+      if (costRub) {
+        displayAmount = costRub;
+        amountSuffix = '₽';
+      }
+      status = 'pending';
+    } else if (tx.type === 'SUBSCRIPTION_GRANT') {
+      method = 'card';
+      if (costRub) {
+        description = `Оплата подписки`;
+        displayAmount = costRub;
+        amountSuffix = '₽';
+      } else {
+        description = tx.description || 'Начисление по подписке';
+      }
+    } else if (tx.type === 'PACK_TOPUP') {
+      method = 'card';
+      if (tx.source === 'TOPUP_PENDING') {
+        status = 'pending';
+      }
+      if (costRub) {
+        description = 'Пополнение баланса';
+        displayAmount = costRub;
+        amountSuffix = '₽';
+      } else {
+        description = 'Пополнение баланса';
+      }
     } else if (tx.type === 'OVERAGE_DEDUCTION') {
       method = 'usage';
-      description = tx.description || 'Списание за использование';
+      // Extract agentId from all possible metadata locations
+      const txAgentId = meta?.agentId || meta?.agent_id || meta?.metadata?.agentId || '';
+      const txAgentName = txAgentId ? agentNameMap.get(txAgentId) : '';
+      const agentSuffix = txAgentName ? ` — ${txAgentName}` : '';
+
+      // Extract filename from metadata or parse from description
+      let fileName = meta?.fileName || meta?.filename || meta?.metadata?.fileName || meta?.metadata?.filename || '';
+      const rawDesc = tx.description || '';
+      if (!fileName) {
+        // Try parse from "Анализ документа: file.txt" or "Загрузка документа: file.txt"
+        const fileMatch = rawDesc.match(/(?:документа|документ)[:\s]+["«]?([^"»\n]+?)["»]?\s*$/i)
+          || rawDesc.match(/Загрузка "([^"]+)"/)
+          || rawDesc.match(/Анализ "([^"]+)"/)
+        if (fileMatch) fileName = fileMatch[1].trim()
+      }
+
+      if (tx.source === 'LLM_CHAT' || rawDesc.includes('диалог') || rawDesc.includes('Диалог')) {
+        description = `Диалог с агентом${agentSuffix}`;
+      } else if (tx.source === 'KB_UPLOAD' || tx.source === 'FILE_UPLOAD' || rawDesc.includes('Загрузка')) {
+        description = fileName ? `Загрузка "${fileName}"${agentSuffix}` : `Загрузка документа${agentSuffix}`;
+      } else if (rawDesc.includes('Анализ')) {
+        description = fileName ? `Анализ "${fileName}"${agentSuffix}` : `Анализ документа${agentSuffix}`;
+      } else if (tx.source === 'LLM_USAGE') {
+        description = `Использование AI${agentSuffix}`;
+      } else {
+        description = txAgentName ? `Использование AI — ${txAgentName}` : 'Использование AI';
+      }
+      // OVERAGE_DEDUCTION is always an expense — ensure amount is negative
+      displayAmount = -Math.abs(displayAmount);
     } else if (tx.type === 'REFUND') {
       method = 'invoice';
-      description = tx.description || 'Возврат средств';
+      description = 'Возврат средств';
     } else if (tx.type === 'ADMIN_ADJUSTMENT') {
       method = 'card';
-      description = tx.description || 'Корректировка баланса';
+      description = 'Корректировка баланса';
+    } else if (tx.type === 'RESET') {
+      method = 'usage';
+      if (tx.source === 'SUBSCRIPTION_CANCEL') {
+        description = 'Отмена подписки';
+      } else if (tx.source === 'CANCEL_TO_FREE') {
+        description = 'Переход на бесплатный план';
+      } else {
+        description = 'Сброс цикла';
+      }
     }
 
     return {
       id: tx.id,
-      date: tx.createdAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }),
-      amount: tx.puAmount.toNumber(),
-      status: 'success',
+      date: tx.createdAt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      amount: displayAmount,
+      amountSuffix,
+      status,
       method,
       description
     };
@@ -211,6 +295,14 @@ export default async function BillingPage() {
   const currentPlan = userWithSub?.subscription?.planId ?
     dbPlans.find(p => p.id === userWithSub.subscription?.planId) : null;
 
+  const subStatus = validation?.subscription?.status;
+  const isCanceled = subStatus === 'CANCELED';
+  const accessUntilDate = validation?.subscription?.nextResetDate;
+  const accessUntilFormatted = accessUntilDate
+    ? new Date(accessUntilDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  const currentPlanIsFree = currentPlan?.code === 'FREE';
+
   const plans = dbPlans.map(plan => {
     const startPrice = plan.priceMonthlyRub.toNumber().toLocaleString('ru-RU');
     const features = Array.isArray(plan.features)
@@ -221,6 +313,9 @@ export default async function BillingPage() {
     let recommended = false;
 
     switch (plan.code) {
+      case 'FREE':
+        description = "Бесплатный";
+        break;
       case 'BASIC':
         description = "Для старта";
         break;
@@ -236,16 +331,28 @@ export default async function BillingPage() {
         break;
     }
 
+    const isActive = validation?.subscription?.planId === plan.id;
+    const isFree = plan.code === 'FREE';
+    const planPrice = plan.priceMonthlyRub.toNumber();
+    const currentPrice = currentPlan ? currentPlan.priceMonthlyRub.toNumber() : 0;
+    // Downgrade = switching to a cheaper plan (or FREE) from a paid plan
+    const isDowngrade = !isActive && !currentPlanIsFree && planPrice < currentPrice;
+    // Upgrade = switching to a more expensive plan
+    const isUpgrade = !isActive && planPrice > currentPrice;
+
     return {
       id: plan.id,
+      code: plan.code,
       name: plan.name,
-      price: `₽${startPrice}`,
+      price: isFree ? '₽0' : `₽${startPrice}`,
       period: "/мес",
       description,
       features,
-      active: validation?.subscription?.planId === plan.id,
+      active: isActive,
       recommended,
-      amount: plan.priceMonthlyRub.toNumber() // Raw amount for payment
+      amount: planPrice,
+      isDowngrade,
+      isUpgrade,
     };
   });
 
@@ -255,7 +362,10 @@ export default async function BillingPage() {
 
   const lowBalanceThreshold = 50;
   const isLowBalance = puBalance < lowBalanceThreshold;
-  const runwayDays = Math.floor(puBalance / 100);
+  // Calculate runway based on real average daily spend (last 7 days)
+  const weeklyPuSpent = Math.abs(weeklySpend._sum?.puAmount?.toNumber() || 0);
+  const avgDailySpend = weeklyPuSpent / 7;
+  const runwayDays = avgDailySpend > 0 ? Math.floor(puBalance / avgDailySpend) : (puBalance > 0 ? 999 : 0);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
@@ -290,12 +400,12 @@ export default async function BillingPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground font-medium mb-4">
-                {t('estimatedRunway')}: ~{runwayDays} {t('days')}
+                {avgDailySpend > 0
+                  ? `${t('estimatedRunway')}: ~${runwayDays} ${t('days')}`
+                  : 'Нет данных о расходе для оценки'
+                }
               </p>
-              <Button className="w-full shadow-sm rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 font-medium h-10">
-                <CreditCard className="mr-2 h-4 w-4" />
-                {t('topUpBalance')}
-              </Button>
+              <TopupDialog avgDailySpend={avgDailySpend} puBalance={puBalance} />
             </CardContent>
           </Card>
 
@@ -316,6 +426,17 @@ export default async function BillingPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Cancellation Banner */}
+        {isCanceled && (
+          <Alert className="rounded-2xl border-amber-200 bg-amber-50 text-amber-900">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-900 font-semibold">Подписка отменена</AlertTitle>
+            <AlertDescription className="text-amber-800">
+              Вы можете пользоваться текущим планом до <strong>{accessUntilFormatted}</strong>. После этой даты произойдёт переход на бесплатный тариф.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Section B: Subscription Plans */}
         <div>
@@ -363,9 +484,15 @@ export default async function BillingPage() {
                 <CardFooter>
                   <PaymentButton
                     planId={plan.id}
+                    planCode={plan.code}
                     amount={plan.amount}
                     planName={plan.name}
                     isCurrent={plan.active}
+                    isDowngrade={plan.isDowngrade}
+                    isUpgrade={plan.isUpgrade}
+                    accessUntil={accessUntilFormatted}
+                    currentPlanCanceled={isCanceled && plan.active}
+                    subscriptionCanceled={isCanceled}
                     className="w-full h-11 rounded-xl font-semibold shadow-sm"
                   />
                 </CardFooter>
@@ -466,22 +593,20 @@ export default async function BillingPage() {
                     <TableCell>
                       <span className={cn(
                         "font-bold tabular-nums text-sm",
-                        tx.amount > 0 ? "text-green-600" : "text-foreground"
+                        tx.amount > 0 ? "text-green-600" : "text-red-600"
                       )}>
-                        {tx.amount > 0 ? '+' : ''}{Math.abs(tx.amount).toLocaleString()} PU
+                        {tx.amountSuffix === '₽'
+                          ? `${tx.amount > 0 ? '+' : '-'}${Math.abs(tx.amount).toLocaleString('ru-RU')} ₽`
+                          : `${tx.amount > 0 ? '+' : ''}${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3 })} PU`
+                        }
                       </span>
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <div className="flex justify-end gap-3 items-center">
-                        {tx.status === 'processing' ? (
-                          <Badge variant="outline" className="text-amber-700 border-amber-200 bg-amber-50 rounded-lg px-2.5 py-0.5 font-medium">Обработка</Badge>
+                      <div className="flex justify-end items-center">
+                        {tx.status === 'pending' ? (
+                          <Badge variant="outline" className="text-amber-700 border-amber-200 bg-amber-50 rounded-lg px-2.5 py-0.5 font-medium">Ожидание</Badge>
                         ) : (
                           <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 rounded-lg px-2.5 py-0.5 font-medium">Успешно</Badge>
-                        )}
-                        {tx.method !== 'usage' && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
-                            <Download className="h-4 w-4" />
-                          </Button>
                         )}
                       </div>
                     </TableCell>

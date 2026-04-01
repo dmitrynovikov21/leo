@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bot, Wand2, Upload, FileText, CheckCircle2, ChevronLeft, ChevronRight, X, Sparkles, Loader2, Power } from "lucide-react"
+import { Bot, Wand2, Upload, FileText, CheckCircle2, ChevronLeft, ChevronRight, X, Sparkles, Loader2, Power, ClipboardList, Zap } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -49,10 +49,30 @@ const agentSchema = z.object({
 
 type AgentFormData = z.infer<typeof agentSchema>
 
-const steps = [
+const simpleSteps = [
+    { id: 1, title: "О бизнесе" },
+    { id: 2, title: "Цели" },
+    { id: 3, title: "Тон" },
+    { id: 4, title: "Инструкция" },
+    { id: 5, title: "Knowledge" },
+    { id: 6, title: "Review" },
+]
+
+const masterSteps = [
     { id: 1, title: "Persona" },
     { id: 2, title: "Knowledge" },
     { id: 3, title: "Review" },
+]
+
+const toneOptionsSimple = [
+    { value: "official", label: "Официальный" },
+    { value: "friendly", label: "Дружелюбный" },
+    { value: "professional", label: "Профессиональный" },
+    { value: "concise", label: "Лаконичный" },
+    { value: "humorous", label: "С юмором" },
+    { value: "empathetic", label: "Эмпатичный" },
+    { value: "formal", label: "Формальный" },
+    { value: "casual", label: "Неформальный" },
 ]
 
 export function AgentWizardDialog() {
@@ -64,6 +84,7 @@ export function AgentWizardDialog() {
 
     const [open, setOpen] = React.useState(false)
     const [step, setStep] = React.useState(1)
+    const [wizardMode, setWizardMode] = React.useState<'simple' | 'master' | null>(null)
     const [uploadedFiles, setUploadedFiles] = React.useState<{ name: string, file: File }[]>([])
     const [chunks, setChunks] = React.useState<{ id: string, content: string }[]>([])
     const [isParsing, setIsParsing] = React.useState(false)
@@ -75,6 +96,17 @@ export function AgentWizardDialog() {
     // Smart Quiz State
     const [quizAnswers, setQuizAnswers] = React.useState<QuizAnswers>(initialQuizAnswers)
     const [isGeneratingPrompt, setIsGeneratingPrompt] = React.useState(false)
+    // Simple wizard extra state
+    const [simpleTask, setSimpleTask] = React.useState("")
+    const [simpleTones, setSimpleTones] = React.useState<string[]>(["friendly"])
+    const [simpleCompiledText, setSimpleCompiledText] = React.useState("")
+
+    // Dynamic steps based on wizard mode
+    const steps = wizardMode === 'simple' ? simpleSteps : masterSteps
+    const totalSteps = steps.length
+    // Map simple wizard steps to knowledge/review
+    const isKnowledgeStep = wizardMode === 'simple' ? step === 5 : step === 2
+    const isReviewStep = wizardMode === 'simple' ? step === 6 : step === 3
 
     const form = useForm<AgentFormData>({
         resolver: zodResolver(agentSchema),
@@ -88,18 +120,165 @@ export function AgentWizardDialog() {
 
     const resetWizard = () => {
         setStep(1)
+        setWizardMode(null)
         form.reset()
         setUploadedFiles([])
         setChunks([])
         setChunksSaved(false)
         setCreatedAgentId(null)
         setQuizAnswers(initialQuizAnswers)
+        setSimpleTask("")
+        setSimpleTones(["friendly"])
+        setSimpleCompiledText("")
         setOpen(false)
     }
 
+    // Build compiled text for step 4 preview
+    const buildCompiledText = () => {
+        const name = form.getValues('name') || ''
+        const description = form.getValues('description') || ''
+        const toneLabels = simpleTones.map(t => {
+            const opt = toneOptionsSimple.find(o => o.value === t)
+            return opt ? opt.label : t
+        }).join(', ')
+        const guardrails = "Соблюдай брендовые правила, отвечай фактически, задавай уточняющие вопросы и передавай оператору при рисках или ограничениях."
+
+        const parts = [
+            `Имя агента: ${name}`,
+            `Контекст бизнеса: ${description}`,
+            `Главная задача: ${simpleTask}`,
+            `Тон общения: ${toneLabels}`,
+            `Ограничения: ${guardrails}`,
+        ]
+        return parts.join('\n')
+    }
+
+    const handleGenerateSimplePrompt = async () => {
+        const name = form.getValues('name')
+        const description = form.getValues('description')
+        if (!name || name.length < 2) {
+            toast.error("Введите имя агента (минимум 2 символа)")
+            return
+        }
+        if (!description) {
+            toast.error("Введите описание агента")
+            return
+        }
+
+        const toneLabels = simpleTones.map(t => {
+            const opt = toneOptionsSimple.find(o => o.value === t)
+            return opt ? opt.label : t
+        }).join(', ')
+
+        setIsGeneratingPrompt(true)
+        try {
+            const response = await fetch('/api/ai/generate-agent-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    agentName: name,
+                    agentDescription: description,
+                    role: form.getValues('role') || description,
+                    description: `${description}\n\nГлавная задача: ${simpleTask}\nТон общения: ${toneLabels}`,
+                }),
+            })
+            if (response.status === 402) {
+                toast.error('Отрицательный баланс PU', {
+                    description: 'Пополните баланс в разделе Биллинг, чтобы продолжить.'
+                })
+                return
+            }
+            if (!response.ok) throw new Error('Failed to generate')
+            const data = await response.json()
+            const prompt = data.systemPrompt || data.prompt || data.content
+            if (prompt) {
+                form.setValue('systemPrompt', prompt)
+                setSimpleCompiledText(prompt)
+                toast.success('Инструкция сгенерирована!')
+            } else {
+                throw new Error('No prompt in response')
+            }
+        } catch (error) {
+            console.error('Failed to generate prompt:', error)
+            toast.error('Не удалось сгенерировать инструкцию')
+        } finally {
+            setIsGeneratingPrompt(false)
+        }
+    }
+
     const nextStep = async () => {
-        // Step 1: Persona -> Step 2: Knowledge
-        // генерируем промпт из quiz и создаём агента
+        // === Simple mode flow ===
+        if (wizardMode === 'simple') {
+            // Step 1: О бизнесе -> Step 2: Цели
+            if (step === 1) {
+                const name = form.getValues('name')
+                const description = form.getValues('description')
+                if (!name || name.length < 2) {
+                    toast.error("Введите имя агента (минимум 2 символа)")
+                    return
+                }
+                if (!description) {
+                    toast.error("Введите описание агента")
+                    return
+                }
+                setStep(2)
+                return
+            }
+            // Step 2: Цели -> Step 3: Тон
+            if (step === 2) {
+                if (!simpleTask) {
+                    toast.error("Опишите, что агент берёт на себя")
+                    return
+                }
+                setStep(3)
+                return
+            }
+            // Step 3: Тон -> Step 4: Улучшение инструкции
+            if (step === 3) {
+                if (simpleTones.length === 0) {
+                    toast.error("Выберите хотя бы один тон общения")
+                    return
+                }
+                // Build compiled text for step 4
+                const compiled = buildCompiledText()
+                setSimpleCompiledText(compiled)
+                setStep(4)
+                return
+            }
+            // Step 4: Улучшение инструкции -> Step 5: Knowledge (create agent here)
+            if (step === 4) {
+                if (!form.getValues('role')) {
+                    form.setValue('role', 'assistant')
+                }
+                // Sync the compiled text to systemPrompt if user edited it
+                if (simpleCompiledText && !form.getValues('systemPrompt')) {
+                    form.setValue('systemPrompt', simpleCompiledText)
+                }
+
+                if (!createdAgentId) {
+                    const newAgentId = await createAgent()
+                    if (newAgentId) {
+                        toast.success("Агент создан! Переходим к загрузке знаний...", { duration: 2000 })
+                    } else {
+                        return
+                    }
+                }
+                setStep(5)
+                return
+            }
+            // Step 5: Knowledge -> Step 6: Review
+            if (step === 5) {
+                if (chunks.length > 0 && !chunksSaved) {
+                    toast.error('Сохраните чанки перед тем как продолжить')
+                    return
+                }
+                setStep(6)
+                return
+            }
+            return
+        }
+
+        // === Master mode flow ===
         if (step === 1) {
             // Validate quiz is filled
             if (!quizAnswers.role) {
@@ -119,7 +298,6 @@ export function AgentWizardDialog() {
                 if (!quizAnswers.answerDepth) missingFieldIds.push({ id: "field-answerDepth", label: "Глубина" })
                 if (!quizAnswers.format) missingFieldIds.push({ id: "field-format", label: "Оформление" })
                 if (!quizAnswers.fallback) missingFieldIds.push({ id: "field-fallback", label: "Если нет ответа" })
-                if (!quizAnswers.fewShot) missingFieldIds.push({ id: "field-fewShot", label: "Пример" })
 
                 if (missingFieldIds.length > 0) {
                     const firstField = document.getElementById(missingFieldIds[0].id)
@@ -150,7 +328,6 @@ export function AgentWizardDialog() {
             if (!systemPrompt || systemPrompt.trim().length < 10) {
                 setIsGeneratingPrompt(true)
                 try {
-                    // Filter out empty string values from quizAnswers
                     const filteredQuizAnswers = Object.fromEntries(
                         Object.entries(quizAnswers).filter(([, value]) => {
                             if (Array.isArray(value)) return value.length > 0
@@ -169,6 +346,13 @@ export function AgentWizardDialog() {
                         }),
                     })
 
+                    if (response.status === 402) {
+                        toast.error('Отрицательный баланс PU', {
+                            description: 'Пополните баланс в разделе Биллинг, чтобы продолжить.'
+                        })
+                        setIsGeneratingPrompt(false)
+                        return
+                    }
                     if (!response.ok) throw new Error('Failed to generate')
 
                     const data = await response.json()
@@ -192,14 +376,9 @@ export function AgentWizardDialog() {
             if (!createdAgentId) {
                 const newAgentId = await createAgent()
                 if (newAgentId) {
-                    toast.success("Агент создан! Переходим к загрузке знаний...", {
-                        duration: 2000
-                    })
-                    // Don't close dialog, move to next step (Knowledge)
-                    // setOpen(false) 
-                    // router.push... NO, we continue wizard
+                    toast.success("Агент создан! Переходим к загрузке знаний...", { duration: 2000 })
                 } else {
-                    return // stay on step if failed
+                    return
                 }
             }
         }
@@ -210,7 +389,7 @@ export function AgentWizardDialog() {
             toast.error('Сохраните чанки перед тем как продолжить')
             return
         }
-        setStep((prev) => Math.min(prev + 1, steps.length))
+        setStep((prev) => Math.min(prev + 1, totalSteps))
     }
 
     // Создание агента через API
@@ -218,16 +397,6 @@ export function AgentWizardDialog() {
         setIsCreatingAgent(true)
 
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-
-            if (!orchestratorUrl) {
-                // Mock если нет URL
-                const mockId = 'mock_agent_' + Date.now()
-                setCreatedAgentId(mockId)
-                toast.info('Агент создан (mock)')
-                return mockId
-            }
-
             // Call local API which proxies to orchestrator
             const response = await fetch('/api/agents', {
                 method: 'POST',
@@ -254,7 +423,7 @@ export function AgentWizardDialog() {
             const systemPrompt = form.getValues('systemPrompt')
             if (systemPrompt) {
                 try {
-                    await fetch(`${orchestratorUrl}/api/v1/agents/${data.id}/prompts`, {
+                    await fetch(`/api/orchestrator/agents/${data.id}/prompts`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -279,20 +448,34 @@ export function AgentWizardDialog() {
                 no_hallucination: "Не галлюцинировать",
             }
 
-            // Build guardrails array from quiz constraints (format: { rule: string })
-            const guardrails = [
-                ...quizAnswers.constraints.map(id => constraintLabels[id] || id),
-                ...quizAnswers.customConstraints
-            ].filter(Boolean).map(constraint => ({ rule: constraint }))
+            let guardrails: { rule: string }[]
+            let toneArray: string[]
 
-            // Get tone of voice value as array
-            const toneValue = quizAnswers.toneOfVoice === 'custom'
-                ? quizAnswers.toneOfVoiceCustom
-                : quizAnswers.toneOfVoice
-            const toneArray = toneValue ? [toneValue] : ['friendly']
+            if (wizardMode === 'simple') {
+                // Simple mode: use simpleTones and default guardrails
+                toneArray = simpleTones.length > 0 ? simpleTones : ['friendly']
+                guardrails = [
+                    { rule: "Соблюдай брендовые правила" },
+                    { rule: "Отвечай фактически" },
+                    { rule: "Задавай уточняющие вопросы" },
+                    { rule: "Передавай оператору при рисках или ограничениях" },
+                ]
+            } else {
+                // Master mode: use quiz constraints and tone
+                guardrails = [
+                    ...quizAnswers.constraints.map(id => constraintLabels[id] || id),
+                    ...quizAnswers.customConstraints
+                ].filter(Boolean).map(constraint => ({ rule: constraint }))
+
+                // Get tone of voice value as array
+                const toneValue = quizAnswers.toneOfVoice === 'custom'
+                    ? quizAnswers.toneOfVoiceCustom
+                    : quizAnswers.toneOfVoice
+                toneArray = toneValue ? [toneValue] : ['friendly']
+            }
 
             try {
-                await fetch(`${orchestratorUrl}/api/v1/agents/${data.id}/behavior`, {
+                await fetch(`/api/orchestrator/agents/${data.id}/behavior`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -322,12 +505,25 @@ export function AgentWizardDialog() {
     // Проверка можно ли нажать Далее
     const canProceed = () => {
         if (isParsing || isSavingChunks || isCreatingAgent || isGeneratingPrompt) return false
-        if (step === 2 && chunks.length > 0 && !chunksSaved) return false
+        if (step === 1 && !wizardMode) return false
+        if (isKnowledgeStep && chunks.length > 0 && !chunksSaved) return false
         return true
     }
 
     const prevStep = () => {
+        if (step === 1 && wizardMode) {
+            setWizardMode(null)
+            return
+        }
         setStep((prev) => Math.max(prev - 1, 1))
+    }
+
+    const toggleSimpleTone = (toneValue: string) => {
+        setSimpleTones(prev =>
+            prev.includes(toneValue)
+                ? prev.filter(t => t !== toneValue)
+                : [...prev, toneValue]
+        )
     }
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,24 +534,10 @@ export function AgentWizardDialog() {
         setIsParsing(true)
 
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-
-            if (!gatewayUrl) {
-                // Mock chunks if no gateway
-                const mockChunks = [
-                    { id: '1', content: `Содержимое файла ${file.name} (mock)` },
-                    { id: '2', content: 'Это пример чанка для демонстрации.' },
-                ]
-                setChunks(prev => [...prev, ...mockChunks])
-                toast.info('Сгенерированы тестовые чанки (AI Gateway не настроен)')
-                setIsParsing(false)
-                return
-            }
-
             const formData = new FormData()
             formData.append('file', file)
 
-            const response = await fetch(`${gatewayUrl}/api/v1/documents/parse-semantic`, {
+            const response = await fetch(`/api/gateway/documents/parse-semantic`, {
                 method: 'POST',
                 body: formData,
             })
@@ -407,16 +589,7 @@ export function AgentWizardDialog() {
         setIsSavingChunks(true)
 
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-
-            if (!gatewayUrl) {
-                setChunksSaved(true)
-                toast.success('Чанки сохранены (mock)')
-                setIsSavingChunks(false)
-                return
-            }
-
-            const response = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+            const response = await fetch(`/api/gateway/documents/vectorize`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -508,14 +681,196 @@ export function AgentWizardDialog() {
 
                 {/* Progress Bar */}
                 <div className="mb-4 space-y-2">
-                    <Progress value={(step / 3) * 100} className="h-2" />
+                    <Progress value={(step / totalSteps) * 100} className="h-2" />
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-y-auto px-1 py-4 relative">
                     <AnimatePresence mode="wait">
-                        {step === 1 && (
+                        {step === 1 && !wizardMode && (
                             <motion.div
-                                key="step1"
+                                key="step0-mode"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-6"
+                            >
+                                <div className="text-center space-y-2 mb-6">
+                                    <h3 className="text-lg font-semibold">Выберите режим создания</h3>
+                                    <p className="text-sm text-muted-foreground">Простой режим для быстрого старта или мастер для детальной настройки</p>
+                                </div>
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <WizardSelectionCard
+                                        icon={Zap}
+                                        title="Простой режим"
+                                        desc="Укажите имя, описание и сгенерируйте инструкцию за пару кликов"
+                                        onClick={() => setWizardMode('simple')}
+                                    />
+                                    <WizardSelectionCard
+                                        icon={ClipboardList}
+                                        title="Мастер настройки"
+                                        desc="Детальная анкета из 8 вопросов для точной настройки поведения"
+                                        onClick={() => setWizardMode('master')}
+                                    />
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Simple Mode - Step 1: О вашем бизнесе */}
+                        {step === 1 && wizardMode === 'simple' && (
+                            <motion.div
+                                key="step1-simple"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-5"
+                            >
+                                <div className="text-center space-y-2 mb-6">
+                                    <h3 className="text-lg font-semibold">О вашем бизнесе</h3>
+                                    <p className="text-sm text-muted-foreground">Расскажите по-человечески, чем занимаетесь, кто к вам приходит и за что вас любят.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="simple-name">Имя вашего агента</Label>
+                                    <Input
+                                        id="simple-name"
+                                        placeholder="Например: Анна, Менеджер поддержки"
+                                        {...form.register("name")}
+                                        className="h-11"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="simple-desc">Опишите бизнес так, как общаетесь с клиентом</Label>
+                                    <Textarea
+                                        id="simple-desc"
+                                        placeholder="Например: мы цветочная мастерская в Алматы, собираем срочные букеты и ведём корпоративные подписки."
+                                        {...form.register("description")}
+                                        className="min-h-[100px] resize-none"
+                                    />
+                                    <p className="text-xs text-muted-foreground">Добавьте детали, которые чаще всего всплывают — ассистент заговорит именно так.</p>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Simple Mode - Step 2: О ваших целях */}
+                        {step === 2 && wizardMode === 'simple' && (
+                            <motion.div
+                                key="step2-simple"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-5"
+                            >
+                                <div className="text-center space-y-2 mb-6">
+                                    <h3 className="text-lg font-semibold">О ваших целях</h3>
+                                    <p className="text-sm text-muted-foreground">Поделитесь, какой результат хотите видеть каждый день и что готовы доверить ассистенту.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="simple-task">Что агент берёт на себя?</Label>
+                                    <Textarea
+                                        id="simple-task"
+                                        placeholder="Пример: помочь выбрать букет, уточнить адрес доставки и собрать предоплату за свадьбу."
+                                        value={simpleTask}
+                                        onChange={(e) => setSimpleTask(e.target.value)}
+                                        className="min-h-[120px] resize-none"
+                                    />
+                                    <p className="text-xs text-muted-foreground">Пара предложений о самом важном — уже отлично.</p>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Simple Mode - Step 3: Тон общения */}
+                        {step === 3 && wizardMode === 'simple' && (
+                            <motion.div
+                                key="step3-simple"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-5"
+                            >
+                                <div className="text-center space-y-2 mb-6">
+                                    <h3 className="text-lg font-semibold">Тон общения</h3>
+                                    <p className="text-sm text-muted-foreground">Выберите, как ваш агент будет общаться с клиентами</p>
+                                </div>
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    {toneOptionsSimple.map((tone) => {
+                                        const isSelected = simpleTones.includes(tone.value)
+                                        return (
+                                            <button
+                                                key={tone.value}
+                                                type="button"
+                                                className={cn(
+                                                    "px-4 py-2 rounded-xl border transition-all duration-200 text-sm font-medium",
+                                                    isSelected
+                                                        ? "border-primary bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
+                                                        : "border-border bg-card text-muted-foreground hover:border-border hover:bg-muted/50"
+                                                )}
+                                                onClick={() => toggleSimpleTone(tone.value)}
+                                            >
+                                                {tone.label}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Simple Mode - Step 4: Улучшение инструкции */}
+                        {step === 4 && wizardMode === 'simple' && (
+                            <motion.div
+                                key="step4-simple"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-5"
+                            >
+                                <div className="text-center space-y-2 mb-6">
+                                    <h3 className="text-lg font-semibold">Улучшение инструкции</h3>
+                                    <p className="text-sm text-muted-foreground">Мы поможем вам улучшить инструкцию агента с помощью ИИ</p>
+                                </div>
+
+                                {/* Preview card */}
+                                <div className="rounded-lg border bg-muted/50 p-4 space-y-2 text-sm">
+                                    <div><span className="font-medium text-foreground">Имя агента:</span> <span className="text-muted-foreground">{form.getValues('name')}</span></div>
+                                    <div><span className="font-medium text-foreground">Контекст бизнеса:</span> <span className="text-muted-foreground">{form.getValues('description')}</span></div>
+                                    <div><span className="font-medium text-foreground">Главная задача:</span> <span className="text-muted-foreground">{simpleTask}</span></div>
+                                    <div><span className="font-medium text-foreground">Тон общения:</span> <span className="text-muted-foreground">{simpleTones.map(t => { const opt = toneOptionsSimple.find(o => o.value === t); return opt ? opt.label : t }).join(', ')}</span></div>
+                                    <div><span className="font-medium text-foreground">Ограничения:</span> <span className="text-muted-foreground">Соблюдай брендовые правила, отвечай фактически, задавай уточняющие вопросы и передавай оператору при рисках или ограничениях.</span></div>
+                                </div>
+
+                                {/* Editable textarea */}
+                                <div className="space-y-2">
+                                    <Textarea
+                                        value={simpleCompiledText}
+                                        onChange={(e) => {
+                                            setSimpleCompiledText(e.target.value)
+                                            form.setValue('systemPrompt', e.target.value)
+                                        }}
+                                        className="min-h-[180px] font-mono text-sm resize-none"
+                                        placeholder="Здесь появится скомпилированная инструкция..."
+                                    />
+                                    <p className="text-xs text-muted-foreground">Поправьте формулировки, добавьте то, что забыли, и нажмите «Улучшить», чтобы перейти дальше.</p>
+                                </div>
+
+                                {/* Generate button */}
+                                <div className="flex justify-center">
+                                    <Button
+                                        type="button"
+                                        onClick={handleGenerateSimplePrompt}
+                                        disabled={isGeneratingPrompt}
+                                        className="h-10"
+                                    >
+                                        {isGeneratingPrompt ? (
+                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Генерация...</>
+                                        ) : (
+                                            <><Wand2 className="mr-2 h-4 w-4" /> Улучшить с ИИ</>
+                                        )}
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {step === 1 && wizardMode === 'master' && (
+                            <motion.div
+                                key="step1-master"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -20 }}
@@ -529,7 +884,7 @@ export function AgentWizardDialog() {
                             </motion.div>
                         )}
 
-                        {step === 2 && (
+                        {isKnowledgeStep && (
                             <motion.div
                                 key="step2"
                                 initial={{ opacity: 0, x: 20 }}
@@ -628,7 +983,7 @@ export function AgentWizardDialog() {
                             </motion.div>
                         )}
 
-                        {step === 3 && (
+                        {isReviewStep && (
                             <motion.div
                                 key="step3"
                                 initial={{ opacity: 0, x: 20 }}
@@ -687,11 +1042,15 @@ export function AgentWizardDialog() {
                 <DialogFooter className="flex items-center justify-between sm:justify-between px-1">
                     {step > 0 ? (
                         <div className="flex w-full justify-between">
-                            <Button variant="ghost" onClick={prevStep}>
-                                <ChevronLeft className="mr-2 h-4 w-4" />
-                                {t('back')}
-                            </Button>
-                            {step < 3 ? (
+                            {(step > 1 || wizardMode) ? (
+                                <Button variant="ghost" onClick={prevStep}>
+                                    <ChevronLeft className="mr-2 h-4 w-4" />
+                                    {t('back')}
+                                </Button>
+                            ) : (
+                                <div />
+                            )}
+                            {!isReviewStep ? (
                                 <Button onClick={nextStep} disabled={!canProceed()}>
                                     {isParsing ? 'Обработка...' : t('next')}
                                     <ChevronRight className="ml-2 h-4 w-4" />

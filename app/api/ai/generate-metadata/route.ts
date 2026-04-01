@@ -107,7 +107,7 @@ ${textSnippet}`;
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userMessage }
                 ],
-                model: "gpt-4o-mini", // Fast and cost-effective
+                model: "claude-sonnet-4-6",
                 temperature: 0.3,
                 max_tokens: 500
             })
@@ -134,7 +134,7 @@ ${textSnippet}`;
 
                 await trackTokenUsage({
                     userId: session.user.id,
-                    model: "gpt-4o-mini",
+                    model: "claude-sonnet-4-6",
                     promptTokens,
                     completionTokens,
                     responseTimeMs: 0,
@@ -147,7 +147,7 @@ ${textSnippet}`;
                     source: 'LLM_USAGE',
                     description: `Metadata generation: ${totalTokens} tokens for ${filename}`,
                     metadata: {
-                        model: 'gpt-4o-mini',
+                        model: 'claude-sonnet-4-6',
                         promptTokens,
                         completionTokens,
                         documentId,

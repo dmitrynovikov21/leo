@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, ChevronDown, Check, Plus, Trash2, FileText, Image } from "lucide-react"
+import { UploadCloud, Zap, Table as TableIcon, Sparkles, Filter, Lock, ChevronLeft, ChevronDown, Check, Plus, Trash2, FileText, Image, BookOpen } from "lucide-react"
 
-import { createLibraryItem, getLibraryItems, deleteLibraryItem, updateLibraryItem, clearLibrary, cleanupStalePendingLibraryItems, type LibraryItemWithChunks } from "@/actions/library"
+import { createLibraryItem, getLibraryItems, getLibraryItemChunks, deleteLibraryItem, updateLibraryItem, clearLibrary, cleanupStalePendingLibraryItems, type LibraryItemWithChunks } from "@/actions/library"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,7 +40,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { useSession } from "next-auth/react"
 import type { Document } from "@/mocks/documents"
 
 // Helper to format bytes
@@ -60,7 +63,8 @@ function libraryItemToDocument(item: LibraryItemWithChunks): Document {
     } else if (item.mimeType) {
         if (item.mimeType.includes('pdf')) docType = 'pdf'
         else if (item.mimeType.includes('word') || item.mimeType.includes('docx')) docType = 'docx'
-        else if (item.mimeType.includes('sheet') || item.mimeType.includes('excel') || item.mimeType.includes('xlsx')) docType = 'spreadsheet'
+        else if (item.mimeType.includes('sheet') || item.mimeType.includes('excel') || item.mimeType.includes('xlsx')) docType = 'Excel'
+        else if (item.mimeType.includes('image')) docType = 'Изображение'
         else if (item.mimeType.includes('markdown')) docType = 'md'
         else if (item.mimeType.includes('text')) docType = 'txt'
     }
@@ -162,6 +166,93 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
 
     const [editingFile, setEditingFile] = React.useState<any>(null)
     const [editingTable, setEditingTable] = React.useState<any>(null)
+
+    // Library Import State (for agent import from global view)
+    const { data: session } = useSession()
+    const [isLibraryDialogOpen, setIsLibraryDialogOpen] = React.useState(false)
+    const [libraryItems, setLibraryItems] = React.useState<LibraryItemWithChunks[]>([])
+    const [isLoadingLibrary, setIsLoadingLibrary] = React.useState(false)
+    const [importingItem, setImportingItem] = React.useState<string | null>(null)
+
+    const handleOpenLibrary = async () => {
+        setIsLibraryDialogOpen(true)
+        setIsLoadingLibrary(true)
+        try {
+            const items = await getLibraryItems()
+            setLibraryItems(items)
+        } catch (error) {
+            toast.error("Не удалось загрузить библиотеку")
+        } finally {
+            setIsLoadingLibrary(false)
+        }
+    }
+
+    const handleImportFromLibrary = async (item: LibraryItemWithChunks) => {
+        if (selectedSpace === 'global') return
+        setImportingItem(item.id)
+        try {
+            if (item.type?.toUpperCase() === 'NOTE') {
+                const noteResponse = await fetch(`/api/orchestrator/agents/${selectedSpace}/notes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: item.name, content: item.content || '' }),
+                })
+                if (!noteResponse.ok) throw new Error('Failed to create note')
+
+                if (item.content) {
+                    await fetch(`/api/gateway/documents/vectorize`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            agentId: selectedSpace,
+                            userId: session?.user?.id,
+                            filename: `note_${item.name}`,
+                            fileSize: item.content.length,
+                            mimeType: 'text/plain',
+                            chunks: [{ index: 0, text: item.content }],
+                        }),
+                    })
+                }
+
+                toast.success('Заметка импортирована!')
+                setIsLibraryDialogOpen(false)
+                setAgentLastUpdated(Date.now())
+                return
+            }
+
+            const chunks = await getLibraryItemChunks(item.id)
+            if (!chunks || chunks.length === 0) {
+                toast.error("Файл не содержит чанков")
+                return
+            }
+
+            const response = await fetch(`/api/gateway/documents/vectorize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    agentId: selectedSpace,
+                    userId: session?.user?.id,
+                    filename: item.name,
+                    fileSize: item.fileSize || 0,
+                    mimeType: item.mimeType || item.type,
+                    chunks: chunks.map((c) => ({
+                        index: c.chunkIndex,
+                        text: c.content
+                    })),
+                }),
+            })
+
+            if (!response.ok) throw new Error('Failed to vectorize')
+
+            toast.success('Импортировано из библиотеки!')
+            setIsLibraryDialogOpen(false)
+            setAgentLastUpdated(Date.now())
+        } catch (error) {
+            toast.error("Ошибка импорта")
+        } finally {
+            setImportingItem(null)
+        }
+    }
 
     const handleCreateNote = async (noteData: { title: string, content: string }) => {
         try {
@@ -281,7 +372,7 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
     const filteredDocuments = searchFilteredDocuments.filter(doc => {
         if (filterType === 'all') return true
         if (filterType === 'document') return ['pdf', 'docx', 'txt', 'md'].includes(doc.type)
-        if (filterType === 'image') return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type)
+        if (filterType === 'image') return doc.type === 'Изображение' || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type)
         if (filterType === 'note') return doc.type === 'note'
         return true
     })
@@ -325,14 +416,30 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
         }
     }
 
+    const ALLOWED_EXTENSIONS = new Set([
+        'pdf','doc','docx','xls','xlsx','csv','json','html','htm',
+        'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
+    ])
+
     const handleGlobalDrop = (e: React.DragEvent) => {
         e.preventDefault()
         dragCounter.current = 0
         setIsDraggingGlobal(false)
 
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files)
-            setDroppedFiles(files)
+            const all = Array.from(e.dataTransfer.files)
+            const valid = all.filter(f => {
+                const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
+                return ALLOWED_EXTENSIONS.has(ext)
+            })
+            const invalid = all.length - valid.length
+            if (invalid > 0) {
+                toast.error(`${invalid} файл(ов) не поддерживается`, {
+                    description: 'Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, изображения'
+                })
+            }
+            if (valid.length === 0) return
+            setDroppedFiles(valid)
             setIsUploadDialogOpen(true)
         }
     }
@@ -396,10 +503,14 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
             {/* Dialogs */}
             <UploadDialog
                 open={isUploadDialogOpen}
-                onOpenChange={setIsUploadDialogOpen}
+                onOpenChange={(open) => {
+                    setIsUploadDialogOpen(open)
+                    if (!open) setDroppedFiles([])
+                }}
                 externalFiles={droppedFiles}
                 agentId={selectedSpace !== 'global' ? selectedSpace : undefined}
                 onUploadComplete={() => {
+                    setDroppedFiles([])
                     refreshDocuments()
                     setAgentLastUpdated(Date.now())
                 }}
@@ -439,6 +550,47 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                     setEditingTable(null)
                 }}
             />
+
+            {/* Library Import Dialog */}
+            <Dialog open={isLibraryDialogOpen} onOpenChange={setIsLibraryDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <BookOpen className="h-5 w-5" />
+                            Импорт из библиотеки
+                        </DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[400px]">
+                        {isLoadingLibrary ? (
+                            <div className="space-y-2 p-4">
+                                {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                            </div>
+                        ) : libraryItems.length === 0 ? (
+                            <p className="text-center text-muted-foreground py-8">Библиотека пуста</p>
+                        ) : (
+                            <div className="space-y-2 p-2">
+                                {libraryItems.map(item => (
+                                    <div
+                                        key={item.id}
+                                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
+                                        onClick={() => handleImportFromLibrary(item)}
+                                    >
+                                        <div>
+                                            <p className="font-medium">{item.name}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {item._count.chunks} чанков • {item.fileSize ? formatBytes(item.fileSize) : '-'}
+                                            </p>
+                                        </div>
+                                        <Badge variant={importingItem === item.id ? "secondary" : "outline"}>
+                                            {importingItem === item.id ? "Импорт..." : "Импортировать"}
+                                        </Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
 
             {/* Header Section */}
             <div className="flex flex-col gap-4">
@@ -564,6 +716,17 @@ export function GlobalKnowledgeView({ initialItems = [] }: { initialItems?: Libr
                                 </div>
                                 <span className="font-medium text-red-900">Очистить базу</span>
                             </DropdownMenuItem>
+                            {selectedSpace !== 'global' && (
+                                <>
+                                    <DropdownMenuSeparator className="my-1 bg-muted" />
+                                    <DropdownMenuItem onClick={handleOpenLibrary} className="rounded-lg py-2.5 px-3 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 focus:text-blue-900">
+                                        <div className="p-1.5 rounded-md bg-blue-100 mr-3 text-blue-600">
+                                            <BookOpen className="h-4 w-4" />
+                                        </div>
+                                        <span className="font-medium text-blue-900">Импорт из библиотеки</span>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                             <DropdownMenuItem disabled className="rounded-lg py-2.5 px-3 opacity-50 cursor-not-allowed">
                                 <div className="p-1.5 rounded-md bg-muted mr-3">
                                     <Zap className="h-4 w-4 text-muted-foreground" />

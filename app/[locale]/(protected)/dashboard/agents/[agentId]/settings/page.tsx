@@ -60,11 +60,8 @@ export default function AgentSettingsPage() {
             const data = latestDataRef.current
             if (!data) return
 
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) return
-
             if (data.general) {
-                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+                fetch(`/api/agents/${agentId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -76,7 +73,7 @@ export default function AgentSettingsPage() {
             }
 
             if (data.schedule?.schedule) {
-                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/schedule`, {
+                fetch(`/api/orchestrator/agents/${agentId}/schedule`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -88,7 +85,7 @@ export default function AgentSettingsPage() {
             }
 
             if (data.schedule?.bufferSeconds !== undefined) {
-                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+                fetch(`/api/orchestrator/agents/${agentId}/behavior`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ debounceMs: data.schedule.bufferSeconds * 1000 }),
@@ -98,12 +95,6 @@ export default function AgentSettingsPage() {
     }, [])
 
     const handleSaveAll = async (silent = false) => {
-        const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-        if (!orchestratorUrl) {
-            if (!silent) toast.error("Orchestrator URL not configured")
-            return
-        }
-
         setIsSaving(true)
         try {
             const generalData = generalSettingsRef.current?.getData()
@@ -111,7 +102,7 @@ export default function AgentSettingsPage() {
 
             // 1. Save general metadata
             if (generalData) {
-                const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}`, {
+                const res = await fetch(`/api/agents/${agentId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -125,7 +116,7 @@ export default function AgentSettingsPage() {
 
             // 2. Save schedule
             if (scheduleData?.schedule) {
-                const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/schedule`, {
+                const res = await fetch(`/api/orchestrator/agents/${agentId}/schedule`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -139,7 +130,7 @@ export default function AgentSettingsPage() {
 
             // 3. Save buffer/debounce
             if (scheduleData?.bufferSeconds !== undefined) {
-                const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+                const res = await fetch(`/api/orchestrator/agents/${agentId}/behavior`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ debounceMs: scheduleData.bufferSeconds * 1000 })
@@ -190,7 +181,7 @@ export default function AgentSettingsPage() {
             />
 
             {/* Danger Zone */}
-            {/* <FriendlyDangerZone /> */}
+            <FriendlyDangerZone />
         </div>
     )
 }

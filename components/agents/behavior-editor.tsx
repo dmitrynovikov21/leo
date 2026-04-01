@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { User, Shield, Plus, X, Wand2, Save, FileText, Loader2, RefreshCw, Send, Bug } from "lucide-react"
+import { User, Shield, Plus, X, Wand2, FileText, Loader2, RefreshCw, Send, Bug, Sparkles } from "lucide-react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -19,6 +19,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -35,6 +36,133 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useUserData } from "@/components/providers/user-data-provider"
 import { TelegramConnectionDialog } from "@/components/agents/telegram-connection-dialog"
+
+// XML Block Editor helpers
+interface XmlBlock {
+    id: string
+    type: 'xml' | 'text'
+    tag?: string
+    content: string
+}
+
+function parseXmlBlocks(text: string): XmlBlock[] {
+    if (!text) return []
+
+    const blocks: XmlBlock[] = []
+    const regex = /<(\w[\w-]*)>([\s\S]*?)<\/\1>/g
+    let lastIndex = 0
+    let match
+    let id = 0
+
+    while ((match = regex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            const between = text.slice(lastIndex, match.index).trim()
+            if (between) {
+                blocks.push({ id: `t${id++}`, type: 'text', content: between })
+            }
+        }
+        const inner = match[2].replace(/^\n/, '').replace(/\n$/, '')
+        blocks.push({ id: `x${id++}`, type: 'xml', tag: match[1], content: inner })
+        lastIndex = match.index + match[0].length
+    }
+
+    if (lastIndex < text.length) {
+        const remaining = text.slice(lastIndex).trim()
+        if (remaining) {
+            blocks.push({ id: `t${id++}`, type: 'text', content: remaining })
+        }
+    }
+
+    return blocks
+}
+
+function hasXmlStructure(text: string): boolean {
+    if (!text) return false
+    return /<(\w[\w-]*)>[\s\S]*?<\/\1>/.test(text)
+}
+
+function assembleFromBlocks(blocks: XmlBlock[]): string {
+    return blocks.map(b => {
+        if (b.type === 'xml' && b.tag) {
+            return `<${b.tag}>\n${b.content}\n</${b.tag}>`
+        }
+        return b.content
+    }).join('\n\n')
+}
+
+function XmlBlockEditor({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+    const [blocks, setBlocks] = React.useState<XmlBlock[]>(() =>
+        hasXmlStructure(value) ? parseXmlBlocks(value) : []
+    )
+    const assembledRef = React.useRef(value)
+    const isXml = hasXmlStructure(value) || blocks.some(b => b.type === 'xml')
+
+    React.useEffect(() => {
+        if (value !== assembledRef.current) {
+            if (hasXmlStructure(value)) {
+                setBlocks(parseXmlBlocks(value))
+            } else {
+                setBlocks([])
+            }
+            assembledRef.current = value
+        }
+    }, [value])
+
+    const updateBlock = React.useCallback((blockId: string, newContent: string) => {
+        setBlocks(prev => {
+            const updated = prev.map(b => b.id === blockId ? { ...b, content: newContent } : b)
+            const assembled = assembleFromBlocks(updated)
+            assembledRef.current = assembled
+            onChange(assembled)
+            return updated
+        })
+    }, [onChange])
+
+    if (!isXml) {
+        return (
+            <Textarea
+                className="min-h-[450px] font-mono text-sm leading-relaxed border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all rounded-xl resize-none text-foreground"
+                value={value}
+                onChange={(e) => {
+                    assembledRef.current = e.target.value
+                    onChange(e.target.value)
+                }}
+            />
+        )
+    }
+
+    return (
+        <div className="space-y-3">
+            {blocks.map((block) => {
+                const lineCount = block.content.split('\n').length
+                const minH = block.type === 'xml'
+                    ? Math.max(80, Math.min(lineCount * 22 + 32, 400))
+                    : Math.max(60, Math.min(lineCount * 22 + 32, 200))
+
+                return (
+                    <div key={block.id} className="space-y-0">
+                        {block.type === 'xml' && block.tag && (
+                            <div className="font-mono text-xs text-muted-foreground/60 px-1 select-none">
+                                &lt;{block.tag}&gt;
+                            </div>
+                        )}
+                        <Textarea
+                            className="font-mono text-sm leading-relaxed border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all rounded-xl resize-vertical text-foreground"
+                            style={{ minHeight: minH }}
+                            value={block.content}
+                            onChange={(e) => updateBlock(block.id, e.target.value)}
+                        />
+                        {block.type === 'xml' && block.tag && (
+                            <div className="font-mono text-xs text-muted-foreground/60 px-1 select-none">
+                                &lt;/{block.tag}&gt;
+                            </div>
+                        )}
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
 
 // Types
 interface PromptVersion {
@@ -67,6 +195,7 @@ const behaviorSchema = z.object({
     displayName: z.string().min(2),
     avatarEmoji: z.string(),
     temperature: z.number().min(0).max(1),
+    showSources: z.boolean(),
     systemPrompt: z.string(),
     tone: z.array(z.string()),
     guardrails: z.array(z.object({ rule: z.string() })),
@@ -78,7 +207,6 @@ type BehaviorFormData = z.infer<typeof behaviorSchema>
 export function BehaviorEditor({ agentId }: { agentId: string }) {
     const t = useTranslations('Behavior')
     const tCommon = useTranslations('Common')
-    const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
 
     const toneOptions = [
         { value: "official", label: t('official') },
@@ -92,13 +220,15 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     ]
 
     const [isLoading, setIsLoading] = React.useState(true)
-    const [isSaving, setIsSaving] = React.useState(false)
     const [error, setError] = React.useState<string | null>(null)
     const [promptVersions, setPromptVersions] = React.useState<PromptVersion[]>([])
     const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null)
     const [showRestartDialog, setShowRestartDialog] = React.useState(false)
     const [isRestarting, setIsRestarting] = React.useState(false)
     const [isNewVersion, setIsNewVersion] = React.useState(false)
+
+    // AI generation state
+    const [isGenerating, setIsGenerating] = React.useState(false)
 
     // Debug prompts state
     const [platformPrompt, setPlatformPrompt] = React.useState<string | null>(null)
@@ -110,6 +240,19 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     const { agents, refreshAgents } = useUserData()
     const agent = agents.find(a => a.id === agentId)
     const [showTelegramModal, setShowTelegramModal] = React.useState(false)
+
+    // Conversation examples (stored separately via Prisma)
+    const [conversationExamples, setConversationExamples] = React.useState("")
+    const conversationExamplesRef = React.useRef("")
+
+    // Refs for version state (accessible in unmount/autosave)
+    const selectedVersionIdRef = React.useRef<string | null>(null)
+    const isNewVersionRef = React.useRef(false)
+    const promptVersionsRef = React.useRef<PromptVersion[]>([])
+
+    React.useEffect(() => { selectedVersionIdRef.current = selectedVersionId }, [selectedVersionId])
+    React.useEffect(() => { isNewVersionRef.current = isNewVersion }, [isNewVersion])
+    React.useEffect(() => { promptVersionsRef.current = promptVersions }, [promptVersions])
 
     // Autosave timer
     const autosaveTimerRef = React.useRef<NodeJS.Timeout | null>(null)
@@ -129,20 +272,49 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                 clearTimeout(autosaveTimerRef.current)
             }
             // Save on unmount if there are unsaved changes (fire-and-forget)
-            if (hasUnsavedChangesRef.current && orchestratorUrl) {
+            if (hasUnsavedChangesRef.current) {
                 const data = form.getValues()
-                fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+                fetch(`/api/orchestrator/agents/${agentId}/behavior`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         displayName: data.displayName,
-                        avatarEmoji: data.avatarEmoji,
                         temperature: data.temperature,
+                        showSources: data.showSources,
                         tone: data.tone,
                         guardrails: data.guardrails,
                         welcomeMessage: data.welcomeMessage,
                     }),
                 }).catch(() => {})
+                // Save conversation examples separately via Prisma
+                if (conversationExamplesRef.current !== undefined) {
+                    fetch(`/api/agents/${agentId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ conversationExamples: conversationExamplesRef.current }),
+                    }).catch(() => {})
+                }
+                // Save system prompt (fire-and-forget)
+                if (data.systemPrompt) {
+                    if (isNewVersionRef.current) {
+                        const nextVersion = getNextVersion(promptVersionsRef.current)
+                        fetch(`/api/orchestrator/agents/${agentId}/prompts`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                version: nextVersion,
+                                content: data.systemPrompt,
+                                isActive: true,
+                            }),
+                        }).catch(() => {})
+                    } else if (selectedVersionIdRef.current) {
+                        fetch(`/api/orchestrator/agents/${agentId}/prompts/${selectedVersionIdRef.current}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: data.systemPrompt }),
+                        }).catch(() => {})
+                    }
+                }
             }
         }
     }, [])
@@ -170,6 +342,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         displayName: "",
         avatarEmoji: "😊",
         temperature: 0.5,
+        showSources: false,
         systemPrompt: "",
         tone: [],
         guardrails: [],
@@ -205,25 +378,67 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
             handleAutosave(data)
         }, AUTOSAVE_INTERVAL)
 
-    }, [JSON.stringify(watchedValues), isLoading])
+    }, [JSON.stringify(watchedValues), conversationExamples, isLoading])
 
     const handleAutosave = async (data: BehaviorFormData) => {
-        if (!orchestratorUrl || !hasUnsavedChanges) return
+        if (!hasUnsavedChanges) return
 
         try {
             // Save behavior settings silently
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
+            await fetch(`/api/orchestrator/agents/${agentId}/behavior`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     displayName: data.displayName,
-                    avatarEmoji: data.avatarEmoji,
                     temperature: data.temperature,
+                    showSources: data.showSources,
                     tone: data.tone,
                     guardrails: data.guardrails,
                     welcomeMessage: data.welcomeMessage,
                 }),
             })
+
+            // Save conversation examples
+            await fetch(`/api/agents/${agentId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ conversationExamples: conversationExamples }),
+            })
+
+            // Save system prompt
+            if (data.systemPrompt) {
+                if (isNewVersion) {
+                    const nextVersion = getNextVersion(promptVersions)
+                    const promptRes = await fetch(`/api/orchestrator/agents/${agentId}/prompts`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            version: nextVersion,
+                            content: data.systemPrompt,
+                            isActive: true,
+                        }),
+                    })
+                    if (promptRes.ok) {
+                        // Reload versions
+                        const promptsRes = await fetch(`/api/orchestrator/agents/${agentId}/prompts`)
+                        if (promptsRes.ok) {
+                            const promptsData: PromptsData = await promptsRes.json()
+                            setPromptVersions(promptsData.versions || [])
+                            const activeVersion = promptsData.versions?.find(v => v.isActive)
+                            if (activeVersion) {
+                                setSelectedVersionId(activeVersion.id)
+                            }
+                        }
+                        setIsNewVersion(false)
+                    }
+                } else if (selectedVersionId) {
+                    await fetch(`/api/orchestrator/agents/${agentId}/prompts/${selectedVersionId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: data.systemPrompt }),
+                    })
+                }
+            }
 
             setHasUnsavedChanges(false)
             toast.success("Автосохранение", { description: "Изменения поведения сохранены" })
@@ -236,25 +451,19 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     // Load behavior data
     React.useEffect(() => {
         const loadBehaviorData = async () => {
-            if (!orchestratorUrl) {
-                setError("Orchestrator URL not configured")
-                setIsLoading(false)
-                return
-            }
-
             try {
                 setIsLoading(true)
                 setError(null)
 
                 // Fetch behavior data
-                const behaviorRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`)
+                const behaviorRes = await fetch(`/api/orchestrator/agents/${agentId}/behavior`)
                 if (!behaviorRes.ok) {
                     throw new Error(`Failed to load behavior: ${behaviorRes.status}`)
                 }
                 const behaviorData: BehaviorData = await behaviorRes.json()
 
                 // Fetch prompt versions
-                const promptsRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`)
+                const promptsRes = await fetch(`/api/orchestrator/agents/${agentId}/prompts`)
                 let activePromptContent = ""
                 if (promptsRes.ok) {
                     const promptsData: PromptsData = await promptsRes.json()
@@ -268,11 +477,19 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                     }
                 }
 
+                // Load conversation examples from agent data
+                const agentData = agents.find(a => a.id === agentId)
+                if (agentData?.conversationExamples) {
+                    setConversationExamples(agentData.conversationExamples)
+                    conversationExamplesRef.current = agentData.conversationExamples
+                }
+
                 // Update form with loaded data
                 form.reset({
                     displayName: behaviorData.displayName || "",
                     avatarEmoji: behaviorData.avatarEmoji || "😊",
                     temperature: behaviorData.temperature ?? 0.5,
+                    showSources: (behaviorData as any).showSources ?? false,
                     systemPrompt: activePromptContent || behaviorData.systemPrompt || "",
                     tone: behaviorData.tone || [],
                     guardrails: behaviorData.guardrails || [],
@@ -287,24 +504,21 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         }
 
         loadBehaviorData()
-    }, [agentId, orchestratorUrl, form])
+    }, [agentId, form])
 
     // Load debug prompts
     const loadDebugPrompts = React.useCallback(async () => {
-        const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-        if (!gatewayUrl) return
-
         setIsLoadingDebug(true)
         try {
             // Load platform core prompt
-            const platformRes = await fetch(`${gatewayUrl}/api/v1/system-prompts/platform_core`)
+            const platformRes = await fetch(`/api/gateway/system-prompts/platform_core`)
             if (platformRes.ok) {
                 const data = await platformRes.json()
                 setPlatformPrompt(data.content || data.prompt || null)
             }
 
             // Load assembled prompt preview
-            const previewRes = await fetch(`${gatewayUrl}/api/v1/system-prompts/agents/${agentId}/prompt-preview`)
+            const previewRes = await fetch(`/api/gateway/system-prompts/agents/${agentId}/prompt-preview`)
             if (previewRes.ok) {
                 const data = await previewRes.json()
                 setPromptPreview(data.fullPrompt || data.preview || data.prompt || data.content || null)
@@ -321,94 +535,6 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         loadDebugPrompts()
     }, [loadDebugPrompts])
 
-    const handleSave = async (data: BehaviorFormData) => {
-        if (!orchestratorUrl) {
-            toast.error("Orchestrator URL not configured")
-            return
-        }
-
-        setIsSaving(true)
-        try {
-            // Handle system prompt versioning separately
-            if (data.systemPrompt) {
-                if (isNewVersion) {
-                    // Create new version
-                    const nextVersion = getNextVersion(promptVersions)
-                    const promptRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            version: nextVersion,
-                            content: data.systemPrompt,
-                            isActive: true,
-                        }),
-                    })
-
-                    if (!promptRes.ok) {
-                        throw new Error(`Failed to create new version: ${promptRes.status}`)
-                    }
-
-                    // Reload versions
-                    const promptsRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`)
-                    if (promptsRes.ok) {
-                        const promptsData: PromptsData = await promptsRes.json()
-                        setPromptVersions(promptsData.versions || [])
-                        const activeVersion = promptsData.versions?.find(v => v.isActive)
-                        if (activeVersion) {
-                            setSelectedVersionId(activeVersion.id)
-                        }
-                    }
-
-                    setIsNewVersion(false)
-                } else if (selectedVersionId) {
-                    // Update existing version content
-                    const promptRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts/${selectedVersionId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            content: data.systemPrompt,
-                        }),
-                    })
-
-                    if (!promptRes.ok) {
-                        throw new Error(`Failed to update prompt: ${promptRes.status}`)
-                    }
-                }
-            }
-
-            // Save behavior settings (without systemPrompt)
-            const response = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    displayName: data.displayName,
-                    avatarEmoji: data.avatarEmoji,
-                    temperature: data.temperature,
-                    tone: data.tone,
-                    guardrails: data.guardrails,
-                    welcomeMessage: data.welcomeMessage,
-                }),
-            })
-
-            if (!response.ok) {
-                throw new Error(`Failed to save: ${response.status}`)
-            }
-
-            toast.success(t('saveChanges'), { description: t('behaviorUpdated') })
-            // Show restart dialog after successful save only if agent is running
-            if (agent?.status === 'RUNNING') {
-                setShowRestartDialog(true)
-            }
-        } catch (err) {
-            console.error("Error saving behavior:", err)
-            toast.error("Failed to save changes", {
-                description: err instanceof Error ? err.message : "Unknown error",
-            })
-        } finally {
-            setIsSaving(false)
-        }
-    }
-
     const handleRestart = async () => {
         // Check Telegram connection first
         if (!agent?.isTelegramConnected) {
@@ -417,20 +543,18 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
             return
         }
 
-        if (!orchestratorUrl) return
-
         setIsRestarting(true)
         try {
             // Stop the agent
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/stop`, { method: 'POST' })
+            await fetch(`/api/orchestrator/agents/${agentId}/stop`, { method: 'POST' })
 
             // Start the agent
-            await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/start`, { method: 'POST' })
+            await fetch(`/api/orchestrator/agents/${agentId}/start`, { method: 'POST' })
 
             // Poll for running status
             for (let i = 0; i < 5; i++) {
                 await new Promise(r => setTimeout(r, 1000))
-                const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/status`)
+                const statusRes = await fetch(`/api/orchestrator/agents/${agentId}/status`)
                 if (statusRes.ok) {
                     const statusData = await statusRes.json()
                     const newStatus = statusData.agent?.status || statusData.status
@@ -449,8 +573,6 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     }
 
     const handleVersionChange = async (versionId: string) => {
-        if (!orchestratorUrl) return
-
         // Handle selecting "new" version
         if (versionId === 'new') {
             setIsNewVersion(true)
@@ -467,13 +589,13 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         try {
             // Activate the selected version
             const res = await fetch(
-                `${orchestratorUrl}/api/v1/agents/${agentId}/prompts/${versionId}/activate`,
+                `/api/orchestrator/agents/${agentId}/prompts/${versionId}/activate`,
                 { method: "PATCH" }
             )
 
             if (res.ok) {
                 // Reload prompt content and versions
-                const promptsRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/prompts`)
+                const promptsRes = await fetch(`/api/orchestrator/agents/${agentId}/prompts`)
                 if (promptsRes.ok) {
                     const promptsData: PromptsData = await promptsRes.json()
                     setPromptVersions(promptsData.versions || [])
@@ -486,6 +608,50 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
         } catch (err) {
             console.error("Error switching version:", err)
             toast.error("Не удалось переключить версию")
+        }
+    }
+
+    const handleGeneratePrompt = async () => {
+        const data = form.getValues()
+        const agentData = agents.find(a => a.id === agentId)
+
+        setIsGenerating(true)
+        try {
+            const res = await fetch("/api/ai/generate-agent-prompt", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    agentName: data.displayName || agentData?.name || "Агент",
+                    wizardV2: {
+                        businessDescription: agentData?.description || agentData?.role || "",
+                        restrictions: data.guardrails?.map(g => g.rule).filter(Boolean),
+                        selectedStyle: data.tone?.length ? { label: data.tone.join(", ") } : undefined,
+                        responseLength: data.temperature > 0.6 ? "detailed" : "short",
+                        showSources: data.showSources,
+                    },
+                }),
+            })
+
+            if (res.ok) {
+                const result = await res.json()
+                const prompt = result.systemPrompt || result.prompt || result.choices?.[0]?.message?.content || ""
+                if (prompt) {
+                    form.setValue("systemPrompt", prompt, { shouldDirty: true })
+                    setHasUnsavedChanges(true)
+                    toast.success("Инструкция сгенерирована")
+                }
+            } else if (res.status === 402) {
+                toast.error("Отрицательный баланс PU", {
+                    description: "Пополните баланс в разделе Биллинг, чтобы продолжить."
+                })
+            } else {
+                toast.error("Не удалось сгенерировать инструкцию")
+            }
+        } catch (err) {
+            console.error("Prompt generation failed:", err)
+            toast.error("Ошибка генерации")
+        } finally {
+            setIsGenerating(false)
         }
     }
 
@@ -531,21 +697,12 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
     return (
         <div className="max-w-4xl">
             <div className="space-y-8 pb-20">
-                <form onSubmit={form.handleSubmit(handleSave)} className="space-y-8">
+                <div className="space-y-8">
 
-                    {/* Header with Save */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
-                            <p className="text-muted-foreground">{t('description')}</p>
-                        </div>
-                        <Button type="submit" disabled={isSaving} size="lg">
-                            {isSaving ? (
-                                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('savingChanges')}</>
-                            ) : (
-                                <><Save className="mr-2 h-4 w-4" /> {t('saveChanges')}</>
-                            )}
-                        </Button>
+                    {/* Header */}
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
+                        <p className="text-muted-foreground">{t('description')}</p>
                     </div>
 
                     <Separator />
@@ -613,6 +770,22 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         <span>{t('balanced')} (0.5)</span>
                                         <span>{t('creative')} (1.0)</span>
                                     </div>
+                                </div>
+
+                                <Separator />
+
+                                {/* Show Sources Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-foreground font-medium">Показывать источники</Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Агент будет указывать файл-источник в ответе
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        checked={form.watch("showSources")}
+                                        onCheckedChange={(checked) => form.setValue("showSources", checked, { shouldDirty: true })}
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
@@ -695,10 +868,21 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                     <CardTitle className="text-base text-foreground">{t('roleDefinition')}</CardTitle>
                                     <CardDescription className="text-muted-foreground">{t('roleDefinitionDesc')}</CardDescription>
                                 </div>
-                                <Select
-                                    value={isNewVersion ? 'new' : (selectedVersionId || undefined)}
-                                    onValueChange={handleVersionChange}
-                                >
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-9 rounded-xl text-xs font-medium"
+                                        onClick={handleGeneratePrompt}
+                                        disabled={isGenerating}
+                                    >
+                                        {isGenerating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
+                                        Сгенерировать
+                                    </Button>
+                                    <Select
+                                        value={isNewVersion ? 'new' : (selectedVersionId || undefined)}
+                                        onValueChange={handleVersionChange}
+                                    >
                                     <SelectTrigger className="w-[140px] h-9 text-xs border-transparent bg-muted/50 hover:bg-muted transition-all rounded-xl focus:ring-0">
                                         <SelectValue placeholder="Выберите версию" />
                                     </SelectTrigger>
@@ -726,11 +910,14 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
+                                </div>
                             </CardHeader>
                             <CardContent className="pb-6">
                                 <Textarea
-                                    className="min-h-[450px] font-mono text-sm leading-relaxed border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all rounded-xl resize-none text-foreground"
-                                    {...form.register("systemPrompt")}
+                                    value={form.watch("systemPrompt")}
+                                    onChange={(e) => form.setValue("systemPrompt", e.target.value, { shouldDirty: true })}
+                                    className="min-h-[300px] font-mono text-sm resize-y"
+                                    placeholder="Системная инструкция агента..."
                                 />
                             </CardContent>
                         </Card>
@@ -790,6 +977,7 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                         </div>
                                         <Input
                                             {...form.register(`guardrails.${index}.rule` as const)}
+                                            placeholder={t('newGuardrailRule')}
                                             className="flex-1 border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all rounded-xl text-foreground"
                                         />
                                         <Button
@@ -808,14 +996,36 @@ export function BehaviorEditor({ agentId }: { agentId: string }) {
                                     variant="outline"
                                     size="sm"
                                     className="w-full mt-2 border-border bg-card hover:bg-muted/50 hover:border-border text-muted-foreground rounded-xl shadow-none h-10 border-dashed"
-                                    onClick={() => append({ rule: t('newGuardrailRule') })}
+                                    onClick={() => append({ rule: '' })}
                                 >
                                     <Plus className="h-4 w-4 mr-2" /> {t('addGuardrail')}
                                 </Button>
                             </CardContent>
                         </Card>
+
+                        {/* Conversation Examples */}
+                        <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base text-foreground">Эталонный пример</CardTitle>
+                                <CardDescription className="text-muted-foreground">
+                                    Приведите пример идеального диалога. Он будет добавлен в системную инструкцию агента.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pb-6">
+                                <Textarea
+                                    value={conversationExamples}
+                                    onChange={(e) => {
+                                        setConversationExamples(e.target.value)
+                                        conversationExamplesRef.current = e.target.value
+                                        setHasUnsavedChanges(true)
+                                    }}
+                                    placeholder={"Пользователь: Как оформить отпуск?\nАгент: Для оформления отпуска нужно:\n1. Зайти на портал...\n2. Заполнить форму..."}
+                                    className="min-h-[140px] rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all text-foreground resize-none"
+                                />
+                            </CardContent>
+                        </Card>
                     </section>
-                </form>
+                </div>
             </div>
 
             {/* Restart Dialog */}

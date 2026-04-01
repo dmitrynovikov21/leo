@@ -9,7 +9,12 @@ interface ApifyRunOptions {
 
 export async function runApifyCrawler(url: string) {
     if (!APIFY_API_TOKEN) {
-        throw new Error("Misconfigured: APIFY_API_TOKEN is missing")
+        throw new Error("Скрапинг не настроен: отсутствует APIFY_API_TOKEN")
+    }
+
+    // Нормализация URL
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url
     }
 
     const input = {
@@ -69,7 +74,7 @@ export async function runApifyCrawler(url: string) {
 
     if (!runResponse.ok) {
         const errorText = await runResponse.text()
-        throw new Error(`Failed to start Apify actor: ${runResponse.status} ${errorText}`)
+        throw new Error(`Не удалось запустить скрапер: ${runResponse.status} ${errorText}`)
     }
 
     const runData = await runResponse.json()
@@ -92,7 +97,7 @@ export async function runApifyCrawler(url: string) {
     }
 
     if (status !== 'SUCCEEDED') {
-        throw new Error(`Apify run failed with status: ${status}`)
+        throw new Error(`Скрапинг завершился с ошибкой: ${status}`)
     }
 
     // 3. Fetch results
@@ -101,9 +106,13 @@ export async function runApifyCrawler(url: string) {
 
     const datasetResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_TOKEN}`)
     if (!datasetResponse.ok) {
-        throw new Error(`Failed to fetch dataset: ${datasetResponse.status}`)
+        throw new Error(`Не удалось получить результаты скрапинга: ${datasetResponse.status}`)
     }
 
     const items = await datasetResponse.json()
+    console.log(`[Apify] Dataset returned ${Array.isArray(items) ? items.length : 0} items for ${url}`)
+    if (Array.isArray(items) && items.length > 0) {
+        console.log(`[Apify] First item has text: ${!!items[0]?.text} (${(items[0]?.text || '').length} chars)`)
+    }
     return items
 }

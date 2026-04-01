@@ -104,16 +104,18 @@ Check provider pricing:
 - **Anthropic**: https://www.anthropic.com/pricing
 - **Others**: Check their respective pricing pages
 
-Example from OpenAI (January 2025):
-- GPT-4o: $2.50 / 1M input, $10.00 / 1M output
-- GPT-4o mini: $0.15 / 1M input, $0.60 / 1M output
+Example pricing (March 2026):
+- Claude Sonnet 4.6: $3.00 / 1M input, $15.00 / 1M output
+- Claude Opus 4.6: $15.00 / 1M input, $75.00 / 1M output
+- Gemini 3.1 Pro Preview: $2.00 / 1M input, $12.00 / 1M output
+- Gemini 2.5 Pro: $1.25 / 1M input, $10.00 / 1M output
 
 ### How to Add/Update Model Cost
 
 1. Go to **Admin → Model Costs**
 2. In form, either:
    - **Type model name** directly, or
-   - **Click quick button** (GPT-4o, Claude, etc.)
+   - **Click quick button** (Claude Sonnet 4.6, Gemini, etc.)
 3. Enter input cost per 1M tokens
 4. Enter output cost per 1M tokens
 5. Click **Save Model Cost**

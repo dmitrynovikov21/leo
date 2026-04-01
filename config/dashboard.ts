@@ -68,10 +68,9 @@ export const sidebarLinks: SidebarNavItem[] = [
         title: "Billing.title",
       },
       {
-        href: "/dashboard/inbox",
+        href: "/dashboard/support",
         icon: "messages",
-        title: "Inbox.title",
-        disabled: true,
+        title: "Support.title",
       },
     ],
   },

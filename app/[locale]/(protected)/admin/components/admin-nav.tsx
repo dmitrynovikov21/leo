@@ -12,10 +12,13 @@ const links = [
   { href: '/admin/unit-economics', label: 'Экономика' },
   { href: '/admin/users-balance', label: 'Балансы' },
   { href: '/admin/subscriptions', label: 'Подписки' },
-  { href: '/admin/model-costs', label: 'Тарифы' },
+  { href: '/admin/plans', label: 'Тарифы' },
+  { href: '/admin/model-costs', label: 'Стоимость моделей' },
   { href: '/admin/token-rates', label: 'Курсы' },
+  { href: '/admin/support', label: 'Запросы' },
   { href: '/admin/prompts', label: 'Промпты' },
   { href: '/admin/system-logs', label: 'Логи' },
+  { href: '/admin/project-docs', label: 'Документация' },
 ]
 
 export function AdminNav() {

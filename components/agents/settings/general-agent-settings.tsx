@@ -40,6 +40,7 @@ interface Agent {
     containerId?: string
     isTelegramConnected?: boolean
     telegramToken?: string
+    avatarEmoji?: string
 }
 
 interface GeneralAgentSettingsContentProps {
@@ -73,7 +74,9 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
             if (agent) {
                 setName(agent.name)
                 setDescription(agent.description || "")
-                setInitialData({ name: agent.name, description: agent.description || "", emoji: "🤖" })
+                const agentEmoji = agent.avatarEmoji || "🤖"
+                setEmoji(agentEmoji)
+                setInitialData({ name: agent.name, description: agent.description || "", emoji: agentEmoji })
             }
         }, [agent])
 
@@ -111,19 +114,11 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
             }
 
             const action = isRunning ? 'stop' : 'start'
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
 
             setIsLoading(true)
 
             try {
-                if (!orchestratorUrl) {
-                    await new Promise(r => setTimeout(r, 1000))
-                    toast.success(`Агент ${action === 'start' ? 'запущен' : 'остановлен'} (Mock)`)
-                    await refreshAgents()
-                    return
-                }
-
-                const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agent.id}/${action}`, {
+                const res = await fetch(`/api/orchestrator/agents/${agent.id}/${action}`, {
                     method: 'POST'
                 })
 
@@ -135,7 +130,7 @@ export const GeneralAgentSettingsContent = React.forwardRef<GeneralSettingsRef, 
                 if (action === 'start' && newStatus !== 'RUNNING') {
                     for (let i = 0; i < 5; i++) {
                         await new Promise(r => setTimeout(r, 1000))
-                        const statusRes = await fetch(`${orchestratorUrl}/api/v1/agents/${agent.id}/status`)
+                        const statusRes = await fetch(`/api/orchestrator/agents/${agent.id}/status`)
                         if (statusRes.ok) {
                             const statusData = await statusRes.json()
                             newStatus = statusData.agent?.status || statusData.status

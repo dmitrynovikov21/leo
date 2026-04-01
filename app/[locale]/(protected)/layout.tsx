@@ -12,6 +12,7 @@ import { UserPreferencesProvider } from "@/components/providers/user-preferences
 import { UserProvider } from "@/components/providers/user-data-provider";
 import { SessionTracker } from "@/components/providers/session-tracker";
 import { BalanceDisplay } from "@/components/layout/balance-display";
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -42,6 +43,7 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
 
           {/* Main Content Area */}
           <div className="flex flex-1 flex-col h-full overflow-hidden">
+            <ImpersonationBanner />
             {/* Mobile Header (md:hidden) */}
             <div className="md:hidden flex h-14 items-center justify-between border-b px-4 bg-background shrink-0 gap-4">
               <div className="flex items-center gap-4">

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { getActivePromptContent } from "@/actions/system-prompts";
-import { checkUserBalance } from "@/lib/balance";
 import { trackTokenUsage } from "@/lib/token-tracking";
 import { aiFetch, getGatewayUrl } from "@/lib/ai-fetch";
 
@@ -84,7 +83,7 @@ Strict Output Format (JSON):
 }
 
 CRITICAL RULES:
-- "chunks_involved" MUST contain at least 2 items.
+- "chunks_involved" MUST contain EXACTLY 2 items — the two conflicting chunks.
 - "chunk_id" MUST match the "id" field from the provided snippets exactly.
 - If you cannot identify the specific chunk IDs, DO NOT report a conflict.
 - Return { "conflicts": [] } if no contradictions found.`;
@@ -104,7 +103,7 @@ CRITICAL RULES:
             },
             body: JSON.stringify({
                 userId: session.user.id,
-                model: "gpt-4o",
+                model: "claude-sonnet-4-6",
                 messages: [
                     { role: "user", content: prompt }
                 ]
@@ -125,7 +124,7 @@ CRITICAL RULES:
                 await trackTokenUsage({
                     userId: session.user.id,
                     agentId: agentId,
-                    model: "gpt-4o",
+                    model: "claude-sonnet-4-6",
                     promptTokens: data.usage.prompt_tokens || 0,
                     completionTokens: data.usage.completion_tokens || 0,
                     responseTimeMs: 0,
@@ -150,23 +149,33 @@ CRITICAL RULES:
 
         const conflicts = parsed.conflicts || [];
 
-        // 4. Save conflicts
+        // 4. Save conflicts (limit chunks_involved to 2 per conflict)
         if (conflicts.length > 0) {
-            // Delete old NEW conflicts to avoid dupes? Or just append?
-            // User requirement: "If has_conflict: true, save record"
-            // Let's create them.
+            // Clean up old NEW conflicts for this agent to avoid dupes
+            await prisma.knowledgeConflict.deleteMany({
+                where: { agentId, status: "NEW" }
+            });
 
-            await prisma.$transaction(
-                conflicts.map((c: any) => prisma.knowledgeConflict.create({
-                    data: {
-                        userId: session.user.id,
-                        agentId: agentId,
-                        topic: c.conflict_summary,
-                        details: c, // Payload
-                        status: "NEW"
-                    }
-                }))
-            );
+            const limitedConflicts = conflicts
+                .filter((c: any) => c.chunks_involved?.length >= 2)
+                .map((c: any) => ({
+                    ...c,
+                    chunks_involved: c.chunks_involved.slice(0, 2),
+                }));
+
+            if (limitedConflicts.length > 0) {
+                await prisma.$transaction(
+                    limitedConflicts.map((c: any) => prisma.knowledgeConflict.create({
+                        data: {
+                            userId: session.user.id,
+                            agentId: agentId,
+                            topic: c.conflict_summary,
+                            details: c,
+                            status: "NEW"
+                        }
+                    }))
+                );
+            }
         }
 
         return NextResponse.json({

@@ -38,13 +38,70 @@ export async function GET(req: Request) {
             orderBy: { detectedAt: "desc" },
         });
 
-        // Transform response to match spec (lowercase status)
-        const formattedConflicts = conflicts.map(c => ({
-            ...c,
-            status: c.status.toLowerCase(),
-            // Map details if needed, currently storing as JSON
-            // Assuming specs says 'details' in response contains the files
-        }));
+        // Collect all chunk IDs from audit conflicts to resolve filenames in one query
+        const allChunkIds: string[] = [];
+        for (const c of conflicts) {
+            const d = c.details as any;
+            if (d && !Array.isArray(d) && d.chunks_involved) {
+                for (const ci of d.chunks_involved) {
+                    if (ci.chunk_id) allChunkIds.push(ci.chunk_id);
+                }
+            }
+        }
+
+        // Resolve chunk IDs → filenames + knowledgeBaseId
+        const chunkFileMap = new Map<string, { filename: string; kbId: string }>();
+        if (allChunkIds.length > 0) {
+            const chunkRows = await prisma.documentChunk.findMany({
+                where: { id: { in: allChunkIds } },
+                select: { id: true, knowledgeBaseId: true, knowledgeBase: { select: { filename: true } } },
+            });
+            for (const row of chunkRows) {
+                chunkFileMap.set(row.id, { filename: row.knowledgeBase.filename, kbId: row.knowledgeBaseId });
+            }
+        }
+
+        // Transform response to match frontend format (lowercase status, normalize details)
+        const formattedConflicts = conflicts.map(c => {
+            let details = c.details as any;
+
+            if (details && !Array.isArray(details) && typeof details === 'object') {
+                const d = details as Record<string, any>;
+
+                // Audit format: { conflict_summary, description, chunks_involved }
+                if (d.chunks_involved && Array.isArray(d.chunks_involved)) {
+                    details = d.chunks_involved.slice(0, 2).map((ci: any, idx: number) => {
+                        const resolved = chunkFileMap.get(ci.chunk_id);
+                        return {
+                            file_id: resolved?.kbId || ci.chunk_id || `unknown_${idx}`,
+                            chunk_id: ci.chunk_id || '',
+                            file_name: resolved?.filename || 'Неизвестный файл',
+                            value_found: ci.text_snippet || '',
+                        };
+                    });
+                }
+                // Enrichment format (legacy)
+                else if (d.source === "contextual_enrichment" || d.chunk_text || d.enrichment_context) {
+                    const chunkInfo = d.chunks_involved?.[0];
+                    details = [{
+                        file_id: chunkInfo?.knowledge_base_id || "",
+                        file_name: d.filename || "Неизвестный файл",
+                        value_found: d.chunk_text || d.enrichment_context || "",
+                    }];
+                }
+            }
+
+            // Ensure details is always an array
+            if (!Array.isArray(details)) {
+                details = [];
+            }
+
+            return {
+                ...c,
+                details,
+                status: c.status.toLowerCase(),
+            };
+        });
 
         return NextResponse.json({ conflicts: formattedConflicts });
     } catch (error) {

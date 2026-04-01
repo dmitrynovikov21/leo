@@ -68,7 +68,7 @@ export async function getAdminUsers(opts?: { limit?: number; offset?: number; se
       GROUP BY a."userId"
     `),
     prisma.$queryRaw<PuTotal[]>(Prisma.sql`
-      SELECT user_id, ABS(SUM("puAmount"))::float as total_pu
+      SELECT user_id, ABS(SUM(pu_amount))::float as total_pu
       FROM pu_transactions
       WHERE user_id IN (${Prisma.join(userIds)}) AND type = 'OVERAGE_DEDUCTION'
       GROUP BY user_id
@@ -301,5 +301,22 @@ export async function setUserBlocked(userId: string, blocked: boolean) {
   await prisma.userSubscription.update({
     where: { userId },
     data: { isBlocked: blocked },
+  })
+}
+
+export async function changeUserEmail(userId: string, newEmail: string) {
+  const session = await auth()
+  assertAdmin(session)
+
+  const trimmed = newEmail.trim().toLowerCase()
+  if (!trimmed || !trimmed.includes('@')) throw new Error('Некорректный email')
+
+  // Check if email already taken
+  const existing = await prisma.user.findUnique({ where: { email: trimmed } })
+  if (existing && existing.id !== userId) throw new Error('Этот email уже используется')
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { email: trimmed },
   })
 }

@@ -15,9 +15,10 @@ import { CreditCard, CheckCircle2 } from "lucide-react"
 
 export function PlanOverview() {
     const modelRates = [
-        { model: "GPT-4o", inputRate: "₽1.50 / 1k tokens", outputRate: "₽2.00 / 1k tokens" },
-        { model: "GPT-4o Mini", inputRate: "₽0.15 / 1k tokens", outputRate: "₽0.20 / 1k tokens" },
-        { model: "Claude 3.5 Sonnet", inputRate: "₽1.80 / 1k tokens", outputRate: "₽2.40 / 1k tokens" },
+        { model: "Claude Sonnet 4.6", inputRate: "₽1.80 / 1k tokens", outputRate: "₽2.40 / 1k tokens" },
+        { model: "Claude Opus 4.6", inputRate: "₽9.00 / 1k tokens", outputRate: "₽12.00 / 1k tokens" },
+        { model: "Claude Sonnet 4.5", inputRate: "₽1.80 / 1k tokens", outputRate: "₽2.40 / 1k tokens" },
+        { model: "Gemini 2.5 Pro", inputRate: "₽0.75 / 1k tokens", outputRate: "₽1.50 / 1k tokens" },
         { model: "Embeddings", inputRate: "₽0.05 / 1k tokens", outputRate: "-" },
     ]
 

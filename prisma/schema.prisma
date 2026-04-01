@@ -103,6 +103,9 @@ model User {
   puNotifications PuNotification[]
   frozenData FrozenData[]
 
+  supportTickets SupportTicket[]
+  supportMessages SupportMessage[]
+
   @@map(name: "users")
 }
 
@@ -155,6 +158,7 @@ model EmailVerificationCode {
 // ============================================
 
 enum AgentStatus {
+  DRAFT
   STOPPED
   STARTING
   RUNNING
@@ -175,6 +179,11 @@ model Agent {
   createdAt       DateTime    @default(now()) @map(name: "created_at")
   updatedAt       DateTime    @updatedAt @map(name: "updated_at")
   
+  // Wizard data (for draft agents)
+  wizardData      Json?       @map("wizard_data")
+  wizardStep      Int         @default(1) @map("wizard_step")
+  lastKbUpdateAt  DateTime?   @map("last_kb_update_at")
+
   // Behavior settings
   avatarEmoji     String?     @default("😊") @map(name: "avatar_emoji")
   displayName     String?     @map(name: "display_name")
@@ -183,7 +192,9 @@ model Agent {
   tone            String[]    @default([])
   guardrails      Json?       @default("[]")
   welcomeMessage  String?     @map("welcome_message") // Message shown at session start
-  
+  conversationExamples String? @map("conversation_examples") // Few-shot examples appended to system prompt
+  showSources     Boolean     @default(false) @map("show_sources") // Show knowledge source citations in responses
+
   // Schedule settings
   workSchedule    Json?       @map("work_schedule") // Weekly schedule: 7 arrays (Mon=0..Sun=6) x 24 booleans (hours 0-23)
   holidays        String[]    @default([]) // Holiday dates in DD.MM.YYYY format
@@ -555,7 +566,7 @@ model TokenRateConfig {
 
 model ModelCostConfig {
   id                    String   @id @default(cuid())
-  modelName             String   @map("model_name") // "gpt-4o", "claude-haiku-4"
+  modelName             String   @map("model_name") // "claude-sonnet-4-6", "gemini-2.5-pro"
 
   // Цена за 1 миллион токенов (в долларах)
   inputCostPerMillion   Decimal  @map("input_cost_per_million") @db.Decimal(10, 4)
@@ -699,7 +710,7 @@ model PuTransaction {
   type            PuTransactionType
 
   // PU amounts
-  puAmount        Decimal        @db.Decimal(12, 4) // Can be negative for deductions
+  puAmount        Decimal        @map("pu_amount") @db.Decimal(12, 4) // Can be negative for deductions
   balanceBefore   Decimal        @map("balance_before") @db.Decimal(12, 4)
   balanceAfter    Decimal        @map("balance_after") @db.Decimal(12, 4)
 
@@ -780,6 +791,50 @@ model FileProcessingCache {
   @@index([agentId])
   @@index([contentHash])
   @@map("file_processing_cache")
+}
+
+// ============================================
+// Support Tickets
+// ============================================
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id        String              @id @default(cuid())
+  userId    String              @map("user_id")
+  subject   String              @db.VarChar(255)
+  status    SupportTicketStatus @default(OPEN)
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id          String        @id @default(cuid())
+  ticketId    String        @map("ticket_id")
+  senderId    String        @map("sender_id")
+  content     String        @db.Text
+  attachments Json?         // [{ filename, storedName, size, mimeType }]
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender      User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([createdAt])
+  @@map("support_messages")
 }
 
 model FrozenData {

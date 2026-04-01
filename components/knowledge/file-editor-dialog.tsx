@@ -145,12 +145,6 @@ export function FileEditorDialog({
         try {
             // For agent documents, use Gateway API
             if (file.isAgentDocument && agentId) {
-                const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-                if (!gatewayUrl) {
-                    toast.error("Gateway URL not configured")
-                    return
-                }
-
                 // Find the chunk being edited
                 const chunk = chunks.find(c => c.id === editingChunkId)
                 if (!chunk) {
@@ -166,7 +160,7 @@ export function FileEditorDialog({
 
                 // Call Gateway PATCH endpoint for specific chunk
                 const response = await fetch(
-                    `${gatewayUrl}/api/v1/agents/${agentId}/documents/${file.id}/chunks/${editingChunkId}`,
+                    `/api/gateway/agents/${agentId}/documents/${file.id}/chunks/${editingChunkId}`,
                     {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },

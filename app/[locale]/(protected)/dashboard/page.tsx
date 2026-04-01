@@ -5,8 +5,9 @@ import { DashboardHeader } from "@/components/dashboard/header";
 import { OverviewDashboard } from "@/components/dashboard/overview-dashboard";
 
 export const metadata = constructMetadata({
-  title: "Dashboard – SaaS Starter",
-  description: "Monitor your AI agents and operations.",
+  title: "Dashboard – LEO",
+  description: "Управляйте вашими AI-агентами и операциями.",
+  noIndex: true,
 });
 
 export default async function DashboardPage() {

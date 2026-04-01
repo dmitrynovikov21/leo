@@ -1,6 +1,7 @@
 import authConfig from "@/auth.config";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { UserRole } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 import NextAuth, { type DefaultSession } from "next-auth";
 
 import { prisma } from "@/lib/db";
@@ -11,6 +12,7 @@ declare module "next-auth" {
   interface Session {
     user: {
       role: UserRole;
+      impersonatedBy?: string;
     } & DefaultSession["user"];
   }
 }
@@ -43,6 +45,10 @@ export const {
 
         session.user.name = token.name;
         session.user.image = token.picture;
+
+        if (token.impersonatedBy) {
+          session.user.impersonatedBy = token.impersonatedBy;
+        }
       }
 
       return session;
@@ -78,6 +84,37 @@ export const {
       token.role = dbUser.role;
 
       return token;
+    },
+  },
+  events: {
+    // Assign FREE subscription when OAuth user is created (Google, Yandex)
+    async createUser({ user }) {
+      if (!user.id) return;
+      try {
+        const existing = await prisma.userSubscription.findUnique({ where: { userId: user.id } });
+        if (existing) return;
+
+        const freePlan = await prisma.subscriptionPlan.findUnique({ where: { code: 'FREE' } });
+        if (!freePlan) return;
+
+        const now = new Date();
+        const nextReset = new Date(now);
+        nextReset.setMonth(nextReset.getMonth() + 1);
+
+        await prisma.userSubscription.create({
+          data: {
+            userId: user.id,
+            planId: freePlan.id,
+            puBalance: freePlan.monthlyPuLimit,
+            puLimit: freePlan.monthlyPuLimit,
+            billingCycleStartDate: now,
+            nextResetDate: nextReset,
+            status: 'ACTIVE',
+          },
+        });
+      } catch (err) {
+        console.error('[Auth] Failed to create FREE subscription for OAuth user:', err);
+      }
     },
   },
   ...authConfig,

@@ -97,8 +97,24 @@ export async function POST(req: Request) {
 
         const body = await req.json();
 
-        // Server-side URL (for Docker: use host.docker.internal)
-        // Falls back to NEXT_PUBLIC_ for local dev without Docker
+        // DRAFT mode: create locally without orchestrator
+        if (body.draft === true) {
+            const agent = await prisma.agent.create({
+                data: {
+                    userId: session.user.id,
+                    name: body.name || "Новый агент",
+                    role: "",
+                    description: "",
+                    systemPrompt: "",
+                    status: "DRAFT",
+                    wizardStep: 1,
+                    wizardData: { currentStep: 1 },
+                },
+            });
+            return NextResponse.json(agent, { status: 201 });
+        }
+
+        // Normal mode: proxy to Orchestrator
         const orchestratorUrl = getOrchestratorUrl();
 
         if (!orchestratorUrl) {
@@ -106,7 +122,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Service Configuration Error" }, { status: 500 });
         }
 
-        // Proxy to Orchestrator
         const response = await aiFetch(`${orchestratorUrl}/api/v1/agents`, {
             method: 'POST',
             headers: {

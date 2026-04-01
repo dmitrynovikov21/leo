@@ -164,18 +164,11 @@ export default function AdminSubscriptionsPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Ежемесячный доход (прим.)</CardTitle>
+            <CardTitle className="text-sm font-medium">Ежемесячный доход</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {(subscriptions.reduce((sum, s) => {
-                if (s.planCode === 'BASIC') return sum + 3900
-                if (s.planCode === 'PRO') return sum + 9900
-                if (s.planCode === 'BUSINESS') return sum + 39900
-                if (s.planCode === 'ENTERPRISE') return sum + 149900
-                return sum
-              }, 0) / 100).toFixed(0)}
-              ₽
+            <div className="text-2xl font-bold text-muted-foreground text-sm">
+              См. <a href="/admin/plans" className="underline">Тарифы</a>
             </div>
           </CardContent>
         </Card>

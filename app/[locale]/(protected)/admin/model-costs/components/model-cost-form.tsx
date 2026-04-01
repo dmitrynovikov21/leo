@@ -9,11 +9,11 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 
 const POPULAR_MODELS = [
-  'gpt-4o',
-  'gpt-4o-mini',
-  'claude-haiku-4',
-  'claude-3-5-sonnet-20241022',
-  'claude-opus-4',
+  'claude-sonnet-4-6',
+  'claude-opus-4-6',
+  'claude-sonnet-4-5',
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-pro',
 ]
 
 export default function ModelCostForm() {
@@ -69,7 +69,7 @@ export default function ModelCostForm() {
         <div className='space-y-2'>
           <Input
             id='modelName'
-            placeholder='напр., gpt-4o, claude-opus-4'
+            placeholder='напр., claude-sonnet-4-6, gemini-2.5-pro'
             value={modelName}
             onChange={(e) => setModelName(e.target.value)}
             disabled={loading}

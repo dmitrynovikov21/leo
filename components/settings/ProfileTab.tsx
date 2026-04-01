@@ -158,9 +158,6 @@ export function ProfileTab() {
                             disabled
                             className="h-11 rounded-xl border-border bg-muted/30 text-muted-foreground font-mono"
                         />
-                        <p className="text-xs text-muted-foreground px-1">
-                            Изменение email управляется провайдером авторизации.
-                        </p>
                     </div>
                 </div>
             </CardContent>

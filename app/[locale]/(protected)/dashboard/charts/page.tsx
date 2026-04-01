@@ -12,8 +12,8 @@ import { RadialTextChart } from "@/components/charts/radial-text-chart";
 import { DashboardHeader } from "@/components/dashboard/header";
 
 export const metadata = constructMetadata({
-  title: "Charts – SaaS Starter",
-  description: "List of charts by shadcn-ui",
+  title: "Charts – LEO",
+  noIndex: true,
 });
 
 export default function ChartsPage() {

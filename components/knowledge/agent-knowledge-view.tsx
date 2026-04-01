@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 
 import { getLibraryItems, getLibraryItemChunks, type LibraryItemWithChunks } from "@/actions/library"
-import { getAgentDocuments, cleanupStalePendingDocs } from "@/actions/agent-knowledge"
+import { getAgentDocuments, cleanupStalePendingDocs, regenerateMissingMetadata } from "@/actions/agent-knowledge"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -103,15 +103,17 @@ function mimeTypeToLabel(mimeType: string, filename?: string): string {
     return 'Файл'
 }
 
-export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = "", filterType = "all", lastUpdated = 0 }: AgentKnowledgeViewProps) {
+export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = "", filterType: initialFilterType = "all", lastUpdated = 0 }: AgentKnowledgeViewProps) {
     const t = useTranslations('Knowledge')
     const { data: session } = useSession()
 
     // State
+    const [activeFilter, setActiveFilter] = React.useState<'all' | 'document' | 'image' | 'note'>(initialFilterType)
     const [documents, setDocuments] = React.useState<Document[]>([])
     const [notes, setNotes] = React.useState<Note[]>([])
     const [isLoading, setIsLoading] = React.useState(true)
     const [isSearching, setIsSearching] = React.useState(false)
+    const [localSearch, setLocalSearch] = React.useState(searchQuery)
     const [internalAgentId, setInternalAgentId] = React.useState<string | null>(null) // Real UUID from DB
 
 
@@ -152,6 +154,9 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
 
             // Cleanup stale PENDING docs on mount
             cleanupStalePendingDocs(agent.id).catch(() => {})
+
+            // Regenerate missing metadata for VECTORIZED docs without descriptions
+            regenerateMissingMetadata(agent.id).catch(() => {})
 
             // Only show skeletons on first load, not on refreshes
             if (!initialLoadDone.current) {
@@ -222,10 +227,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
         if (!targetId) return
 
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) return
-
-            const response = await fetch(`${orchestratorUrl}/api/v1/agents/${targetId}/notes`)
+            const response = await fetch(`/api/orchestrator/agents/${targetId}/notes`)
             if (response.ok) {
                 const data = await response.json()
                 setNotes(data || [])
@@ -263,12 +265,12 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
 
         if (needsPolling) {
             const timer = setInterval(() => {
-                fetchDocuments(internalAgentId, searchQuery || undefined)
+                fetchDocuments(internalAgentId, localSearch || undefined)
             }, 3000)
 
             return () => clearInterval(timer)
         }
-    }, [internalAgentId, documents, searchQuery, fetchDocuments])
+    }, [internalAgentId, documents, localSearch, fetchDocuments])
 
     // Load documents/notes when agent ID becomes available - consolidated with the main effect above or handled by fetch calls
     // But we need to handle initial load carefully
@@ -319,11 +321,11 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
 
         const debounceTimer = setTimeout(() => {
             setIsSearching(true)
-            fetchDocuments(internalAgentId, searchQuery || undefined)
+            fetchDocuments(internalAgentId, localSearch || undefined)
         }, 300)
 
         return () => clearTimeout(debounceTimer)
-    }, [searchQuery, internalAgentId, fetchDocuments])
+    }, [localSearch, internalAgentId, fetchDocuments])
 
     // Note handlers
     const handleSaveNote = async (noteData: { id?: string, title: string, content: string }) => {
@@ -332,18 +334,11 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             return
         }
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!orchestratorUrl) {
-                toast.error("Orchestrator URL not configured")
-                return
-            }
-
             const isEdit = !!noteData.id
             const response = await fetch(
                 isEdit
-                    ? `${orchestratorUrl}/api/v1/agents/${internalAgentId}/notes/${noteData.id}`
-                    : `${orchestratorUrl}/api/v1/agents/${internalAgentId}/notes`,
+                    ? `/api/orchestrator/agents/${internalAgentId}/notes/${noteData.id}`
+                    : `/api/orchestrator/agents/${internalAgentId}/notes`,
                 {
                     method: isEdit ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -353,23 +348,21 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
 
             if (response.ok) {
                 // Also vectorize the note for RAG
-                if (gatewayUrl) {
-                    try {
-                        await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                agentId: internalAgentId,
-                                userId: session?.user?.id,
-                                filename: `note_${noteData.title}`,
-                                fileSize: noteData.content.length,
-                                mimeType: 'text/plain',
-                                chunks: [{ index: 0, text: noteData.content }],
-                            }),
-                        })
-                    } catch (vecErr) {
-                        console.warn('Note vectorization failed:', vecErr)
-                    }
+                try {
+                    await fetch(`/api/gateway/documents/vectorize`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            agentId: internalAgentId,
+                            userId: session?.user?.id,
+                            filename: `note_${noteData.title}`,
+                            fileSize: noteData.content.length,
+                            mimeType: 'text/plain',
+                            chunks: [{ index: 0, text: noteData.content }],
+                        }),
+                    })
+                } catch (vecErr) {
+                    console.warn('Note vectorization failed:', vecErr)
                 }
 
                 toast.success(isEdit ? "Заметка обновлена" : "Заметка создана")
@@ -391,10 +384,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             return
         }
         try {
-            const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-            if (!orchestratorUrl) return
-
-            const response = await fetch(`${orchestratorUrl}/api/v1/agents/${internalAgentId}/notes/${id}`, {
+            const response = await fetch(`/api/orchestrator/agents/${internalAgentId}/notes/${id}`, {
                 method: 'DELETE',
             })
 
@@ -416,10 +406,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             return
         }
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) return
-
-            await fetch(`${gatewayUrl}/api/v1/agents/${internalAgentId}/documents/${id}`, {
+            await fetch(`/api/gateway/agents/${internalAgentId}/documents/${id}`, {
                 method: 'DELETE',
             })
             setDocuments(documents.filter(d => d.id !== id))
@@ -452,15 +439,8 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
         try {
             // Check if this is a NOTE type - import as agent note
             if (item.type?.toUpperCase() === 'NOTE') {
-                const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-                const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-                if (!orchestratorUrl) {
-                    toast.error("Orchestrator URL not configured")
-                    return
-                }
-
                 // Create as agent note
-                const noteResponse = await fetch(`${orchestratorUrl}/api/v1/agents/${internalAgentId}/notes`, {
+                const noteResponse = await fetch(`/api/orchestrator/agents/${internalAgentId}/notes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title: item.name, content: item.content || '' }),
@@ -469,8 +449,8 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                 if (!noteResponse.ok) throw new Error('Failed to create note')
 
                 // Also vectorize for RAG
-                if (gatewayUrl && item.content) {
-                    await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+                if (item.content) {
+                    await fetch(`/api/gateway/documents/vectorize`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -497,9 +477,6 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                 return
             }
 
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) return
-
             const payload = {
                 agentId: internalAgentId,
                 userId: session?.user?.id,
@@ -512,7 +489,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                 })),
             }
 
-            const response = await fetch(`${gatewayUrl}/api/v1/documents/vectorize`, {
+            const response = await fetch(`/api/gateway/documents/vectorize`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -537,14 +514,8 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             return
         }
         try {
-            const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-            if (!gatewayUrl) {
-                toast.error("Gateway URL not configured")
-                return
-            }
-
             // Call PUT endpoint we just created
-            const response = await fetch(`${gatewayUrl}/api/v1/agents/${internalAgentId}/documents/${id}`, {
+            const response = await fetch(`/api/gateway/agents/${internalAgentId}/documents/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ content })
@@ -566,13 +537,17 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
     // Apply type filter to documents
     const filteredDocuments = React.useMemo(() => {
         return documents.filter(doc => {
-            if (filterType === 'all') return true
-            if (filterType === 'document') return ['pdf', 'docx', 'txt', 'md'].includes(doc.type)
-            if (filterType === 'image') return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type)
-            if (filterType === 'note') return doc.type === 'note'
+            if (activeFilter === 'all') return true
+            if (activeFilter === 'document') {
+                return doc.type === 'note' ? false :
+                    (doc.type === 'Изображение' || doc.type.startsWith('image/')) ? false :
+                    true
+            }
+            if (activeFilter === 'image') return doc.type === 'Изображение' || doc.type.startsWith('image/')
+            if (activeFilter === 'note') return doc.type === 'note'
             return true
         })
-    }, [documents, filterType])
+    }, [documents, activeFilter])
 
     // File click handler
     const handleFileClick = async (doc: Document) => {
@@ -584,10 +559,9 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
         } else {
             // Fetch real chunks/content for file editor
             try {
-                const gatewayUrl = process.env.NEXT_PUBLIC_AI_GATEWAY_URL
-                if (gatewayUrl && internalAgentId) {
+                if (internalAgentId) {
                     // Use standard GET endpoint which returns { chunks: [...] }
-                    const response = await fetch(`${gatewayUrl}/api/v1/agents/${internalAgentId}/documents/${doc.id}`)
+                    const response = await fetch(`/api/gateway/agents/${internalAgentId}/documents/${doc.id}`)
                     if (response.ok) {
                         const data = await response.json()
                         // Map chunks to format expected by FileEditorDialog
@@ -629,6 +603,11 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
         setIsDraggingGlobal(false)
     }
 
+    const ALLOWED_EXTENSIONS = new Set([
+        'pdf','doc','docx','xls','xlsx','csv','json','html','htm',
+        'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
+    ])
+
     const handleGlobalDrop = (e: React.DragEvent) => {
         e.preventDefault()
         setIsDraggingGlobal(false)
@@ -637,8 +616,19 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             return
         }
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const files = Array.from(e.dataTransfer.files)
-            setDroppedFiles(files)
+            const all = Array.from(e.dataTransfer.files)
+            const valid = all.filter(f => {
+                const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
+                return ALLOWED_EXTENSIONS.has(ext)
+            })
+            const invalid = all.length - valid.length
+            if (invalid > 0) {
+                toast.error(`${invalid} файл(ов) не поддерживается`, {
+                    description: 'Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, изображения'
+                })
+            }
+            if (valid.length === 0) return
+            setDroppedFiles(valid)
             setIsUploadDialogOpen(true)
         }
     }
@@ -656,8 +646,28 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
     }))
 
     // Filter conflicts: Only show KB contradictions (audit) in this view
+    // Normalize enrichment conflicts so ConflictResolverDialog can display them
     const kbConflicts = React.useMemo(() => {
-        return conflicts.filter(c => !Array.isArray(c.details))
+        return conflicts
+            .filter(c => !Array.isArray(c.details))
+            .map(c => {
+                const d = c.details as any
+                if (d?.source === 'contextual_enrichment' || d?.chunk_text) {
+                    return {
+                        ...c,
+                        details: {
+                            conflict_summary: c.topic,
+                            description: d.enrichment_context || c.topic,
+                            chunks_involved: (d.chunks_involved || []).map((ci: any) => ({
+                                ...ci,
+                                chunk_id: ci.chunk_id || ci.knowledge_base_id || `chunk-${ci.chunk_index}`,
+                                text: d.chunk_text || '',
+                            })),
+                        }
+                    }
+                }
+                return c
+            })
     }, [conflicts])
 
     // Loading state
@@ -704,10 +714,16 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
             {/* Dialogs */}
             <UploadDialog
                 open={isUploadDialogOpen}
-                onOpenChange={setIsUploadDialogOpen}
+                onOpenChange={(open) => {
+                    setIsUploadDialogOpen(open)
+                    if (!open) setDroppedFiles([])
+                }}
                 externalFiles={droppedFiles}
                 agentId={internalAgentId || ''}
-                onUploadComplete={() => fetchDocuments()}
+                onUploadComplete={() => {
+                    setDroppedFiles([])
+                    fetchDocuments()
+                }}
             />
 
             <NoteEditorDialog
@@ -817,22 +833,22 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                         <div className="flex items-center gap-3">
                             <Input
                                 placeholder="Поиск файлов..."
-                                value={searchQuery}
-                                readOnly
+                                value={localSearch}
+                                onChange={(e) => setLocalSearch(e.target.value)}
                                 className="h-9 w-[240px] rounded-xl border-transparent bg-muted/50 focus:bg-card focus:ring-2 focus:ring-ring transition-all font-medium text-foreground pl-3 shadow-none placeholder:text-muted-foreground"
                             />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="sm" className={cn(
                                         "h-9 rounded-xl border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:border-border shadow-sm",
-                                        filterType !== 'all' && "border-zinc-900 bg-primary text-primary-foreground hover:bg-primary/90 "
+                                        activeFilter !== 'all' && "border-zinc-900 bg-primary text-primary-foreground hover:bg-primary/90 "
                                     )}>
                                         <Filter className="h-4 w-4 mr-2" />
 
-                                        {filterType === 'all' ? 'Все типы' :
-                                            filterType === 'document' ? 'Документы' :
-                                                filterType === 'image' ? 'Изображения' :
-                                                    filterType === 'note' ? 'Заметки' : 'Все типы'}
+                                        {activeFilter === 'all' ? 'Все типы' :
+                                            activeFilter === 'document' ? 'Документы' :
+                                                activeFilter === 'image' ? 'Изображения' :
+                                                    activeFilter === 'note' ? 'Заметки' : 'Все типы'}
                                         <ChevronDown className="h-4 w-4 ml-2" />
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -841,30 +857,33 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                                         Тип контента
                                     </DropdownMenuLabel>
                                     <DropdownMenuItem
-                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'all' && "bg-muted")}
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", activeFilter === 'all' && "bg-muted")}
+                                        onClick={() => setActiveFilter('all')}
                                     >
                                         <div className="flex items-center gap-3 w-full">
                                             <Filter className="h-4 w-4 text-muted-foreground" />
                                             <span className="font-medium">Все типы</span>
-                                            {filterType === 'all' && <Check className="h-4 w-4 ml-auto text-foreground" />}
+                                            {activeFilter === 'all' && <Check className="h-4 w-4 ml-auto text-foreground" />}
                                         </div>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'document' && "bg-muted")}
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", activeFilter === 'document' && "bg-muted")}
+                                        onClick={() => setActiveFilter('document')}
                                     >
                                         <div className="flex items-center gap-3 w-full">
                                             <FileText className="h-4 w-4 text-blue-500" />
                                             <span className="font-medium">Документы</span>
-                                            {filterType === 'document' && <Check className="h-4 w-4 ml-auto text-foreground" />}
+                                            {activeFilter === 'document' && <Check className="h-4 w-4 ml-auto text-foreground" />}
                                         </div>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", filterType === 'image' && "bg-muted")}
+                                        className={cn("rounded-lg py-2.5 px-3 cursor-pointer", activeFilter === 'image' && "bg-muted")}
+                                        onClick={() => setActiveFilter('image')}
                                     >
                                         <div className="flex items-center gap-3 w-full">
                                             <Image className="h-4 w-4 text-purple-500" />
                                             <span className="font-medium">Изображения</span>
-                                            {filterType === 'image' && <Check className="h-4 w-4 ml-auto text-foreground" />}
+                                            {activeFilter === 'image' && <Check className="h-4 w-4 ml-auto text-foreground" />}
                                         </div>
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -915,7 +934,7 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                                 }}
                             >
                                 <Zap className="h-4 w-4 mr-2" />
-                                {kbConflicts.length} Проблем
+                                Проблемы: {kbConflicts.length}
                             </Button>
                         </div>
                     )}
@@ -924,7 +943,8 @@ export function AgentKnowledgeView({ agentId, hideHeader = false, searchQuery = 
                         size="sm"
                         className="h-9 text-muted-foreground hover:text-foreground"
                         onClick={handleRunAudit}
-                        disabled={isAuditRunning}
+                        disabled={isAuditRunning || documents.length === 0}
+                        title={documents.length === 0 ? 'Загрузите документы для аудита' : undefined}
                     >
                         {isAuditRunning ? <Sparkles className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
                         Аудит

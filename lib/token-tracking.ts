@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db'
 import { calculatePlatformTokensFromLlm } from '@/lib/token-rates'
-import { deductTokens } from '@/lib/balance'
-import { getBillingSystem, getUserBillingType } from '@/lib/billing-adapter'
+import { getBillingSystem } from '@/lib/billing-adapter'
 import { calculateLlmPuCost } from '@/lib/pu-calculator'
 import { Decimal } from '@prisma/client/runtime/library'
 import { TransactionType } from '@prisma/client'
@@ -121,7 +120,7 @@ export async function trackTokenUsage(params: TrackTokenUsageParams): Promise<vo
     const billing = await getBillingSystem(userId)
     await billing.deductUsage(userId, chargedAmount, {
       source: 'LLM_USAGE',
-      description: `Target: ${model} (${totalLlmTokens} tokens)`,
+      description: `Расход на диалог с агентом`,
       metadata: {
         model,
         promptTokens,

@@ -192,11 +192,7 @@ export function OverviewDashboard() {
 
             {/* Right: Traffic Source (4 cols) */}
             <div className="md:col-span-4">
-                <TrafficSourceChart data={[
-                    { name: 'Telegram', value: 100 }, // Hardcoded for now as we only have Telegram
-                    { name: 'WhatsApp', value: 0 },
-                    { name: 'Web', value: 0 },
-                ]} />
+                <TrafficSourceChart telegramDialogs={overview.totalDialogs} />
             </div>
 
         </div>

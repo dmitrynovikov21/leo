@@ -18,11 +18,9 @@ export async function POST(req: Request) {
         if (existingUser) {
             // If user exists but not verified, resend code
             if (!existingUser.emailVerified) {
-                // Generate verification code (hardcoded for now until email is configured)
-                const code = "123456"; // TODO: enable random code when email is ready
-                const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+                const code = Math.floor(100000 + Math.random() * 900000).toString();
+                const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
 
-                // Delete old codes and create new one
                 await prisma.emailVerificationCode.deleteMany({
                     where: { userId: existingUser.id },
                 });
@@ -35,12 +33,11 @@ export async function POST(req: Request) {
                     },
                 });
 
-                // TODO: enable email sending when configured
-                // await sendVerificationCode(email, code, existingUser.name || name);
+                await sendVerificationCode(email, code, existingUser.name || name);
 
                 return NextResponse.json(
                     {
-                        message: "Verification code sent",
+                        message: "Код подтверждения отправлен",
                         userId: existingUser.id,
                         requiresVerification: true
                     },
@@ -86,9 +83,8 @@ export async function POST(req: Request) {
             })
         }
 
-        // Generate verification code (hardcoded for now until email is configured)
-        const code = "123456"; // TODO: enable random code when email is ready
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
 
         await prisma.emailVerificationCode.create({
             data: {
@@ -98,12 +94,11 @@ export async function POST(req: Request) {
             },
         });
 
-        // TODO: enable email sending when configured
-        // await sendVerificationCode(email, code, name);
+        await sendVerificationCode(email, code, name);
 
         return NextResponse.json(
             {
-                message: "Verification code sent to your email",
+                message: "Код подтверждения отправлен на почту",
                 userId: user.id,
                 requiresVerification: true
             },

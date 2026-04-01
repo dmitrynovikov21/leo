@@ -1,0 +1,283 @@
+[   92265ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/user/sessions/track:0
+[   92270ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/v1/agents/stats/overview:0
+[   92299ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/ru/dashboard:0
+[   92308ms] [ERROR] Error loading balance: Error: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Can't reach database server at `db:5432`
+
+Please make sure your database server is running at `db:5432`.
+    at $n.handleRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at l (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at getUserBalance (webpack-internal:///(action-browser)/./lib/balance.ts:20:18)
+    at getCurrentUserBalance (webpack-internal:///(action-browser)/./actions/balance.ts:37:19)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:467:31
+    at rw (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:309:9)
+    at r6 (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/app-render.js:842:33)
+    at doRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2352:20)
+    at cacheEntry.responseCache.get.routeKind (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2580:30)
+    at DevServer.renderToResponseWithComponentsImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2454:24)
+    at DevServer.renderPageComponent (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3040:16)
+    at DevServer.renderToResponseImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3102:24)
+    at DevServer.pipeImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1544:21)
+    at DevServer.NextNodeServer.handleCatchallRenderRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/next-server.ts:1007:7)
+    at DevServer.handleRequestImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1325:9)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:461:14
+    at Span.traceAsyncFn (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/trace/trace.ts:141:14)
+    at DevServer.handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:459:20)
+    at invokeRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:266:11)
+    at handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:512:16)
+    at requestHandlerImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:558:7)
+    at Server.requestListener (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/start-server.ts:139:7) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   92403ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/orchestrator/agents?userId=dev-user-id:0
+[   92403ms] [WARNING] [UserProvider] Orchestrator failed, falling back to local API @ webpack-internal:///(app-pages-browser)/./components/providers/user-data-provider.tsx:42
+[   92673ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/v1/agents/stats/overview:0
+[   92678ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/v1/agents/stats/history:0
+[   92690ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/ru/dashboard:0
+[   92692ms] [ERROR] Error loading balance: Error: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Can't reach database server at `db:5432`
+
+Please make sure your database server is running at `db:5432`.
+    at $n.handleRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at l (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at getUserBalance (webpack-internal:///(action-browser)/./lib/balance.ts:20:18)
+    at getCurrentUserBalance (webpack-internal:///(action-browser)/./actions/balance.ts:37:19)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:467:31
+    at rw (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:309:9)
+    at r6 (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/app-render.js:842:33)
+    at doRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2352:20)
+    at cacheEntry.responseCache.get.routeKind (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2580:30)
+    at DevServer.renderToResponseWithComponentsImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2454:24)
+    at DevServer.renderPageComponent (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3040:16)
+    at DevServer.renderToResponseImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3102:24)
+    at DevServer.pipeImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1544:21)
+    at DevServer.NextNodeServer.handleCatchallRenderRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/next-server.ts:1007:7)
+    at DevServer.handleRequestImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1325:9)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:461:14
+    at Span.traceAsyncFn (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/trace/trace.ts:141:14)
+    at DevServer.handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:459:20)
+    at invokeRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:266:11)
+    at handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:512:16)
+    at requestHandlerImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:558:7)
+    at Server.requestListener (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/start-server.ts:139:7) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   92710ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/v1/agents/stats/history:0
+[   93257ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/user/profile:0
+[   93284ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/ru/dashboard:0
+[   93287ms] [ERROR] Error loading balance: Error: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Can't reach database server at `db:5432`
+
+Please make sure your database server is running at `db:5432`.
+    at $n.handleRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at l (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at getUserBalance (webpack-internal:///(action-browser)/./lib/balance.ts:20:18)
+    at getCurrentUserBalance (webpack-internal:///(action-browser)/./actions/balance.ts:37:19)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:467:31
+    at rw (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:309:9)
+    at r6 (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/app-render.js:842:33)
+    at doRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2352:20)
+    at cacheEntry.responseCache.get.routeKind (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2580:30)
+    at DevServer.renderToResponseWithComponentsImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2454:24)
+    at DevServer.renderPageComponent (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3040:16)
+    at DevServer.renderToResponseImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3102:24)
+    at DevServer.pipeImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1544:21)
+    at DevServer.NextNodeServer.handleCatchallRenderRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/next-server.ts:1007:7)
+    at DevServer.handleRequestImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1325:9)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:461:14
+    at Span.traceAsyncFn (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/trace/trace.ts:141:14)
+    at DevServer.handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:459:20)
+    at invokeRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:266:11)
+    at handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:512:16)
+    at requestHandlerImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:558:7)
+    at Server.requestListener (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/start-server.ts:139:7) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   93351ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/ru/dashboard:0
+[   93354ms] [ERROR] Error loading balance: Error: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Can't reach database server at `db:5432`
+
+Please make sure your database server is running at `db:5432`.
+    at $n.handleRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at l (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at getUserBalance (webpack-internal:///(action-browser)/./lib/balance.ts:20:18)
+    at getCurrentUserBalance (webpack-internal:///(action-browser)/./actions/balance.ts:37:19)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:467:31
+    at rw (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:309:9)
+    at r6 (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/app-render.js:842:33)
+    at doRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2352:20)
+    at cacheEntry.responseCache.get.routeKind (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2580:30)
+    at DevServer.renderToResponseWithComponentsImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2454:24)
+    at DevServer.renderPageComponent (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3040:16)
+    at DevServer.renderToResponseImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3102:24)
+    at DevServer.pipeImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1544:21)
+    at DevServer.NextNodeServer.handleCatchallRenderRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/next-server.ts:1007:7)
+    at DevServer.handleRequestImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1325:9)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:461:14
+    at Span.traceAsyncFn (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/trace/trace.ts:141:14)
+    at DevServer.handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:459:20)
+    at invokeRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:266:11)
+    at handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:512:16)
+    at requestHandlerImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:558:7)
+    at Server.requestListener (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/start-server.ts:139:7) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[   97091ms] [ERROR] Warning: In HTML, %s cannot be a descendant of <%s>.
+This will cause a hydration error.%s <div> p 
+    at div
+    at Skeleton (Server)
+    at p
+    at div
+    at div
+    at DashboardHeader (webpack-internal:///(app-pages-browser)/./components/dashboard/header.tsx:8:11)
+    at DashboardLoading (Server)
+    at DashboardLoading (Server)
+    at Suspense
+    at LoadingBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:349:11)
+    at ErrorBoundaryHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js:113:9)
+    at ErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js:160:11)
+    at InnerScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:153:9)
+    at ScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:228:11)
+    at RenderFromTemplateContext (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js:16:44)
+    at OuterLayoutRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:370:11)
+    at InnerLayoutRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:243:11)
+    at RedirectErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:74:9)
+    at RedirectBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:82:11)
+    at NotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/not-found-boundary.js:84:11)
+    at LoadingBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:349:11)
+    at ErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js:160:11)
+    at InnerScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:153:9)
+    at ScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:228:11)
+    at RenderFromTemplateContext (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js:16:44)
+    at OuterLayoutRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:370:11)
+    at div
+    at MaxWidthWrapper (Server)
+    at main
+    at div
+    at div
+    at UserProvider (webpack-internal:///(app-pages-browser)/./components/providers/user-data-provider.tsx:17:11)
+    at UserPreferencesProvider (webpack-internal:///(app-pages-browser)/./components/providers/user-preferences-provider.tsx:14:11)
+    at Dashboard (Server)
+    at InnerLayoutRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:243:11)
+    at RedirectErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:74:9)
+    at RedirectBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:82:11)
+    at NotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/not-found-boundary.js:84:11)
+    at LoadingBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:349:11)
+    at ErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js:160:11)
+    at InnerScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:153:9)
+    at ScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:228:11)
+    at RenderFromTemplateContext (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js:16:44)
+    at OuterLayoutRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:370:11)
+    at ModalProvider (webpack-internal:///(app-pages-browser)/./components/modals/providers.tsx:18:11)
+    at IntlProvider (webpack-internal:///(app-pages-browser)/./node_modules/use-intl/dist/esm/development/react.js:27:3)
+    at NextIntlClientProvider (webpack-internal:///(app-pages-browser)/./node_modules/next-intl/dist/esm/development/shared/NextIntlClientProvider.js:10:11)
+    at NextIntlClientProviderServer (Server)
+    at O (webpack-internal:///(app-pages-browser)/./node_modules/next-themes/dist/index.mjs:29:24)
+    at z (webpack-internal:///(app-pages-browser)/./node_modules/next-themes/dist/index.mjs:22:47)
+    at ThemeProvider (webpack-internal:///(app-pages-browser)/./components/providers/theme-provider.tsx:13:11)
+    at SessionProvider (webpack-internal:///(app-pages-browser)/./node_modules/next-auth/react.js:251:13)
+    at body
+    at html
+    at RootLayout (Server)
+    at InnerLayoutRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:243:11)
+    at RedirectErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:74:9)
+    at RedirectBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:82:11)
+    at NotFoundErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/not-found-boundary.js:76:9)
+    at NotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/not-found-boundary.js:84:11)
+    at LoadingBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:349:11)
+    at ErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js:160:11)
+    at InnerScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:153:9)
+    at ScrollAndFocusHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:228:11)
+    at RenderFromTemplateContext (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js:16:44)
+    at OuterLayoutRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js:370:11)
+    at RedirectErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:74:9)
+    at RedirectBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/redirect-boundary.js:82:11)
+    at NotFoundErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/not-found-boundary.js:76:9)
+    at NotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/not-found-boundary.js:84:11)
+    at DevRootNotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/dev-root-not-found-boundary.js:33:11)
+    at ReactDevOverlay (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/ReactDevOverlay.js:87:9)
+    at HotReload (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:321:11)
+    at Router (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:207:11)
+    at ErrorBoundaryHandler (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js:113:9)
+    at ErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/error-boundary.js:160:11)
+    at AppRouter (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/components/app-router.js:585:13)
+    at ServerRoot (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:112:27)
+    at Root (webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:117:11) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  120753ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/api/agents:0
+[  120754ms] [ERROR] Failed to create draft agent @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  121687ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/ru/dashboard/agents:0
+[  121689ms] [ERROR] Error loading balance: Error: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Can't reach database server at `db:5432`
+
+Please make sure your database server is running at `db:5432`.
+    at $n.handleRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at l (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at getUserBalance (webpack-internal:///(action-browser)/./lib/balance.ts:20:18)
+    at getCurrentUserBalance (webpack-internal:///(action-browser)/./actions/balance.ts:37:19)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:467:31
+    at rw (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:309:9)
+    at r6 (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/app-render.js:842:33)
+    at doRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2352:20)
+    at cacheEntry.responseCache.get.routeKind (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2580:30)
+    at DevServer.renderToResponseWithComponentsImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2454:24)
+    at DevServer.renderPageComponent (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3040:16)
+    at DevServer.renderToResponseImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3102:24)
+    at DevServer.pipeImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1544:21)
+    at DevServer.NextNodeServer.handleCatchallRenderRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/next-server.ts:1007:7)
+    at DevServer.handleRequestImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1325:9)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:461:14
+    at Span.traceAsyncFn (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/trace/trace.ts:141:14)
+    at DevServer.handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:459:20)
+    at invokeRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:266:11)
+    at handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:512:16)
+    at requestHandlerImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:558:7)
+    at Server.requestListener (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/start-server.ts:139:7) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32
+[  121715ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/ru/dashboard/agents:0
+[  121717ms] [ERROR] Error loading balance: Error: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Can't reach database server at `db:5432`
+
+Please make sure your database server is running at `db:5432`.
+    at $n.handleRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at l (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at getUserBalance (webpack-internal:///(action-browser)/./lib/balance.ts:20:18)
+    at getCurrentUserBalance (webpack-internal:///(action-browser)/./actions/balance.ts:37:19)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:467:31
+    at rw (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/action-handler.js:309:9)
+    at r6 (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/dist/compiled/next-server/webpack:/next/dist/esm/server/app-render/app-render.js:842:33)
+    at doRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2352:20)
+    at cacheEntry.responseCache.get.routeKind (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2580:30)
+    at DevServer.renderToResponseWithComponentsImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:2454:24)
+    at DevServer.renderPageComponent (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3040:16)
+    at DevServer.renderToResponseImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:3102:24)
+    at DevServer.pipeImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1544:21)
+    at DevServer.NextNodeServer.handleCatchallRenderRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/next-server.ts:1007:7)
+    at DevServer.handleRequestImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/base-server.ts:1325:9)
+    at /Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:461:14
+    at Span.traceAsyncFn (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/trace/trace.ts:141:14)
+    at DevServer.handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/dev/next-dev-server.ts:459:20)
+    at invokeRender (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:266:11)
+    at handleRequest (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:512:16)
+    at requestHandlerImpl (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/router-server.ts:558:7)
+    at Server.requestListener (/Users/enderwar/Documents/Programming/external/leo/leo/node_modules/next/src/server/lib/start-server.ts:139:7) @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/app-index.js:32

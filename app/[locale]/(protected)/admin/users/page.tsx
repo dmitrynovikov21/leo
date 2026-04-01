@@ -2,16 +2,19 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, RefreshCw } from 'lucide-react'
+import { Search, RefreshCw, LogIn, Mail } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import { getAdminUsers, setUserBlocked, type AdminUser } from '@/actions/admin-users'
+import { impersonateUser } from '@/actions/impersonate'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AdjustPuDialog } from './components/adjust-pu-dialog'
+import { ChangeEmailDialog } from './components/change-email-dialog'
 import { cn } from '@/lib/utils'
 
 function statusBadge(user: AdminUser) {
@@ -21,11 +24,13 @@ function statusBadge(user: AdminUser) {
 }
 
 export default function AdminUsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [adjustUser, setAdjustUser] = useState<AdminUser | null>(null)
+  const [emailUser, setEmailUser] = useState<AdminUser | null>(null)
 
   const load = useCallback(async (q?: string) => {
     setLoading(true)
@@ -54,6 +59,17 @@ export default function AdminUsersPage() {
       load(search.trim() || undefined)
     } catch {
       toast.error('Ошибка')
+    }
+  }
+
+  const handleImpersonate = async (user: AdminUser) => {
+    try {
+      await impersonateUser(user.id)
+      toast.success(`Вход как ${user.email}`)
+      router.push('/dashboard')
+      router.refresh()
+    } catch {
+      toast.error('Не удалось войти как пользователь')
     }
   }
 
@@ -160,6 +176,22 @@ export default function AdminUsersPage() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => handleImpersonate(user)}
+                            title={`Войти как ${user.email}`}
+                          >
+                            <LogIn className="size-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEmailUser(user)}
+                            title="Изменить email"
+                          >
+                            <Mail className="size-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => setAdjustUser(user)}
                           >
                             PU
@@ -189,6 +221,16 @@ export default function AdminUsersPage() {
           userId={adjustUser.id}
           userEmail={adjustUser.email}
           currentBalance={adjustUser.puBalance}
+          onSuccess={() => load(search.trim() || undefined)}
+        />
+      )}
+
+      {emailUser && (
+        <ChangeEmailDialog
+          open={!!emailUser}
+          onOpenChange={v => !v && setEmailUser(null)}
+          userId={emailUser.id}
+          currentEmail={emailUser.email}
           onSuccess={() => load(search.trim() || undefined)}
         />
       )}

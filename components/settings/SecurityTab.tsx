@@ -146,9 +146,22 @@ export function SecurityTab() {
         confirmPassword: ''
     })
     const [isUpdatingPassword, setIsUpdatingPassword] = React.useState(false)
+    const [hasPassword, setHasPassword] = React.useState<boolean | null>(null)
+
+    // Check if user has a password set
+    React.useEffect(() => {
+        fetch('/api/user/password')
+            .then(res => res.json())
+            .then(data => setHasPassword(data.hasPassword))
+            .catch(() => setHasPassword(true)) // assume has password on error
+    }, [])
 
     const handleUpdatePassword = async () => {
-        if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+        if (hasPassword && !passwordData.currentPassword) {
+            toast.error('Введите текущий пароль')
+            return
+        }
+        if (!passwordData.newPassword || !passwordData.confirmPassword) {
             toast.error('Заполните все поля')
             return
         }
@@ -170,8 +183,9 @@ export function SecurityTab() {
             })
 
             if (res.ok) {
-                toast.success('Пароль успешно обновлен')
+                toast.success(hasPassword ? 'Пароль успешно обновлён' : 'Пароль установлен')
                 setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                setHasPassword(true)
             } else {
                 const text = await res.text()
                 toast.error(text || 'Не удалось обновить пароль')
@@ -189,24 +203,33 @@ export function SecurityTab() {
             {/* Password Card */}
             <Card className="border border-border shadow-[0_2px_8px_rgba(0,0,0,0.04)] bg-card rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xl font-bold text-foreground">Пароль</CardTitle>
+                    <CardTitle className="text-xl font-bold text-foreground">
+                        {hasPassword === false ? 'Установить пароль' : 'Пароль'}
+                    </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        Измените свой пароль для входа в аккаунт.
+                        {hasPassword === false
+                            ? 'Вы вошли через социальную сеть. Установите пароль, чтобы входить по email.'
+                            : 'Измените свой пароль для входа в аккаунт.'
+                        }
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {hasPassword !== false && (
+                        <div className="space-y-2">
+                            <Label htmlFor="current-password" className="text-foreground font-medium">Текущий пароль</Label>
+                            <Input
+                                id="current-password"
+                                type="password"
+                                value={passwordData.currentPassword}
+                                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
+                            />
+                        </div>
+                    )}
                     <div className="space-y-2">
-                        <Label htmlFor="current-password" className="text-foreground font-medium">Текущий пароль</Label>
-                        <Input
-                            id="current-password"
-                            type="password"
-                            value={passwordData.currentPassword}
-                            onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                            className="h-11 rounded-xl border-transparent bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-all font-medium text-foreground"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="new-password" className="text-foreground font-medium">Новый пароль</Label>
+                        <Label htmlFor="new-password" className="text-foreground font-medium">
+                            {hasPassword === false ? 'Пароль' : 'Новый пароль'}
+                        </Label>
                         <Input
                             id="new-password"
                             type="password"
@@ -230,10 +253,10 @@ export function SecurityTab() {
                     <Button
                         className="rounded-xl h-10 px-6 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                         onClick={handleUpdatePassword}
-                        disabled={isUpdatingPassword}
+                        disabled={isUpdatingPassword || hasPassword === null}
                     >
                         {isUpdatingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Обновить пароль
+                        {hasPassword === false ? 'Установить пароль' : 'Обновить пароль'}
                     </Button>
                 </CardFooter>
             </Card>

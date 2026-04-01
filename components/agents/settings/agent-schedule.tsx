@@ -84,11 +84,10 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
         // Fetch schedule settings on mount
         React.useEffect(() => {
             const fetchScheduleSettings = async () => {
-                const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-                if (!orchestratorUrl || !agentId) return
+                if (!agentId) return
 
                 try {
-                    const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/schedule`)
+                    const res = await fetch(`/api/orchestrator/agents/${agentId}/schedule`)
                     if (res.ok) {
                         const data = await res.json()
                         if (data.schedule) {
@@ -115,11 +114,10 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
         // Fetch behavior settings on mount
         React.useEffect(() => {
             const fetchBehaviorSettings = async () => {
-                const orchestratorUrl = process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL
-                if (!orchestratorUrl || !agentId) return
+                if (!agentId) return
 
                 try {
-                    const res = await fetch(`${orchestratorUrl}/api/v1/agents/${agentId}/behavior`)
+                    const res = await fetch(`/api/orchestrator/agents/${agentId}/behavior`)
                     if (res.ok) {
                         const data = await res.json()
                         if (data.debounceMs !== undefined) {
@@ -173,6 +171,25 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
             if (isMouseDown) {
                 handleCellAction(d, h)
             }
+        }
+
+        const toggleRow = (dayIndex: number) => {
+            const allActive = schedule[dayIndex].every(v => v)
+            const newSchedule = [...schedule]
+            newSchedule[dayIndex] = newSchedule[dayIndex].map(() => !allActive)
+            setSchedule(newSchedule)
+            onChange?.()
+        }
+
+        const toggleColumn = (hourIndex: number) => {
+            const allActive = schedule.every(row => row[hourIndex])
+            const newSchedule = schedule.map(row => {
+                const newRow = [...row]
+                newRow[hourIndex] = !allActive
+                return newRow
+            })
+            setSchedule(newSchedule)
+            onChange?.()
         }
 
         const handleBufferChange = (value: number[]) => {
@@ -234,22 +251,35 @@ export const AgentScheduleContent = React.forwardRef<ScheduleRef, AgentScheduleC
                         </CardHeader>
                         <CardContent>
                             <div className="select-none">
-                                {/* Header Hours */}
+                                {/* Header Hours - clickable columns */}
                                 <div className="flex mb-2">
                                     <div className="w-12" />
-                                    <div className="flex-1 flex justify-between text-[10px] text-muted-foreground font-medium px-1 uppercase tracking-wide">
-                                        <span>00:00</span>
-                                        <span>06:00</span>
-                                        <span>12:00</span>
-                                        <span>18:00</span>
-                                        <span>23:00</span>
+                                    <div className="flex-1 flex gap-[2px]">
+                                        {hours.map((h) => (
+                                            <div
+                                                key={h}
+                                                className="flex-1 flex items-center justify-center cursor-pointer rounded-sm hover:bg-muted/80 transition-colors h-5"
+                                                onClick={() => toggleColumn(h)}
+                                                title={`Выделить ${h}:00 для всех дней`}
+                                            >
+                                                {h % 6 === 0 && (
+                                                    <span className="text-[10px] text-muted-foreground font-medium">
+                                                        {String(h).padStart(2, '0')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
 
                                 <div className="space-y-1">
                                     {days.map((day, dIndex) => (
                                         <div key={day} className="flex items-center gap-2">
-                                            <span className="w-12 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{day}</span>
+                                            <span
+                                                className="w-12 text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-foreground transition-colors"
+                                                onClick={() => toggleRow(dIndex)}
+                                                title={`Выделить весь ${day}`}
+                                            >{day}</span>
                                             <div className="flex-1 flex gap-[2px] h-8">
                                                 {hours.map((h) => (
                                                     <div

@@ -15,12 +15,12 @@ export const env = createEnv({
     AUTH_SECRET: z.string().min(1),
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    YANDEX_CLIENT_ID: z.string().min(1).optional(),
+    YANDEX_CLIENT_SECRET: z.string().min(1).optional(),
     GITHUB_OAUTH_TOKEN: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1),
     RESEND_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(1),
-    STRIPE_API_KEY: z.string().min(1).optional(),
-    STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
     // Tochka Bank
     TOCHKA_CUSTOMER_CODE: z.string().min(1).optional(),
     // Shared secret for ai-master service auth
@@ -32,16 +32,14 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: z.string().min(1),
     NEXT_PUBLIC_AI_GATEWAY_URL: z.string().url().optional(),
     NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL: z.string().url().optional(),
-    NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID: z.string().min(1).optional(),
-    NEXT_PUBLIC_STRIPE_PRO_YEARLY_PLAN_ID: z.string().min(1).optional(),
-    NEXT_PUBLIC_STRIPE_BUSINESS_MONTHLY_PLAN_ID: z.string().min(1).optional(),
-    NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID: z.string().min(1).optional(),
   },
   runtimeEnv: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     AUTH_SECRET: process.env.AUTH_SECRET,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    YANDEX_CLIENT_ID: process.env.YANDEX_CLIENT_ID,
+    YANDEX_CLIENT_SECRET: process.env.YANDEX_CLIENT_SECRET,
     GITHUB_OAUTH_TOKEN: process.env.GITHUB_OAUTH_TOKEN,
     DATABASE_URL: process.env.DATABASE_URL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
@@ -49,18 +47,7 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_AI_GATEWAY_URL: process.env.NEXT_PUBLIC_AI_GATEWAY_URL,
     NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL: process.env.NEXT_PUBLIC_AGENT_ORCHESTRATOR_URL,
-    // Stripe
-    STRIPE_API_KEY: process.env.STRIPE_API_KEY,
-    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     TOCHKA_CUSTOMER_CODE: process.env.TOCHKA_CUSTOMER_CODE,
     AI_API_SECRET: process.env.AI_API_SECRET,
-    NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID:
-      process.env.NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID,
-    NEXT_PUBLIC_STRIPE_PRO_YEARLY_PLAN_ID:
-      process.env.NEXT_PUBLIC_STRIPE_PRO_YEARLY_PLAN_ID,
-    NEXT_PUBLIC_STRIPE_BUSINESS_MONTHLY_PLAN_ID:
-      process.env.NEXT_PUBLIC_STRIPE_BUSINESS_MONTHLY_PLAN_ID,
-    NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID:
-      process.env.NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID,
   },
 });

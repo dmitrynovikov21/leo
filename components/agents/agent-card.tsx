@@ -17,7 +17,7 @@ interface DbAgent {
     name: string
     role: string
     description: string
-    status: 'STOPPED' | 'STARTING' | 'RUNNING' | 'ERROR'
+    status: 'DRAFT' | 'STOPPED' | 'STARTING' | 'RUNNING' | 'ERROR'
     avatarEmoji?: string | null
     telegramToken?: string | null
     createdAt: string

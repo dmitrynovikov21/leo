@@ -36,7 +36,7 @@ model TokenRateConfig {
 ```prisma
 model ModelCostConfig {
   id                  String    @id @default(cuid())
-  modelName           String    // e.g., "gpt-4o", "claude-3-5-sonnet"
+  modelName           String    // e.g., "claude-sonnet-4-6", "gemini-2.5-pro"
   inputCostPerMillion Decimal   // $ per 1M input tokens
   outputCostPerMillion Decimal  // $ per 1M output tokens
   isActive            Boolean   @default(true)
