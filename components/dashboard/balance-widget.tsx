@@ -65,7 +65,24 @@ export function BalanceWidget({
 
     const currentBalance = balance ?? 0
     const isLowBalance = currentBalance < lowBalanceThreshold
-    const runwayDays = Math.floor(currentBalance / 10) // ~10 PU per day average usage
+    const [avgDailySpend, setAvgDailySpend] = useState<number | null>(null)
+
+    useEffect(() => {
+        async function loadAvgSpend() {
+            try {
+                const resp = await fetch('/api/user/avg-spend')
+                if (resp.ok) {
+                    const data = await resp.json()
+                    setAvgDailySpend(data.avgDailySpend ?? null)
+                }
+            } catch {}
+        }
+        loadAvgSpend()
+    }, [])
+
+    const runwayDays = avgDailySpend && avgDailySpend > 0
+        ? Math.floor(currentBalance / avgDailySpend)
+        : (currentBalance > 0 ? 999 : 0)
 
     if (collapsed) {
         return (

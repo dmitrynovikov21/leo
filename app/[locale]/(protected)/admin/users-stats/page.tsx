@@ -97,8 +97,8 @@ export default function UsersStatsPage() {
                                 ) : (
                                     stats.map((user) => (
                                         <TableRow key={user.id}>
-                                            <TableCell className="font-medium">{user.name || 'Без имени'}</TableCell>
-                                            <TableCell>{user.email}</TableCell>
+                                            <TableCell className="font-medium max-w-[200px] truncate">{user.name || 'Без имени'}</TableCell>
+                                            <TableCell className="max-w-[200px] truncate">{user.email}</TableCell>
                                             <TableCell className="text-right font-bold">{user.agentsCount}</TableCell>
                                             <TableCell className="text-right font-bold">{user.dialogsCount}</TableCell>
                                             <TableCell className="text-muted-foreground text-sm">

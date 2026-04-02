@@ -165,8 +165,8 @@ export default function UsersBalancePage() {
                 <TableBody>
                   {users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className='font-medium'>{user.email || 'Н/Д'}</TableCell>
-                      <TableCell>{user.name || 'Н/Д'}</TableCell>
+                      <TableCell className='font-medium max-w-[200px] truncate'>{user.email || 'Н/Д'}</TableCell>
+                      <TableCell className='max-w-[200px] truncate'>{user.name || 'Н/Д'}</TableCell>
                       <TableCell>
                         <UserSubscriptionSelect
                           userId={user.id}

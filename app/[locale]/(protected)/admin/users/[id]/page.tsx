@@ -35,7 +35,7 @@ export default async function AdminUserDetailPage({ params }: Props) {
         </Link>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{user.email || user.name || user.id}</h1>
+            <h1 className="text-2xl font-bold max-w-[500px] truncate">{user.email || user.name || user.id}</h1>
             <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>{user.role}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { aiFetch, getOrchestratorUrl } from "@/lib/ai-fetch";
+import { aiFetch, getOrchestratorUrl, getGatewayUrl } from "@/lib/ai-fetch";
 
 // Map wizard style IDs to behavior tone values
 const STYLE_TO_TONE: Record<string, string> = {
@@ -145,10 +145,74 @@ export async function POST(
 
         console.log(`[Finalize] Agent ${params.id}: Prisma update done`);
 
+        // Create a single knowledge base note from all manual FAQ entries (best-effort)
+        const faqItems = (wizardData?.step2?.manualFaq || []).filter((f: any) => f.question && f.answer);
+        if (faqItems.length > 0) {
+            const orchestratorBaseUrl = getOrchestratorUrl();
+            const gatewayBaseUrl = getGatewayUrl();
+            if (orchestratorBaseUrl) {
+                const title = "Частые вопросы";
+                const content = faqItems
+                    .map((f: any) => `Вопрос: ${f.question}\nОтвет: ${f.answer}`)
+                    .join("\n\n");
+                try {
+                    await aiFetch(`${orchestratorBaseUrl}/api/v1/agents/${params.id}/notes`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "x-user-id": session.user.id,
+                        },
+                        body: JSON.stringify({ title, content }),
+                    });
+                    if (gatewayBaseUrl) {
+                        await aiFetch(`${gatewayBaseUrl}/api/v1/documents/vectorize`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                agentId: params.id,
+                                userId: session.user.id,
+                                filename: `note_${title}`,
+                                fileSize: content.length,
+                                mimeType: "text/plain",
+                                chunks: [{ index: 0, text: content }],
+                            }),
+                        });
+                    }
+                    console.log(`[Finalize] Agent ${params.id}: FAQ note created (${faqItems.length} entries)`);
+                } catch (e) {
+                    console.warn(`[Finalize] Failed to create FAQ note:`, e);
+                }
+            }
+        }
+
+        // Save default schedule (Mon-Fri 9-18) so the agent knows its working hours
+        const orchestratorUrl = getOrchestratorUrl();
+        if (orchestratorUrl) {
+            try {
+                const defaultSchedule = Array.from({ length: 7 }, (_, day) =>
+                    Array.from({ length: 24 }, (_, hour) => day < 5 && hour >= 9 && hour < 18)
+                );
+                await aiFetch(`${orchestratorUrl}/api/v1/agents/${params.id}/schedule`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-user-id": session.user.id,
+                    },
+                    body: JSON.stringify({
+                        schedule: defaultSchedule,
+                        message: "Здравствуйте! Сейчас я не на связи. Я отвечу вам в рабочее время.",
+                        holidays: [],
+                    }),
+                });
+                console.log(`[Finalize] Agent ${params.id}: default schedule saved`);
+            } catch (e) {
+                console.warn("[Finalize] Failed to save default schedule:", e);
+            }
+        }
+
         // Sync with orchestrator (best-effort)
         // NOTE: Do NOT POST to /api/v1/agents — agent already exists in DB (created as DRAFT).
         // POST would create a duplicate. Instead, sync behavior + prompt version via PATCH/POST.
-        const orchestratorUrl = getOrchestratorUrl();
         if (orchestratorUrl) {
             try {
                 // Sync behavior settings to orchestrator

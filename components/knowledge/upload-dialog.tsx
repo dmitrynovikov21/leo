@@ -119,6 +119,8 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
         'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
     ])
 
+    const BLOCKED_EXTENSIONS = new Set(['zip','rar','7z','tar','gz','bz2'])
+
     // Guard against double-processing (externalFiles effect + handleDrop can both fire)
     const isUploadingRef = React.useRef(false)
 
@@ -126,12 +128,23 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
         if (isUploadingRef.current) return
         isUploadingRef.current = true
 
+        // Block archive files explicitly
+        const archives = files.filter(f => {
+            const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
+            return BLOCKED_EXTENSIONS.has(ext)
+        })
+        if (archives.length > 0) {
+            toast.error(`Архивы не поддерживаются (${archives.map(f => f.name).join(', ')})`, {
+                description: 'Распакуйте архив и загрузите файлы по отдельности'
+            })
+        }
+
         // Filter unsupported files before uploading
         const valid = files.filter(f => {
             const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
-            return ALLOWED_EXTENSIONS.has(ext)
+            return ALLOWED_EXTENSIONS.has(ext) && !BLOCKED_EXTENSIONS.has(ext)
         })
-        const invalid = files.length - valid.length
+        const invalid = files.length - valid.length - archives.length
         if (invalid > 0) {
             toast.error(`${invalid} файл(ов) не поддерживается`, {
                 description: 'Поддерживаются: PDF, Word, Excel, CSV, JSON, HTML, PPTX, TXT, MD, изображения'

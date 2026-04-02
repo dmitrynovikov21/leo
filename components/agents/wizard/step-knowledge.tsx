@@ -18,7 +18,9 @@ interface StepKnowledgeProps {
 
 export function StepKnowledge({ agentId, data, onChange }: StepKnowledgeProps) {
     const [uploading, setUploading] = React.useState(false)
-    const [uploadedFiles, setUploadedFiles] = React.useState<{ name: string; status: string }[]>([])
+    const [uploadedFiles, setUploadedFiles] = React.useState<{ name: string; status: string }[]>(
+        () => (data?.files || []).map(name => ({ name, status: "done" }))
+    )
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
     const faq = data?.manualFaq || []

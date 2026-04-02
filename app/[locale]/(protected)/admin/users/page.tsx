@@ -136,8 +136,8 @@ export default function AdminUsersPage() {
                   {users.map(user => (
                     <TableRow key={user.id}>
                       <TableCell>
-                        <div className="font-medium text-sm">{user.email || '—'}</div>
-                        <div className="text-xs text-muted-foreground">{user.name || user.id.slice(0, 8)}</div>
+                        <div className="font-medium text-sm max-w-[200px] truncate">{user.email || '—'}</div>
+                        <div className="text-xs text-muted-foreground max-w-[200px] truncate">{user.name || user.id.slice(0, 8)}</div>
                       </TableCell>
                       <TableCell>{statusBadge(user)}</TableCell>
                       <TableCell>
