@@ -2,6 +2,7 @@
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
+import { notifySupportTicket } from '@/lib/telegram-notify'
 
 /**
  * Get current user's support tickets
@@ -69,6 +70,8 @@ export async function createTicket(data: {
       },
     },
   })
+
+  notifySupportTicket(session.user.email || session.user.id, data.subject.trim(), data.message.trim())
 
   return { id: ticket.id }
 }

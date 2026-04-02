@@ -9,6 +9,7 @@ const TOPICS = {
   REGISTRATION: 7231,
   AGENT_CREATED: 7232,
   PAYMENT: 7233,
+  SUPPORT: 7234,
 } as const;
 
 async function sendToTopic(topicId: number, text: string): Promise<void> {
@@ -58,4 +59,15 @@ export function notifyPayment(userEmail: string, amount: number, currency: strin
   if (puAmount) lines.push(`🔋 +${puAmount} PU`);
   lines.push(`🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`);
   sendToTopic(TOPICS.PAYMENT, lines.join('\n'));
+}
+
+export function notifySupportTicket(userEmail: string, subject: string, message?: string): void {
+  const lines = [
+    `<b>Новый запрос в поддержку</b>`,
+    `👤 ${userEmail}`,
+    `📋 ${subject}`,
+  ];
+  if (message) lines.push(`💬 ${message.slice(0, 200)}${message.length > 200 ? '...' : ''}`);
+  lines.push(`🕐 ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`);
+  sendToTopic(TOPICS.SUPPORT, lines.join('\n'));
 }
