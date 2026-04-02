@@ -47,7 +47,7 @@ export async function POST(req: Request) {
             }
 
             return NextResponse.json(
-                { message: "User with this email already exists" },
+                { message: "Пользователь с таким email уже зарегистрирован" },
                 { status: 400 }
             );
         }
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
     } catch (error) {
         console.error("Registration error:", error);
         return NextResponse.json(
-            { message: "Something went wrong" },
+            { message: "Произошла ошибка, попробуйте позже" },
             { status: 500 }
         );
     }
