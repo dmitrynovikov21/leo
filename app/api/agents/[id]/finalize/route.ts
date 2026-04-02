@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { aiFetch, getOrchestratorUrl, getGatewayUrl } from "@/lib/ai-fetch";
+import { notifyAgentCreated } from "@/lib/telegram-notify";
 
 // Map wizard style IDs to behavior tone values
 const STYLE_TO_TONE: Record<string, string> = {
@@ -248,6 +249,10 @@ export async function POST(
                 console.warn("[Finalize] Orchestrator sync failed (non-critical):", e);
             }
         }
+
+        // Notify admin
+        const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { email: true } });
+        notifyAgentCreated(finalName, user?.email || session.user.id, params.id);
 
         return NextResponse.json({ ok: true });
     } catch (error) {

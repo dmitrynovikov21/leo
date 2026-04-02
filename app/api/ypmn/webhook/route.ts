@@ -3,6 +3,7 @@ import { YpmnService } from '@/lib/ypmn'
 import { Decimal } from '@prisma/client/runtime/library'
 import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { notifyPayment } from '@/lib/telegram-notify'
 import { getBillingSystem } from '@/lib/billing-adapter'
 
 export async function POST(req: Request) {
@@ -112,6 +113,9 @@ export async function POST(req: Request) {
             }
 
             await billing.addBalance(userId, puAmount, 'YPMN_TOPUP')
+
+            const payUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+            notifyPayment(payUser?.email || userId, parseFloat(amount.toString()), '₽', puAmount)
 
             // We should update the transaction we just created (inside billing.addBalance?)
             // `billing.addBalance` in `PuBillingSystem` creates a `PuTransaction`.

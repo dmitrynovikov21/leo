@@ -3,6 +3,7 @@ import { TochkaService } from '@/lib/tochka'
 import { resetSubscriptionCycle, unfreezeUserData } from '@/lib/subscription-manager'
 import { Decimal } from '@prisma/client/runtime/library'
 import { addMonths } from 'date-fns'
+import { notifyPayment } from '@/lib/telegram-notify'
 
 function log(msg: string, data?: any) {
   const ts = new Date().toISOString()
@@ -85,6 +86,10 @@ export async function POST(req: Request) {
           ])
 
           log(`TOP-UP COMPLETED: user=${pendingTopup.userId} +${puAmount} PU, balance: ${sub.puBalance} -> ${newBalance}`)
+
+          // Notify admin
+          const topupUser = await prisma.user.findUnique({ where: { id: pendingTopup.userId }, select: { email: true } })
+          notifyPayment(topupUser?.email || pendingTopup.userId, Number(meta.priceRub) || 0, '₽', puAmount)
         } else {
           log(`ERROR: No subscription found for topup user=${pendingTopup.userId}`)
         }
