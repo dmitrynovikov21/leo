@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { UserRole } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 import NextAuth, { type DefaultSession } from "next-auth";
+import { notifyRegistration } from "@/lib/telegram-notify";
 
 import { prisma } from "@/lib/db";
 import { getUserById } from "@/lib/user";
@@ -112,6 +113,7 @@ export const {
             status: 'ACTIVE',
           },
         });
+        notifyRegistration(user.email || 'OAuth user', user.name);
       } catch (err) {
         console.error('[Auth] Failed to create FREE subscription for OAuth user:', err);
       }
