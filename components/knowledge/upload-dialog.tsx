@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { UploadCloud, Check } from "lucide-react"
+import { UploadCloud, Check, Loader2, AlertCircle, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -23,8 +23,14 @@ interface UploadDialogProps {
     open?: boolean
     onOpenChange?: (open: boolean) => void
     externalFiles?: File[]
-    agentId?: string  // If provided, upload to agent instead of library
-    onUploadComplete?: () => void  // Callback after successful upload
+    agentId?: string
+    onUploadComplete?: () => void
+}
+
+interface FileStatus {
+    name: string
+    status: 'pending' | 'uploading' | 'done' | 'error'
+    error?: string
 }
 
 export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setControlledOpen, externalFiles, agentId, onUploadComplete }: UploadDialogProps) {
@@ -34,20 +40,28 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     const setOpen = isControlled ? setControlledOpen! : setInternalOpen
 
     const [isDragging, setIsDragging] = React.useState(false)
-    const [isUploaded, setIsUploaded] = React.useState(false)
-    const [isProcessing, setIsProcessing] = React.useState(false)
-    const [progress, setProgress] = React.useState(0)
     const [activeTab, setActiveTab] = React.useState("files")
     const [websiteUrl, setWebsiteUrl] = React.useState("")
+    const [isProcessing, setIsProcessing] = React.useState(false)
+    const [progress, setProgress] = React.useState(0)
     const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-    // Track processed files to prevent duplicates
+    // Upload state
+    const [fileStatuses, setFileStatuses] = React.useState<FileStatus[]>([])
+    const [isUploading, setIsUploading] = React.useState(false)
+    const isUploadingRef = React.useRef(false)
     const processedFilesRef = React.useRef<Set<string>>(new Set())
+
+    const ALLOWED_EXTENSIONS = new Set([
+        'pdf','doc','docx','xls','xlsx','csv','json','html','htm',
+        'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
+    ])
+
+    const BLOCKED_EXTENSIONS = new Set(['zip','rar','7z','tar','gz','bz2'])
 
     // Handle external files (drag & drop from parent)
     React.useEffect(() => {
         if (externalFiles && externalFiles.length > 0) {
-            // Filter out already processed files
             const newFiles = externalFiles.filter(f => !processedFilesRef.current.has(f.name + f.size))
             if (newFiles.length > 0) {
                 newFiles.forEach(f => processedFilesRef.current.add(f.name + f.size))
@@ -57,78 +71,27 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     }, [externalFiles])
 
     const processFile = async (file: File) => {
-        // Send file directly to server action — parsing happens server-side
         if (agentId) {
-            try {
-                const formData = new FormData()
-                formData.append('file', file)
-
-                const { uploadAgentDocument } = await import('@/actions/agent-knowledge')
-                const result = await uploadAgentDocument({ agentId, file: formData })
-
-                if (!result.success) {
-                    if (result.error?.includes('Недостаточно PU')) {
-                        toast.error("Недостаточно PU баланса", {
-                            description: "Пожалуйста, пополните баланс перед загрузкой файлов."
-                        })
-                    } else {
-                        toast.error(`Ошибка загрузки: ${result.error}`)
-                    }
-                    throw new Error(result.error)
-                }
-
-                toast.info(`Файл загружен`, {
-                    description: `Обработка "${file.name}" запущена в фоне...`
-                })
-
-            } catch (err) {
-                throw err
-            }
+            const formData = new FormData()
+            formData.append('file', file)
+            const { uploadAgentDocument } = await import('@/actions/agent-knowledge')
+            const result = await uploadAgentDocument({ agentId, file: formData })
+            if (!result.success) throw new Error(result.error)
         } else {
-            // Global library upload
-            try {
-                const formData = new FormData()
-                formData.append('file', file)
-
-                const { uploadLibraryDocument } = await import('@/actions/library')
-                const result = await uploadLibraryDocument({ file: formData })
-
-                if (!result.success) {
-                    if (result.error?.includes('Недостаточно PU')) {
-                        toast.error("Недостаточно PU баланса", {
-                            description: "Пожалуйста, пополните баланс перед загрузкой файлов."
-                        })
-                    } else {
-                        toast.error(`Ошибка загрузки: ${result.error}`)
-                    }
-                    throw new Error(result.error)
-                }
-
-                toast.info(`Файл добавлен`, {
-                    description: `"${file.name}" обрабатывается в фоне...`
-                })
-
-            } catch (err) {
-                throw err
-            }
+            const formData = new FormData()
+            formData.append('file', file)
+            const { uploadLibraryDocument } = await import('@/actions/library')
+            const result = await uploadLibraryDocument({ file: formData })
+            if (!result.success) throw new Error(result.error)
         }
     }
-
-    const ALLOWED_EXTENSIONS = new Set([
-        'pdf','doc','docx','xls','xlsx','csv','json','html','htm',
-        'pptx','ppt','txt','md','png','jpg','jpeg','webp','bmp','tiff','gif'
-    ])
-
-    const BLOCKED_EXTENSIONS = new Set(['zip','rar','7z','tar','gz','bz2'])
-
-    // Guard against double-processing (externalFiles effect + handleDrop can both fire)
-    const isUploadingRef = React.useRef(false)
 
     const handleFiles = async (files: File[]) => {
         if (isUploadingRef.current) return
         isUploadingRef.current = true
+        setIsUploading(true)
 
-        // Block archive files explicitly
+        // Block archives
         const archives = files.filter(f => {
             const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
             return BLOCKED_EXTENSIONS.has(ext)
@@ -139,7 +102,7 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
             })
         }
 
-        // Filter unsupported files before uploading
+        // Filter valid
         const valid = files.filter(f => {
             const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
             return ALLOWED_EXTENSIONS.has(ext) && !BLOCKED_EXTENSIONS.has(ext)
@@ -151,40 +114,33 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
             })
         }
         if (valid.length === 0) {
-            setOpen(false)
             isUploadingRef.current = false
+            setIsUploading(false)
             return
         }
 
-        // Close dialog immediately, upload in background
-        setOpen(false)
-        toast.info(`Загрузка ${valid.length} файл(ов)...`)
+        // Initialize file statuses
+        setFileStatuses(valid.map(f => ({ name: f.name, status: 'pending' })))
 
-        try {
-            for (const file of valid) {
+        // Upload one by one with status updates
+        let hasErrors = false
+        for (let i = 0; i < valid.length; i++) {
+            const file = valid[i]
+            setFileStatuses(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'uploading' } : s))
+
+            try {
                 await processFile(file)
+                setFileStatuses(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'done' } : s))
+            } catch (error) {
+                hasErrors = true
+                const errMsg = error instanceof Error ? error.message : 'Ошибка'
+                setFileStatuses(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'error', error: errMsg } : s))
             }
-            toast.success("Файлы загружены, обработка идёт в фоне")
-            onUploadComplete?.()
-        } catch (error) {
-            console.error("Upload failed:", error)
-            if (error instanceof Error && (error.message.includes('Недостаточно PU'))) {
-                return
-            }
-            toast.error("Не удалось загрузить некоторые файлы")
-        } finally {
-            isUploadingRef.current = false
         }
-    }
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(true)
-    }
-
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault()
-        setIsDragging(false)
+        isUploadingRef.current = false
+        setIsUploading(false)
+        onUploadComplete?.()
     }
 
     const handleDrop = (e: React.DragEvent) => {
@@ -198,14 +154,17 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             handleFiles(Array.from(e.target.files))
+            // Reset input so same file can be selected again
+            e.target.value = ''
         }
     }
 
+    // Reset on close
     React.useEffect(() => {
         if (!open) {
-            // Reset state after dialog closes (animation delay)
             const timer = setTimeout(() => {
-                setIsUploaded(false)
+                setFileStatuses([])
+                setIsUploading(false)
                 setIsProcessing(false)
                 setProgress(0)
                 processedFilesRef.current.clear()
@@ -213,11 +172,10 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
             }, 300)
             return () => clearTimeout(timer)
         }
-        // Force reset when opened manually
         if (open && (!externalFiles || externalFiles.length === 0)) {
-            setIsUploaded(false)
             setActiveTab("files")
             setWebsiteUrl("")
+            setFileStatuses([])
             processedFilesRef.current.clear()
         }
     }, [open, externalFiles])
@@ -230,14 +188,10 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
 
         try {
             if (agentId) {
-                // Async scraping for agents
                 const { asyncScrapeAgentWebsite } = await import('@/actions/agent-knowledge')
                 const result = await asyncScrapeAgentWebsite(agentId, websiteUrl)
-
                 if (result.success) {
-                    toast.info(`Скрапинг запущен`, {
-                        description: `Сайт будет добавлен в базу в фоновом режиме...`
-                    })
+                    toast.info(`Скрапинг запущен`, { description: `Сайт будет добавлен в базу в фоновом режиме...` })
                     setIsProcessing(false)
                     setOpen(false)
                     onUploadComplete?.()
@@ -247,14 +201,10 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                 }
             }
 
-            // Async scraping for global library
             const { asyncScrapeLibraryWebsite } = await import('@/actions/library')
             const libResult = await asyncScrapeLibraryWebsite(websiteUrl)
-
             if (libResult.success) {
-                toast.info(`Скрапинг запущен`, {
-                    description: `Сайт будет добавлен в библиотеку в фоновом режиме...`
-                })
+                toast.info(`Скрапинг запущен`, { description: `Сайт будет добавлен в библиотеку в фоновом режиме...` })
                 setIsProcessing(false)
                 setOpen(false)
                 onUploadComplete?.()
@@ -269,8 +219,12 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
         }
     }
 
+    const allDone = fileStatuses.length > 0 && fileStatuses.every(s => s.status === 'done' || s.status === 'error')
+    const doneCount = fileStatuses.filter(s => s.status === 'done').length
+    const errorCount = fileStatuses.filter(s => s.status === 'error').length
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(v) => { if (!isUploading) setOpen(v) }}>
             <DialogTrigger asChild>
                 {trigger}
             </DialogTrigger>
@@ -279,17 +233,57 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                     <div className="flex flex-col items-center justify-center py-10 space-y-4">
                         <UploadCloud className="h-12 w-12 text-primary animate-pulse" />
                         <div className="text-center space-y-1 w-full max-w-xs">
-                            <h3 className="font-semibold text-lg">Обработка файлов...</h3>
+                            <h3 className="font-semibold text-lg">Обработка...</h3>
                             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-primary transition-all duration-300"
-                                    style={{ width: `${progress}%` }}
-                                />
+                                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
                             </div>
                             <p className="text-xs text-muted-foreground">{progress}% завершено</p>
                         </div>
                     </div>
-                ) : !isUploaded ? (
+                ) : fileStatuses.length > 0 ? (
+                    <>
+                        <DialogHeader>
+                            <DialogTitle>
+                                {allDone
+                                    ? `Загрузка завершена`
+                                    : `Загрузка файлов...`
+                                }
+                            </DialogTitle>
+                            <DialogDescription>
+                                {allDone
+                                    ? `${doneCount} загружено${errorCount > 0 ? `, ${errorCount} с ошибкой` : ''}`
+                                    : `${doneCount} из ${fileStatuses.length} файлов`
+                                }
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {fileStatuses.map((f, i) => (
+                                <div key={i} className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                                    <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="flex-1 truncate">{f.name}</span>
+                                    {f.status === 'pending' && <span className="text-xs text-muted-foreground">Ожидание</span>}
+                                    {f.status === 'uploading' && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+                                    {f.status === 'done' && <Check className="h-3.5 w-3.5 text-emerald-500" />}
+                                    {f.status === 'error' && (
+                                        <span className="flex items-center gap-1 text-xs text-red-500">
+                                            <AlertCircle className="h-3.5 w-3.5" />
+                                            Ошибка
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {allDone && (
+                            <DialogFooter>
+                                <Button onClick={() => setOpen(false)} className="w-full">
+                                    Готово
+                                </Button>
+                            </DialogFooter>
+                        )}
+                    </>
+                ) : (
                     <>
                         <DialogHeader>
                             <DialogTitle>Загрузка знаний</DialogTitle>
@@ -312,8 +306,8 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                                         "border-2 border-dashed rounded-lg p-10 flex flex-col items-center justify-center gap-4 transition-colors cursor-pointer",
                                         isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
                                     )}
-                                    onDragOver={handleDragOver}
-                                    onDragLeave={handleDragLeave}
+                                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                                    onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
                                     onDrop={handleDrop}
                                     onClick={() => fileInputRef.current?.click()}
                                 >
@@ -345,9 +339,7 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                                             placeholder="https://example.com"
                                             value={websiteUrl}
                                             onChange={(e) => setWebsiteUrl(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') handleScrape()
-                                            }}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') handleScrape() }}
                                         />
                                     </div>
                                 </div>
@@ -361,25 +353,6 @@ export function UploadDialog({ trigger, open: controlledOpen, onOpenChange: setC
                                 </Button>
                             </TabsContent>
                         </Tabs>
-                    </>
-                ) : (
-                    <>
-                        <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                            <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                                <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div className="text-center space-y-1">
-                                <h3 className="font-semibold text-lg">Файлы загружены!</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Система уже обрабатывает и индексирует документы.
-                                </p>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button onClick={() => setOpen(false)} className="w-full">
-                                Готово
-                            </Button>
-                        </DialogFooter>
                     </>
                 )}
             </DialogContent>
