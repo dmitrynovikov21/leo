@@ -2,6 +2,7 @@
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
+import { getLitellmPool } from '@/lib/litellm-db'
 
 function assertAdmin(session: any) {
   if (session?.user?.role !== 'ADMIN') throw new Error('Unauthorized')
@@ -114,7 +115,51 @@ export async function getUsdStats(period: Period = '30d') {
   assertAdmin(session)
 
   const since = getPeriodStart(period)
+  const pool = getLitellmPool()
 
+  // If litellm-db is available — use it as source of truth (real OpenRouter spend)
+  if (pool) {
+    const [byModelRes, chartRes] = await Promise.all([
+      pool.query<{ model: string; requests: string; prompt_tokens: string; completion_tokens: string; cost: string }>(`
+        SELECT
+          model_group AS model,
+          COUNT(*) AS requests,
+          SUM(prompt_tokens) AS prompt_tokens,
+          SUM(completion_tokens) AS completion_tokens,
+          SUM(spend) AS cost
+        FROM "LiteLLM_SpendLogs"
+        WHERE "startTime" >= $1 AND spend > 0
+        GROUP BY model_group
+        ORDER BY cost DESC
+      `, [since]),
+      pool.query<{ date: string; cost: number }>(`
+        SELECT TO_CHAR("startTime", 'MM-DD') AS date, SUM(spend)::float AS cost
+        FROM "LiteLLM_SpendLogs"
+        WHERE "startTime" >= $1 AND spend > 0
+        GROUP BY date ORDER BY date
+      `, [since]),
+    ])
+
+    const byModel = byModelRes.rows.map(r => ({
+      model: r.model || 'unknown',
+      requests: Number(r.requests),
+      promptTokens: Number(r.prompt_tokens),
+      completionTokens: Number(r.completion_tokens),
+      costUsd: Number(r.cost),
+    }))
+
+    const totalCostUsd = byModel.reduce((sum, m) => sum + m.costUsd, 0)
+
+    return {
+      totalCostUsd,
+      byModel,
+      byRequestType: [] as { requestType: string; requests: number; costUsd: number }[],
+      chartData: chartRes.rows,
+      source: 'litellm' as const,
+    }
+  }
+
+  // Fallback: local token_usage table
   const [byModel, byRequestType, costChart] = await Promise.all([
     prisma.tokenUsage.groupBy({
       by: ['model'],
@@ -157,6 +202,7 @@ export async function getUsdStats(period: Period = '30d') {
       }))
       .sort((a, b) => b.costUsd - a.costUsd),
     chartData: costChart,
+    source: 'local' as const,
   }
 }
 
