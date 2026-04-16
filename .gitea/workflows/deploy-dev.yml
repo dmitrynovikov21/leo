@@ -1,0 +1,54 @@
+name: Deploy to Dev Stand
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sshpass & rsync
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq sshpass rsync openssh-client
+
+      - name: Sync files to dev server
+        env:
+          SSHPASS: ${{ secrets.DEV_SERVER_PASS }}
+          HOST: ${{ secrets.DEV_SERVER_HOST }}
+          USER: ${{ secrets.DEV_SERVER_USER }}
+          REMOTE_DIR: /root/leo
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "mkdir -p $REMOTE_DIR"
+          sshpass -e rsync -az --delete \
+            --exclude .git \
+            --exclude node_modules \
+            --exclude .next \
+            --exclude .cache \
+            --exclude dist \
+            --exclude .env \
+            --exclude .env.local \
+            --exclude 'uploads/support/*' \
+            -e "ssh -o StrictHostKeyChecking=accept-new" \
+            ./ "$USER@$HOST:$REMOTE_DIR/"
+
+      - name: Build & restart containers
+        env:
+          SSHPASS: ${{ secrets.DEV_SERVER_PASS }}
+          HOST: ${{ secrets.DEV_SERVER_HOST }}
+          USER: ${{ secrets.DEV_SERVER_USER }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "cd /root/leo && docker network create leo_default 2>/dev/null || true && docker compose -f docker-compose.prod.yml up -d --build"
+
+      - name: Run migrations
+        env:
+          SSHPASS: ${{ secrets.DEV_SERVER_PASS }}
+          HOST: ${{ secrets.DEV_SERVER_HOST }}
+          USER: ${{ secrets.DEV_SERVER_USER }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "cd /root/leo && docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy"
