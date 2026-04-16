@@ -43,7 +43,7 @@ jobs:
           HOST: ${{ secrets.DEV_SERVER_HOST }}
           USER: ${{ secrets.DEV_SERVER_USER }}
         run: |
-          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "cd /root/leo && docker network create leo_default 2>/dev/null || true && docker compose -f docker-compose.prod.yml up -d --build"
+          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "cd /root/leo && docker network create leo_default 2>/dev/null || true && docker compose -f docker-compose.dev.yml up -d --build"
 
       - name: Run migrations
         env:
@@ -51,4 +51,4 @@ jobs:
           HOST: ${{ secrets.DEV_SERVER_HOST }}
           USER: ${{ secrets.DEV_SERVER_USER }}
         run: |
-          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "cd /root/leo && docker compose -f docker-compose.prod.yml exec -T app npx prisma migrate deploy"
+          sshpass -e ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "cd /root/leo && docker compose -f docker-compose.dev.yml exec -T app npx prisma migrate deploy"
